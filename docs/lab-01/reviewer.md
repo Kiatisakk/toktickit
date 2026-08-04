@@ -20,7 +20,7 @@ The person who reviewed **my** Pull Requests.
 | --- | --- | --- | --- |
 | #5 | Set up the TokTickIT project foundation | https://github.com/Kiatisakk/toktickit/pull/5 | Reviewed with comments; fixes pushed and review re-requested |
 | #6 | Implement the API health check | https://github.com/Kiatisakk/toktickit/pull/6 | `___` |
-| #7 | Create and seed IT request categories | https://github.com/Kiatisakk/toktickit/pull/7 | `___` |
+| #7 | Create and seed IT request categories | https://github.com/Kiatisakk/toktickit/pull/7 | Reviewed with comments; one fix pushed, one thread open by agreement |
 | #8 | Display the IT request category list | https://github.com/Kiatisakk/toktickit/pull/8 | `___` |
 
 ### Their review comments, and how I responded
@@ -35,6 +35,22 @@ The person who reviewed **my** Pull Requests.
 
 The fixes were merged forward into the other three feature branches so they do
 not reintroduce the deleted files.
+
+**PR #7 — two inline comments: one fixed, one still under discussion.**
+
+| # | Their comment | My response |
+| --- | --- | --- |
+| 1 | On `server/prisma/seed.ts`: *"Mutable display name is used as seed identity; renaming a constant creates a new row and leaves the old row, so reruns can exceed four categories. Use stable seed keys or handle renames explicitly."* | A real bug, and I reproduced it before fixing: renaming `"Hardware"` to `"Hardware and Devices"` and reseeding produced **5 rows**, while the log still printed `Seeded 4 categories (5 total)` and carried on. Fixed by making `CATEGORY_NAMES` authoritative — upsert what is listed, then `deleteMany` anything that is not — plus a count assertion so a future divergence throws instead of printing. (`173b4fc`) **Thread resolved.** |
+| 2 | Also on `seed.ts`: *"Insertion order does not guarantee API response order, and serial IDs can change after existing or deleted rows. Add explicit `orderBy` in the category query or store a display-order field."* | Half already done: explicit `orderBy: { id: "asc" }` has been in #8 since it was opened, and API-02 asserts ascending ids rather than trusting PostgreSQL. I did **not** add a display-order column — §10.2 pins the response to ids 1–4, so for Lab 1 the column would duplicate the id. It starts earning its place in Lab 2, when §1.1 lets an Administrator manage categories. **Thread deliberately left open**, because this is a question back to the reviewer rather than a settled answer. |
+
+Two consequences I raised unprompted in those threads, since I would rather the
+reviewer hear them from me than find them:
+
+- The reconcile fixes row *count*, not id *stability* — after a rename the ids
+  come back as `1,3,4,6`.
+- `deleteMany` is safe only while nothing references Category. In Lab 2 it would
+  delete a category out from under live tickets. There is a comment in the file
+  saying so, but a comment is not a constraint.
 
 I also flagged a mistake of my own in that thread: `92a5d7c` contains only the
 deletions, because a pathspec typo made the matching `git add` fail as a whole
