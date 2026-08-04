@@ -41,7 +41,22 @@ not reintroduce the deleted files.
 | # | Their comment | My response |
 | --- | --- | --- |
 | 1 | On `server/prisma/seed.ts`: *"Mutable display name is used as seed identity; renaming a constant creates a new row and leaves the old row, so reruns can exceed four categories. Use stable seed keys or handle renames explicitly."* | A real bug, and I reproduced it before fixing: renaming `"Hardware"` to `"Hardware and Devices"` and reseeding produced **5 rows**, while the log still printed `Seeded 4 categories (5 total)` and carried on. Fixed by making `CATEGORY_NAMES` authoritative — upsert what is listed, then `deleteMany` anything that is not — plus a count assertion so a future divergence throws instead of printing. (`173b4fc`) **Thread resolved.** |
-| 2 | Also on `seed.ts`: *"Insertion order does not guarantee API response order, and serial IDs can change after existing or deleted rows. Add explicit `orderBy` in the category query or store a display-order field."* | Half already done: explicit `orderBy: { id: "asc" }` has been in #8 since it was opened, and API-02 asserts ascending ids rather than trusting PostgreSQL. I did **not** add a display-order column — §10.2 pins the response to ids 1–4, so for Lab 1 the column would duplicate the id. It starts earning its place in Lab 2, when §1.1 lets an Administrator manage categories. **Thread deliberately left open**, because this is a question back to the reviewer rather than a settled answer. |
+| 2 | Also on `seed.ts`: *"Insertion order does not guarantee API response order, and serial IDs can change after existing or deleted rows. Add explicit `orderBy` in the category query or store a display-order field."* | Half already done: explicit `orderBy: { id: "asc" }` has been in #8 since it was opened, and API-02 asserts ascending ids rather than trusting PostgreSQL. I did **not** add a display-order column — §10.2 pins the response to ids 1–4, so for Lab 1 the column would duplicate the id. It starts earning its place in Lab 2, when §1.1 lets an Administrator manage categories. **Discussion moved to [#8](https://github.com/Kiatisakk/toktickit/pull/8#issuecomment-5181579004)** — see the note below. |
+
+**A process mistake of mine, and what it cost.** Comment 2 arrived on #7, but the
+code it asks about — the `orderBy` in `server/src/routes/categories.ts` — is in
+#8. #7 contains only the schema, the migration, the seed and a `package.json`
+script.
+
+That was my doing: the doc comment I wrote in `seed.ts` describes what
+`GET /api/categories` returns, so it invited a comment about #8's behaviour onto
+#7's diff. Two concrete costs — the reviewer could not verify my answer from the
+diff they were looking at, and an unresolved thread on #7 would have been buried
+the moment #7 merged.
+
+I moved the question to #8, where the code is and where it can actually be
+acted on, and linked both directions. The thread on #7 is resolved because it
+has moved, not because it is settled.
 
 Two consequences I raised unprompted in those threads, since I would rather the
 reviewer hear them from me than find them:
