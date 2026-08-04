@@ -1,16 +1,16 @@
 import { useState } from 'react'
 
-import { fetchHealth } from './api'
+import { fetchCategories, fetchHealth, type Category } from './api'
 
 /**
- * The System Status shown here is a verdict about the whole vertical slice, not
- * the result of a single endpoint. Issue 2 checks the API; Issue 4 adds the
- * database leg. See CONTEXT.md.
+ * System Status is a verdict about the whole vertical slice, not the result of
+ * a single endpoint: Online means the API answered *and* the categories loaded
+ * from PostgreSQL. See CONTEXT.md.
  */
 type CheckState =
   | { kind: 'idle' }
   | { kind: 'loading' }
-  | { kind: 'online' }
+  | { kind: 'online'; categories: Category[] }
   | { kind: 'offline'; message: string }
 
 export default function App() {
@@ -21,7 +21,8 @@ export default function App() {
 
     try {
       await fetchHealth()
-      setState({ kind: 'online' })
+      const categories = await fetchCategories()
+      setState({ kind: 'online', categories })
     } catch (error) {
       setState({
         kind: 'offline',
@@ -53,9 +54,18 @@ export default function App() {
       )}
 
       {state.kind === 'online' && (
-        <p className="mt-4 mb-0">
-          System Status: <span className="badge text-bg-success">Online</span>
-        </p>
+        <div className="mt-4">
+          <p className="mb-4">
+            System Status: <span className="badge text-bg-success">Online</span>
+          </p>
+
+          <h2 className="h5">Supported Request Categories</h2>
+          <ol className="mb-0">
+            {state.categories.map((category) => (
+              <li key={category.id}>{category.name}</li>
+            ))}
+          </ol>
+        </div>
       )}
 
       {state.kind === 'offline' && (
