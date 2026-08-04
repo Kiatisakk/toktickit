@@ -8,8 +8,9 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./tests/setup.ts'],
-    // Lab 1 tests all live under tests/lab-01/ (see docs/lab-01/tests.md).
-    include: ['tests/lab-01/**/*.test.tsx'],
+    // Tests are grouped per lab under tests/lab-NN/ (see docs/lab-01/tests.md).
+    // The glob covers every lab so later labs need no config change.
+    include: ['tests/lab-*/**/*.test.{ts,tsx}'],
     // Issue 1 configures the runner before any test exists.
     passWithNoTests: true,
   },
