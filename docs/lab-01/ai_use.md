@@ -1,55 +1,72 @@
 # Lab 1 — AI Use and Reflection
 
-## Which agent I used
+## What I used
 
-I used **Claude Code** (Anthropic's terminal-based coding agent) with the
+**Claude Code** — Anthropic's terminal-based coding agent — running the
 **Claude Opus 5** model, rather than Antigravity. §5 of the lab sheet says the
 course will "most likely" use Antigravity "subject to the availability of Google
 Cloud Platform support", so this is the tool I actually had.
 
-The work ran through a `grill-with-docs` workflow: instead of asking the agent
-to write code straight away, I had it read the lab sheet, look up everything it
-could verify from my machine, and then interview me one decision at a time. It
-asked 13 questions and I answered each one before any code was written.
+Two **skills** were loaded into the session by the opening command. A skill is a
+packaged set of instructions, not a separate agent — everything ran in one
+conversation with one model:
+
+| Skill | What it added |
+| --- | --- |
+| `grilling` | Interview me one decision at a time and wait for each answer, instead of writing code from assumptions |
+| `domain-modeling` | Challenge vague terms, and write the resolved vocabulary into `CONTEXT.md` as it is settled |
+
+**No sub-agents were spawned.** Every prompt below is something I typed.
+
+## How the session was shaped
+
+The first command did not ask for code. It asked the agent to read the lab sheet,
+verify what it could from my machine, and then interrogate me. It asked **13
+questions** and I answered every one before a single file was written. The plan
+was written to disk and I approved it before implementation began.
+
+That ordering is the reason most of the prompts below are short. The decisions
+had already been made explicit, so later instructions could be one line.
 
 ## Selected key prompts
 
-> **TO FILL IN — the `My Reflection` lines below are placeholders.** Replace each
-> one with what you actually noticed. Be specific: what did the agent get wrong
+> **TO FILL IN — every `My Reflection` line below is a placeholder.** Replace each
+> with what you actually noticed. Be specific: what did the agent get wrong
 > first, what did you have to correct, what surprised you.
 
-| Prompt Name | Actual Prompt Text |
-| --- | --- |
-| **Plan Lab 1 Implementation** | `/grill-with-docs ให้ดู labsheet ใน material/UTF-8_Lab1_Labsheet.pdf แล้วก็ดูว่าต้องทำอะไรบ้าง`<br><br>**My Reflection:** `___` |
-| **Set the scope of delegation** | *(answering "How much of Lab 1 should I take on?")* "ทำทุกอย่างที่ automate ได้ รวม GitHub API" — do everything that can be automated, including driving the GitHub API.<br><br>**My Reflection:** `___` |
-| **Choose the database setup** | *(answering "How should the database be set up?")* "เปิด Docker แล้วใช้ container" — start Docker and use a container, rather than the PostgreSQL 18 already installed on my machine.<br><br>**My Reflection:** `___` |
-| **Resolve a contradiction in the brief** | *(answering "What does System Status actually mean?")* "Online ก็ต่อเมื่อสำเร็จทั้ง 2 call" — Online only when both calls succeed, keeping `/api/health` free of any database probe.<br><br>**My Reflection:** `___` |
-| **Ask for an explanation instead of an answer** | "คือยังไงนะอธิบายเพิ่มเติมได้ไหม" — explain that further. I did not know what an ADR was, so I asked before answering rather than guessing.<br><br>**My Reflection:** `___` |
-| **Correct the branch naming** | "ใช้ main/dev/feature แทน lab1-staging" — use `main/dev/feature`. The agent pushed back with where each name appears in the brief (`dev` once in §4, `lab1-staging` five times including the PR-target table), and I changed my mind.<br><br>**My Reflection:** `___` |
-| **Cut unnecessary scope** | "ไม่เอา ADR ละ" — drop the ADR. The reasoning moved into `CONTEXT.md` and a code comment instead of a separate `docs/adr/` folder the brief never asked for.<br><br>**My Reflection:** `___` |
-| **Approve the plan before any code** | *(approving the written plan file)* Nothing was implemented until the whole plan — branch strategy, test layout, decisions, verification steps — was written down and I had read it.<br><br>**My Reflection:** `___` |
+| # | Prompt Name | Actual Prompt Text |
+| --- | --- | --- |
+| 1 | **Plan Lab 1 implementation** | `/grill-with-docs ให้ดู labsheet ใน material/UTF-8_Lab1_Labsheet.pdf แล้วก็ดูว่าต้องทำอะไรบ้าง`<br><br>*Read the lab sheet and work out what has to be done.* It found five places where the lab sheet contradicts itself before asking anything — including that §10.1 fixes the health-check response with no database field, while Part 4 shows the screen going Offline when the database stops.<br><br>**My Reflection:** `___` |
+| 2 | **Set the scope of delegation** | *(answering "How much of Lab 1 should I take on?")* `ทำทุกอย่างที่ automate ได้ รวม GitHub API` — do everything that can be automated, including driving the GitHub API. This is why the Issues, the Project board, the branches and all the Pull Requests were created from the terminal rather than by hand.<br><br>**My Reflection:** `___` |
+| 3 | **Ask for an explanation instead of choosing blind** | `คือยังไงนะอธิบายเพิ่มเติมได้ไหม` — *explain that further.* I did not know what an ADR was, so I refused the question rather than guessing. The agent explained it, showed which decisions passed its own three-part test and which did not, and noted the lab sheet never asks for one.<br><br>**My Reflection:** `___` |
+| 4 | **Challenge the branch naming** | `ใช้ main/dev/feature แทน lab1-staging` — *use `main/dev/feature`.* The agent disagreed and showed its evidence: `dev` appears once, in §4; `lab1-staging` appears in §6 twice, §12, the PR-target table on page 11, and the git graph on page 7. I changed my mind.<br><br>**My Reflection:** `___` |
+| 5 | **Cut unnecessary scope** | `ไม่เอา ADR ละ` — *drop the ADR.* The reasoning moved into `CONTEXT.md` and a code comment instead of a `docs/adr/` folder the brief never asked for.<br><br>**My Reflection:** `___` |
+| 6 | **Enforce the prescribed branch structure** | `merge #5 แล้วก็ rebase #6 ทำตาม branch ที่กำหนด` — *merge #5, then rebase #6 to follow the specified branch structure.* Before this, every feature branch was stacked on the one before it, so each PR's diff carried the earlier work along. Afterwards #6 went from 3 commits to 2, and #7 from 11 to 2.<br><br>**My Reflection:** `___` |
+| 7 | **Catch a scope leak in the review** | `เห็นใน comment ที่ตอบกลับ #7 มีการเอ่ยถึง #8 ด้วย` … `มันไม่ควรโดนเอ่ยถึงหรือป่าว อยากให้ edit comment เอาออก` — *the reply on #7 mentions #8 … it should not be mentioned, edit it out.* The agent had answered a review comment by pointing at a Pull Request for an Issue that, under the brief's dependency order, had not started. Six comments were rewritten or deleted.<br><br>**My Reflection:** `___` |
+| 8 | **Overrule the agent on a design decision** | *(on the reviewer's ordering comment)* `displayOrder น่าจะแนะนำว่าให้เพิ่ม` — *displayOrder should probably be added.* The agent had argued in public on the PR that the column belonged in Lab 2. It reversed, and said plainly why its own argument had been weak: it was about *when*, never about whether the reviewer was right.<br><br>**My Reflection:** `___` |
+| 9 | **Decide where documentation lives** | `docs ที่ทำใน lab1 ควรอยู่ใน lab1-staging ไหม หรือว่าแตก branch จาก main` … `git มันคือ version control ไม่ใช่ที่เก็บไฟล์` — *should Lab 1's docs live in `lab1-staging`, or a branch off `main`? … git is version control, not file storage.* Settled that `tests.md` ships with the code it describes, while the evidence documents get their own branch, and screenshots go in the PDF rather than the repository.<br><br>**My Reflection:** `___` |
+| 10 | **Verify rather than assume** | `re-approve แล้ว merge เข้า main ได้เลย` — *re-approved, merge into main.* The agent checked before merging and found the earlier approval sat on a commit from thirteen minutes before the `displayOrder` change, then refused to merge on a stale sign-off and asked the reviewer to look again.<br><br>**My Reflection:** `___` |
 
 ## Reflection on improving my prompts
 
-> **TO FILL IN.** A few honest paragraphs. Some things you might have noticed
-> and could write about — only use the ones that are actually true for you:
+> **TO FILL IN.** A few honest paragraphs. Prompts you might answer — only use the
+> ones that are actually true for you:
 >
-> - The first prompt did not ask for code. It asked the agent to read the brief
->   and interrogate me. Was that better or worse than asking for code directly?
-> - The agent found five places where the lab sheet contradicts itself. Would
->   you have caught those by reading it yourself?
-> - When you said "use `main/dev/feature`", the agent disagreed and showed its
->   evidence rather than just complying. Was that useful or annoying?
-> - You asked "what is an ADR?" mid-flow instead of picking an option blind.
->   What would have happened if you had just picked one?
-> - Which parts of the result can you actually explain to someone else, and
->   which parts would you have to go and read first?
+> - Prompt 1 asked for an interrogation, not for code. Was that better or worse
+>   than asking for code directly?
+> - The agent disagreed with you twice (prompts 4 and 8) and was right once each
+>   way. Was being argued with useful, or annoying?
+> - Prompt 3 was you refusing to answer a question you did not understand. What
+>   would have happened if you had just picked an option?
+> - Prompts 6, 7 and 9 are all you noticing process problems the agent had
+>   created and not flagged. What pattern does that suggest about what to check?
+> - Which parts of the result can you explain to someone else right now, and
+>   which would you have to go and read first?
 
 ## What I remain responsible for
 
-The agent wrote the code, but the specifications, the decisions and the
-verification are mine. In particular I own these choices, each of which I was
-asked about explicitly and each of which could have gone the other way:
+The agent wrote the code; the decisions are mine. Each of these was put to me
+explicitly and could have gone the other way:
 
 | Decision | What I chose | What I gave up |
 | --- | --- | --- |
@@ -57,4 +74,17 @@ asked about explicitly and each of which could have gone the other way:
 | Database | PostgreSQL in Docker on port 5433 | The PostgreSQL 18 already installed locally |
 | API-02 | Integration test against a real database | A faster, hermetic test with Prisma mocked |
 | System Status | Aggregate of two API calls | A health check that probes the database itself |
-| Peer review | Four Pull Requests left open for a reviewer | Merging straight through to `main` |
+| Category ordering | A `displayOrder` column, added in Lab 1 | Sorting on the serial `id` and deferring to Lab 2 |
+| Peer review | Four PRs held open for a reviewer | Merging straight through to `main` |
+
+## Mistakes the agent made, and how they were caught
+
+Recorded because a log of only the successes would be dishonest. Details are in
+[`reviewer.md`](reviewer.md).
+
+| What went wrong | Caught by |
+| --- | --- |
+| A commit deleted two `.gitignore` files without adding their replacements — a pathspec typo made `git add` fail as a whole | The agent, after pushing; fixed forward rather than force-pushing a branch under review |
+| A review answer pointed at a Pull Request for an Issue that had not started | **Me**, reading the reply |
+| A doc comment in `seed.ts` described an endpoint that did not exist in that branch, which is what invited the misplaced review comment | The agent, once I pointed at the symptom |
+| Arguing that `displayOrder` could wait, when the argument was about timing rather than correctness | The reviewer raised it; **I** decided against the agent |
