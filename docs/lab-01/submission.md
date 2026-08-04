@@ -20,7 +20,7 @@
 | What | URL |
 | --- | --- |
 | Repository | https://github.com/Kiatisakk/toktickit |
-| GitHub Project | `___` |
+| GitHub Project | https://github.com/users/Kiatisakk/projects/3 |
 | Issue 1 — Set up the TokTickIT project foundation | https://github.com/Kiatisakk/toktickit/issues/1 |
 | Issue 2 — Implement the API health check | https://github.com/Kiatisakk/toktickit/issues/2 |
 | Issue 3 — Create and seed IT request categories | https://github.com/Kiatisakk/toktickit/issues/3 |
