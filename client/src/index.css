@@ -1,0 +1,5 @@
+/* Bootstrap provides the base styling; only project-specific rules go here. */
+
+body {
+  min-height: 100vh;
+}
