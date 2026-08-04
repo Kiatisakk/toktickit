@@ -35,3 +35,17 @@ export function fetchHealth(): Promise<HealthResponse> {
     'Unable to connect to TokTickIT API',
   )
 }
+
+export interface Category {
+  id: number
+  name: string
+}
+
+export function fetchCategories(): Promise<Category[]> {
+  // A different message from the health check on purpose: knowing *which* leg
+  // of the stack failed is the whole point of checking both.
+  return getJson<Category[]>(
+    '/api/categories',
+    'Unable to load request categories from the database',
+  )
+}
