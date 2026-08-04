@@ -1,7 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// TokTickIT database schema.
+// The connection URL comes from prisma.config.ts, which reads server/.env.
 
 generator client {
   provider = "prisma-client"
@@ -10,4 +8,12 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+/// The kind of request a Ticket represents — reference data, not free text.
+/// Lab 1 seeds four: Account and Access, Hardware, Software, Network.
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
 }
