@@ -41,22 +41,23 @@ not reintroduce the deleted files.
 | # | Their comment | My response |
 | --- | --- | --- |
 | 1 | On `server/prisma/seed.ts`: *"Mutable display name is used as seed identity; renaming a constant creates a new row and leaves the old row, so reruns can exceed four categories. Use stable seed keys or handle renames explicitly."* | A real bug, and I reproduced it before fixing: renaming `"Hardware"` to `"Hardware and Devices"` and reseeding produced **5 rows**, while the log still printed `Seeded 4 categories (5 total)` and carried on. Fixed by making `CATEGORY_NAMES` authoritative — upsert what is listed, then `deleteMany` anything that is not — plus a count assertion so a future divergence throws instead of printing. (`173b4fc`) **Thread resolved.** |
-| 2 | Also on `seed.ts`: *"Insertion order does not guarantee API response order, and serial IDs can change after existing or deleted rows. Add explicit `orderBy` in the category query or store a display-order field."* | Half already done: explicit `orderBy: { id: "asc" }` has been in #8 since it was opened, and API-02 asserts ascending ids rather than trusting PostgreSQL. I did **not** add a display-order column — §10.2 pins the response to ids 1–4, so for Lab 1 the column would duplicate the id. It starts earning its place in Lab 2, when §1.1 lets an Administrator manage categories. **Discussion moved to [#8](https://github.com/Kiatisakk/toktickit/pull/8#issuecomment-5181579004)** — see the note below. |
+| 2 | Also on `seed.ts`: *"Insertion order does not guarantee API response order, and serial IDs can change after existing or deleted rows. Add explicit `orderBy` in the category query or store a display-order field."* | **Out of scope for Issue 3.** There is no query in this PR — it is the schema, the migration and the seed — so there was nothing in the diff I could change to answer it. The `orderBy` belongs in the endpoint that serves categories, which is Issue 4. Deferred to that Issue, with a commitment to raise it there myself. **Thread resolved as out of scope, not as settled.** |
 
-**A process mistake of mine, and what it cost.** Comment 2 arrived on #7, but the
-code it asks about — the `orderBy` in `server/src/routes/categories.ts` — is in
-#8. #7 contains only the schema, the migration, the seed and a `package.json`
-script.
+**A process mistake of mine, and what it cost.** Comment 2 arrived on Issue 3's
+PR, but the code it asks about lives in Issue 4's work, which under the brief's
+dependency order had not started — Issue 4 begins only once Issue 3 is available
+in `lab1-staging`.
 
-That was my doing: the doc comment I wrote in `seed.ts` describes what
-`GET /api/categories` returns, so it invited a comment about #8's behaviour onto
-#7's diff. Two concrete costs — the reviewer could not verify my answer from the
-diff they were looking at, and an unresolved thread on #7 would have been buried
-the moment #7 merged.
+That was my doing. The doc comment I wrote at the top of `seed.ts` describes what
+`GET /api/categories` will return, an endpoint that does not exist in this
+branch. It made an API-ordering concern look in scope on a PR where nothing could
+be done about it, and the reviewer had no way to check my answer from the diff
+they were reading.
 
-I moved the question to #8, where the code is and where it can actually be
-acted on, and linked both directions. The thread on #7 is resolved because it
-has moved, not because it is settled.
+Worse, my first instinct was to answer it by pointing at the later work — which
+drags an Issue that has not started into a review that should not know about it.
+I removed those references and reframed the reply around what this PR actually
+contains. The substance of the concern is preserved and deferred, not dropped.
 
 Two consequences I raised unprompted in those threads, since I would rather the
 reviewer hear them from me than find them:
