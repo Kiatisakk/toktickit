@@ -29,7 +29,7 @@
 | PR #6 — `feature/2-health-check` → `lab1-staging` | https://github.com/Kiatisakk/toktickit/pull/6 |
 | PR #7 — `feature/3-category-seed` → `lab1-staging` | https://github.com/Kiatisakk/toktickit/pull/7 |
 | PR #8 — `feature/4-category-list` → `lab1-staging` | https://github.com/Kiatisakk/toktickit/pull/8 |
-| PR — `lab1-staging` → `main` | `___` |
+| PR #9 — `lab1-staging` → `main` | https://github.com/Kiatisakk/toktickit/pull/9 |
 
 ### GitHub Project board
 
