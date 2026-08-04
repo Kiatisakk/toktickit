@@ -1,6 +1,7 @@
 import cors from "cors";
 import express, { type Express } from "express";
 
+import { categoriesRouter } from "./routes/categories.js";
 import { healthRouter } from "./routes/health.js";
 
 /**
@@ -24,6 +25,7 @@ export function createApp(): Express {
   app.use(express.json());
 
   app.use("/api", healthRouter);
+  app.use("/api", categoriesRouter);
 
   return app;
 }
