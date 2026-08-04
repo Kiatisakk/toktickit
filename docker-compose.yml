@@ -1,0 +1,27 @@
+# PostgreSQL for local TokTickIT development.
+#
+# Host port is 5433, not the usual 5432, so this container can run alongside a
+# PostgreSQL instance already installed on the machine.
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: toktickit-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: toktickit
+      POSTGRES_PASSWORD: toktickit_dev_password
+      POSTGRES_DB: toktickit
+    ports:
+      - "5433:5432"
+    # PostgreSQL 18 images expect a single mount at /var/lib/postgresql and
+    # place the cluster in a major-version subdirectory below it.
+    volumes:
+      - toktickit_pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U toktickit -d toktickit"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  toktickit_pgdata:
