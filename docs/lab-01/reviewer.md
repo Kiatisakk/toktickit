@@ -41,7 +41,7 @@ not reintroduce the deleted files.
 | # | Their comment | My response |
 | --- | --- | --- |
 | 1 | On `server/prisma/seed.ts`: *"Mutable display name is used as seed identity; renaming a constant creates a new row and leaves the old row, so reruns can exceed four categories. Use stable seed keys or handle renames explicitly."* | A real bug, and I reproduced it before fixing: renaming `"Hardware"` to `"Hardware and Devices"` and reseeding produced **5 rows**, while the log still printed `Seeded 4 categories (5 total)` and carried on. Fixed by making `CATEGORY_NAMES` authoritative — upsert what is listed, then `deleteMany` anything that is not — plus a count assertion so a future divergence throws instead of printing. (`173b4fc`) **Thread resolved.** |
-| 2 | Also on `seed.ts`: *"Insertion order does not guarantee API response order, and serial IDs can change after existing or deleted rows. Add explicit `orderBy` in the category query or store a display-order field."* | **Out of scope for Issue 3.** There is no query in this PR — it is the schema, the migration and the seed — so there was nothing in the diff I could change to answer it. The `orderBy` belongs in the endpoint that serves categories, which is Issue 4. Deferred to that Issue, with a commitment to raise it there myself. **Thread resolved as out of scope, not as settled.** |
+| 2 | Also on `seed.ts`: *"Insertion order does not guarantee API response order, and serial IDs can change after existing or deleted rows. Add explicit `orderBy` in the category query or store a display-order field."* | **Out of scope for Issue 3, carried to Issue 4 — and ultimately accepted in full.** There was no query in this PR to attach an `orderBy` to, so it was deferred to the Issue that owns the endpoint. I initially argued the display-order column could wait until Lab 2; that argument was about timing, not about whether the concern was real, and it did not survive scrutiny. `displayOrder` was added in `9b8f9e9` on Issue 4's branch. |
 
 **A process mistake of mine, and what it cost.** Comment 2 arrived on Issue 3's
 PR, but the code it asks about lives in Issue 4's work, which under the brief's
@@ -58,6 +58,17 @@ Worse, my first instinct was to answer it by pointing at the later work — whic
 drags an Issue that has not started into a review that should not know about it.
 I removed those references and reframed the reply around what this PR actually
 contains. The substance of the concern is preserved and deferred, not dropped.
+
+**How it ended.** Once Issue 4 opened properly, I put the question there and
+argued the column belonged in Lab 2. It was decided against me, and correctly:
+my case was about *when* to add it, never about whether the reviewer was right,
+and that is a weak reason to ship a sort I already agreed was wrong. `Category`
+now carries `displayOrder`, the API sorts on it, and `API-02` proves it by
+swapping two categories' positions without touching their ids.
+
+The most useful thing that came out of this review was not the column. It was
+being made to notice that I had turned "I would rather do this later" into an
+argument that looked like "this is not needed".
 
 Two consequences I raised unprompted in those threads, since I would rather the
 reviewer hear them from me than find them:

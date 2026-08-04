@@ -80,7 +80,7 @@ GitHub username, and the PR links.
 
 [SCREENSHOT] Terminal output of `npm test` on `main`, showing all tests passing.
 
-Expected: **13 tests across 5 files**, all green.
+Expected: **14 tests across 5 files**, all green.
 
 ### docs/lab-01/tests.md
 

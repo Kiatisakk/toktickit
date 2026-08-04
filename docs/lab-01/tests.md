@@ -10,7 +10,7 @@ Run everything from the repository root:
 npm test
 ```
 
-**13 tests across 5 files.** The API tests require a running, migrated and
+**14 tests across 5 files.** The API tests require a running, migrated and
 seeded database — see [the README](../../README.md#setup).
 
 ## Test list
@@ -36,7 +36,10 @@ Supertest imports the Express app directly, so no port is bound.
 
 - Returns HTTP 200.
 - Returns the four seeded categories, in seed order.
-- Every entry has exactly an `id` and a `name`, with ids ascending.
+- Every entry has exactly an `id` and a `name` — `displayOrder` decides the sort
+  but is not part of the contract, so it must not leak into the response.
+- Ordering follows `displayOrder`, not `id`: the test swaps two categories'
+  positions without touching their ids and asserts the response order follows.
 
 This is an **integration test**: it queries PostgreSQL through Prisma, because
 proving the layers work together is the point of Lab 1.

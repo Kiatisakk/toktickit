@@ -41,6 +41,12 @@ The brief calls these "request categories", "IT request categories" and
 "supported request categories" in different places. They are all the same thing:
 a **Category**.
 
+A Category has a **display order** — the position it occupies in a list shown to
+a person. Display order is a property of the Category, deliberately separate
+from whatever identifier the database assigns it: an identifier records when a
+row came into existence, not where it belongs in a list. Reordering the
+categories does not change which Category is which.
+
 ### Related System
 
 The system or asset a Ticket is about — for example a specific laptop model or
