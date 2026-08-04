@@ -9,8 +9,8 @@
     "build": "tsc -b",
     "start": "node dist/server.js",
     "test": "vitest run",
-    "db:migrate": "prisma migrate deploy",
-    "db:migrate:dev": "prisma migrate dev",
+    "db:migrate": "prisma migrate deploy && prisma generate",
+    "db:migrate:dev": "prisma migrate dev && prisma generate",
     "db:seed": "prisma db seed",
     "db:generate": "prisma generate",
     "postinstall": "prisma generate"
