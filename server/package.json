@@ -5,7 +5,7 @@
   "type": "module",
   "description": "TokTickIT Express REST API",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "node --import tsx --watch src/server.ts",
     "build": "tsc -b",
     "start": "node dist/server.js",
     "test": "vitest run",
