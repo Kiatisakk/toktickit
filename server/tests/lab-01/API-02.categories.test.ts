@@ -39,16 +39,74 @@ describe("GET /api/categories", () => {
     );
   });
 
-  it("returns an id and a name for every category, in ascending id order", async () => {
+  it("returns exactly an id and a name for every category", async () => {
     const response = await request(app).get("/api/categories");
 
-    const ids = response.body.map((category: { id: number }) => category.id);
-    expect(ids).toEqual([...ids].sort((a: number, b: number) => a - b));
-
     for (const category of response.body) {
+      // displayOrder decides the sort order but is not part of the contract,
+      // so it must not leak into the response.
       expect(Object.keys(category).sort()).toEqual(["id", "name"]);
       expect(typeof category.id).toBe("number");
       expect(typeof category.name).toBe("string");
+    }
+  });
+
+  it("orders by displayOrder rather than by id", async () => {
+    // Give Network a position ahead of Hardware, leaving the ids untouched.
+    // If the endpoint sorted by id, the order below would not change.
+    const network = await prisma.category.findUniqueOrThrow({
+      where: { name: "Network" },
+    });
+    const hardware = await prisma.category.findUniqueOrThrow({
+      where: { name: "Hardware" },
+    });
+
+    try {
+      await prisma.$transaction([
+        prisma.category.update({
+          where: { name: "Network" },
+          data: { displayOrder: -1 },
+        }),
+        prisma.category.update({
+          where: { name: "Hardware" },
+          data: { displayOrder: -2 },
+        }),
+        prisma.category.update({
+          where: { name: "Network" },
+          data: { displayOrder: hardware.displayOrder },
+        }),
+        prisma.category.update({
+          where: { name: "Hardware" },
+          data: { displayOrder: network.displayOrder },
+        }),
+      ]);
+
+      const response = await request(app).get("/api/categories");
+      const names = response.body.map(
+        (category: { name: string }) => category.name,
+      );
+
+      expect(names.indexOf("Network")).toBeLessThan(names.indexOf("Hardware"));
+      expect(network.id).toBeGreaterThan(hardware.id);
+    } finally {
+      await prisma.$transaction([
+        prisma.category.update({
+          where: { name: "Network" },
+          data: { displayOrder: -1 },
+        }),
+        prisma.category.update({
+          where: { name: "Hardware" },
+          data: { displayOrder: -2 },
+        }),
+        prisma.category.update({
+          where: { name: "Network" },
+          data: { displayOrder: network.displayOrder },
+        }),
+        prisma.category.update({
+          where: { name: "Hardware" },
+          data: { displayOrder: hardware.displayOrder },
+        }),
+      ]);
     }
   });
 });

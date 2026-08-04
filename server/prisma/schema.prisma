@@ -13,7 +13,16 @@ datasource db {
 /// The kind of request a Ticket represents — reference data, not free text.
 /// Lab 1 seeds four: Account and Access, Hardware, Software, Network.
 model Category {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  /// The order categories are presented in, independent of `id`.
+  ///
+  /// `id` is a serial: it records when a row was inserted, not where it belongs
+  /// in a list. Renaming a category re-creates its row and hands it a fresh id,
+  /// which silently moves it to the end. This column is what the API sorts on,
+  /// so presentation order survives that.
+  displayOrder Int @unique
+
   createdAt DateTime @default(now())
 }
