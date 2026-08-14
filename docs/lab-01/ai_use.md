@@ -6,31 +6,10 @@
 
 ## 1. Which AI I used
 
-**Claude Code** running **Claude Opus 5**, not Antigravity — §5 says the course
-will "most likely" use Antigravity "subject to the availability of Google Cloud
-Platform support", and this is the tool I had. One session, one model, **no
+**Claude Code** running **Claude Opus 5**, this is the tool I had. One session, one model, **no
 sub-agents**. Two skills were loaded by the opening command: `grilling`
 (interview me one decision at a time before writing anything) and
 `domain-modeling` (challenge vague terms, record them in `CONTEXT.md`).
-
-### What it produced
-
-| | |
-| --- | --- |
-| Commits | 43 across 5 branches |
-| Files | 43 tracked · 1,683 lines written, plus a 6,398-line lockfile npm generated |
-| Frontend | React 19 + TypeScript + Vite + Bootstrap |
-| Backend | Express 5 + TypeScript, two REST endpoints |
-| Database | PostgreSQL 18 in Docker, Prisma 7, one migration, an idempotent seed |
-| Tests | 14 across 5 files — Supertest against a real database, Vitest in jsdom |
-| GitHub | 4 Issues, a Project board with 6 statuses, 5 branches, 8 Pull Requests — 4 of them implementing the Issues |
-| Documentation | `README.md`, `CONTEXT.md`, and this folder |
-
-It also answered the peer review: **five inline comments across two Pull
-Requests, every one of which changed the code** — including a seeding bug that
-left an orphan row, and the `displayOrder` column the agent had argued against.
-
-### How the work was ordered
 
 The first command asked for an interrogation rather than for code. It produced
 **13 decisions before a single file was written**, and the plan was written to
