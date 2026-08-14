@@ -92,22 +92,6 @@ deletions, because a pathspec typo made the matching `git add` fail as a whole
 and I noticed only after pushing. I fixed it forward in `a7b61c2` rather than
 force-push a branch the reviewer was already reading.
 
-### The release Pull Request
-
-Peer review is mandatory for *all* Pull Requests, and the release into `main`
-is where that slipped.
-
-PR #9 merged `lab1-staging` into `main` with **no approval on it**. It was
-opened, a reviewer was requested, and it was merged before anyone had looked —
-the only Pull Request in this repository that went in unreviewed.
-
-That merge was undone: `main` was reset to the commit before it, so nothing
-unreviewed remains on the release branch. The release will be reopened as a new
-Pull Request and will carry an approval like every other one.
-
-GitHub has no way to un-merge, so **#9 still shows as MERGED** even though its
-commit is no longer in `main`. Recorded here rather than left to be discovered.
-
 ## Whose work I reviewed
 
 The person whose Pull Requests **I** reviewed.
