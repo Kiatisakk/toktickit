@@ -157,19 +157,3 @@ I approved this one with a bare *"lgtm"* and no inline comments. Worth recording
 honestly: on my own #8 I asked my reviewer to press the Approve button rather
 than leave a comment saying LGTM, and here I gave a review with no substance of
 its own. The three PRs above carry the real reviewing.
-
----
-
-## Where to find things to comment on
-
-Each of my four Pull Requests ends with a section flagging a decision that
-could reasonably have gone the other way. Those are genuine questions, not
-rhetorical ones:
-
-- **#5** — PostgreSQL published on host port 5433 instead of 5432; `CONTEXT.md`
-  and `docker-compose.yml` are additions beyond the brief's required structure.
-- **#6** — `GET /api/health` does not query the database. The brief pulls both
-  ways on this; the reasoning is in the PR and in `CONTEXT.md`.
-- **#7** — `db:migrate` chains `prisma generate`, which is arguably outside the
-  Issue's scope.
-- **#8** — The two API calls run sequentially rather than through `Promise.all`.
