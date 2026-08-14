@@ -1,11 +1,13 @@
 # Lab 1 — Peer Review Record
 
-> **Still to fill in.** One thing cannot be recovered from GitHub: my partner's
-> real name and student ID. Everything else below is taken from the review
-> history on both repositories.
+**Author of this repository:** Kiatisak Markmeeshap · 67070501005 ·
+[@Kiatisakk](https://github.com/Kiatisakk)
 
-Review ran **both directions** with the same person: they reviewed my four
-Pull Requests, and I reviewed four of theirs.
+Throughout this file, "I" and "my" mean the author above.
+
+Review ran **both directions** with the same partner: they reviewed my four
+Pull Requests, and I reviewed four of theirs. Everything recorded below is
+quoted from the review history on the two repositories.
 
 Peer review is mandatory for all Pull Requests. Every Pull Request into
 `lab1-staging` in this repository was reviewed and approved before it merged.
@@ -16,8 +18,8 @@ The person who reviewed **my** Pull Requests.
 
 | Field | Value |
 | --- | --- |
-| Name | `___` |
-| Student ID | `___` |
+| Name | Supawit Marayat |
+| Student ID | 67070501045 |
 | GitHub username | [@beambeambeam](https://github.com/beambeambeam) |
 
 ### Pull Requests they reviewed for me
@@ -112,8 +114,8 @@ The person whose Pull Requests **I** reviewed.
 
 | Field | Value |
 | --- | --- |
-| Name | `___` |
-| Student ID | `___` |
+| Name | Supawit Marayat |
+| Student ID | 67070501045 |
 | GitHub username | [@beambeambeam](https://github.com/beambeambeam) |
 | Their repository | https://github.com/beambeambeam/toktickit |
 
