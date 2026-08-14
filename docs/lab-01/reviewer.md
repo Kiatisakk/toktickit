@@ -28,7 +28,6 @@ The person who reviewed **my** Pull Requests.
 | #6 | Implement the API health check | https://github.com/Kiatisakk/toktickit/pull/6 | **Approved** — no changes requested |
 | #7 | Create and seed IT request categories | https://github.com/Kiatisakk/toktickit/pull/7 | **Approved** — after 2 inline comments, one fixed and one deferred by agreement |
 | #8 | Display the IT request category list | https://github.com/Kiatisakk/toktickit/pull/8 | **Approved twice** — the first approval predated the `displayOrder` commit by 13 minutes, so I asked for a second pass rather than merge on a stale sign-off |
-| #12 | Update the Lab 1 documentation | https://github.com/Kiatisakk/toktickit/pull/12 | Open at time of writing |
 
 ### Their review comments, and how I responded
 
@@ -165,8 +164,6 @@ Each of my four Pull Requests ends with a section flagging a decision that
 could reasonably have gone the other way. Those are genuine questions, not
 rhetorical ones:
 
-- **#12** — whether the table of the agent's own mistakes in `ai_use.md` reads as
-  honest or as false modesty.
 - **#5** — PostgreSQL published on host port 5433 instead of 5432; `CONTEXT.md`
   and `docker-compose.yml` are additions beyond the brief's required structure.
 - **#6** — `GET /api/health` does not query the database. The brief pulls both
