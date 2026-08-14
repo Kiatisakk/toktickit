@@ -13,11 +13,30 @@ sub-agents**. Two skills were loaded by the opening command: `grilling`
 (interview me one decision at a time before writing anything) and
 `domain-modeling` (challenge vague terms, record them in `CONTEXT.md`).
 
+### What it produced
+
+| | |
+| --- | --- |
+| Commits | 43 across 5 branches |
+| Files | 43 tracked · 1,683 lines written, plus a 6,398-line lockfile npm generated |
+| Frontend | React 19 + TypeScript + Vite + Bootstrap |
+| Backend | Express 5 + TypeScript, two REST endpoints |
+| Database | PostgreSQL 18 in Docker, Prisma 7, one migration, an idempotent seed |
+| Tests | 14 across 5 files — Supertest against a real database, Vitest in jsdom |
+| GitHub | 4 Issues, a Project board with 6 statuses, 5 branches, 8 Pull Requests — 4 of them implementing the Issues |
+| Documentation | `README.md`, `CONTEXT.md`, and this folder |
+
+It also answered the peer review: **five inline comments across two Pull
+Requests, every one of which changed the code** — including a seeding bug that
+left an orphan row, and the `displayOrder` column the agent had argued against.
+
+### How the work was ordered
+
 The first command asked for an interrogation rather than for code. It produced
-**13 decisions before a single file was written**. The ones that redirected the
-work appear below as prompts; the rest are in *Decisions that were mine*,
-because they were choices between options I was offered rather than instructions
-I gave.
+**13 decisions before a single file was written**, and the plan was written to
+disk and approved before implementation began. The decisions that redirected the
+work appear below as prompts; the rest are in *Decisions that were mine*, because
+they were choices between options I was offered rather than instructions I gave.
 
 ## 2. Selected key prompts
 
