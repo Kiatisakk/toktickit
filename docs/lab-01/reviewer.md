@@ -1,8 +1,12 @@
 # Lab 1 — Peer Review Record
 
-> **TO FILL IN.** Every field below marked `___` needs your reviewer's real
-> details. Peer review is mandatory for all Pull Requests, and this file is
-> graded.
+> **Still to fill in.** Two things cannot be recovered from GitHub and have to
+> come from the people involved: my reviewer's real name and student ID, and the
+> whole second half of this file — the partner whose Pull Requests I reviewed.
+> Everything else below is taken from the review history on the repository.
+
+Peer review is mandatory for all Pull Requests. Every Pull Request into
+`lab1-staging` in this repository was reviewed and approved before it merged.
 
 ## My reviewer
 
@@ -18,10 +22,11 @@ The person who reviewed **my** Pull Requests.
 
 | PR | Title | Link | Approved |
 | --- | --- | --- | --- |
-| #5 | Set up the TokTickIT project foundation | https://github.com/Kiatisakk/toktickit/pull/5 | Reviewed with comments; fixes pushed and review re-requested |
-| #6 | Implement the API health check | https://github.com/Kiatisakk/toktickit/pull/6 | `___` |
-| #7 | Create and seed IT request categories | https://github.com/Kiatisakk/toktickit/pull/7 | Reviewed with comments; one fix pushed, one thread open by agreement |
-| #8 | Display the IT request category list | https://github.com/Kiatisakk/toktickit/pull/8 | `___` |
+| #5 | Set up the TokTickIT project foundation | https://github.com/Kiatisakk/toktickit/pull/5 | **Approved** — after 3 inline comments, fixes pushed, review re-requested |
+| #6 | Implement the API health check | https://github.com/Kiatisakk/toktickit/pull/6 | **Approved** — no changes requested |
+| #7 | Create and seed IT request categories | https://github.com/Kiatisakk/toktickit/pull/7 | **Approved** — after 2 inline comments, one fixed and one deferred by agreement |
+| #8 | Display the IT request category list | https://github.com/Kiatisakk/toktickit/pull/8 | **Approved twice** — the first approval predated the `displayOrder` commit by 13 minutes, so I asked for a second pass rather than merge on a stale sign-off |
+| #12 | Update the Lab 1 documentation | https://github.com/Kiatisakk/toktickit/pull/12 | Open at time of writing |
 
 ### Their review comments, and how I responded
 
@@ -84,6 +89,22 @@ deletions, because a pathspec typo made the matching `git add` fail as a whole
 and I noticed only after pushing. I fixed it forward in `a7b61c2` rather than
 force-push a branch the reviewer was already reading.
 
+### The release Pull Request
+
+Peer review is mandatory for *all* Pull Requests, and the release into `main`
+is where that slipped.
+
+PR #9 merged `lab1-staging` into `main` with **no approval on it**. It was
+opened, a reviewer was requested, and it was merged before anyone had looked —
+the only Pull Request in this repository that went in unreviewed.
+
+That merge was undone: `main` was reset to the commit before it, so nothing
+unreviewed remains on the release branch. The release will be reopened as a new
+Pull Request and will carry an approval like every other one.
+
+GitHub has no way to un-merge, so **#9 still shows as MERGED** even though its
+commit is no longer in `main`. Recorded here rather than left to be discovered.
+
 ## Whose work I reviewed
 
 The person whose Pull Requests **I** reviewed.
@@ -115,6 +136,8 @@ Each of my four Pull Requests ends with a section flagging a decision that
 could reasonably have gone the other way. Those are genuine questions, not
 rhetorical ones:
 
+- **#12** — whether the table of the agent's own mistakes in `ai_use.md` reads as
+  honest or as false modesty.
 - **#5** — PostgreSQL published on host port 5433 instead of 5432; `CONTEXT.md`
   and `docker-compose.yml` are additions beyond the brief's required structure.
 - **#6** — `GET /api/health` does not query the database. The brief pulls both

@@ -109,7 +109,7 @@ toktickit/
 │   ├── prisma/              schema, migrations, seed
 │   ├── src/
 │   └── tests/lab-01/        Supertest API tests
-├── docs/lab-01/             tests.md, reviewer.md, ai_use.md, submission.md
+├── docs/lab-01/             tests.md, reviewer.md, ai_use.md
 ├── material/                course handouts
 ├── CONTEXT.md               domain glossary
 ├── docker-compose.yml

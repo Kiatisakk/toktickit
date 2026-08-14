@@ -13,7 +13,7 @@ npm test
 **14 tests across 5 files.** The API tests require a running, migrated and
 seeded database — see [the README](../../README.md#setup).
 
-## Test list
+## Test files
 
 | Test File | Tool | Test Description |
 | --- | --- | --- |
@@ -23,49 +23,68 @@ seeded database — see [the README](../../README.md#setup).
 | `client/tests/lab-01/UI-02.loading-to-list.test.tsx` | Vitest | Loading state changes to category list |
 | `client/tests/lab-01/UI-03.error-state.test.tsx` | Vitest | API failure displays a useful error message |
 
-## What each file asserts
+## Every test case
 
-### API-01 — `GET /api/health`
+### API-01 — `GET /api/health` · Supertest · 2 cases
 
-- Returns HTTP 200.
-- Body is exactly `{ "status": "ok", "service": "TokTickIT API" }`.
+Supertest drives the exported Express app directly, so no port is bound and no
+database is involved.
 
-Supertest imports the Express app directly, so no port is bound.
+| # | Test case | What it proves |
+| --- | --- | --- |
+| 1 | returns HTTP 200 | The endpoint exists and answers |
+| 2 | reports status ok for the TokTickIT API service | The body is exactly `{ "status": "ok", "service": "TokTickIT API" }` — asserted whole, so an extra field would fail |
 
-### API-02 — `GET /api/categories`
+### API-02 — `GET /api/categories` · Supertest · 4 cases
 
-- Returns HTTP 200.
-- Returns the four seeded categories, in seed order.
-- Every entry has exactly an `id` and a `name` — `displayOrder` decides the sort
-  but is not part of the contract, so it must not leak into the response.
-- Ordering follows `displayOrder`, not `id`: the test swaps two categories'
-  positions without touching their ids and asserts the response order follows.
+An **integration test**: it queries PostgreSQL through Prisma, because proving
+the layers work together is the point of Lab 1.
 
-This is an **integration test**: it queries PostgreSQL through Prisma, because
-proving the layers work together is the point of Lab 1.
+| # | Test case | What it proves |
+| --- | --- | --- |
+| 1 | returns HTTP 200 | The endpoint answers |
+| 2 | returns the four seeded categories | Account and Access, Hardware, Software, Network — read from the database, in that order |
+| 3 | returns exactly an id and a name for every category | `displayOrder` decides the sort but is not part of the contract, so it must not leak into the response |
+| 4 | orders by displayOrder rather than by id | Swaps two categories' positions **without touching their ids** and asserts the response order follows. Ordering is proven, not assumed |
 
-### UI-01 — Landing state
+### UI-01 — Landing page · Vitest · 3 cases
 
-- The `TokTickIT IT Service Desk` heading renders.
-- A `Check System` button is offered.
-- No system status appears before the button is clicked.
+| # | Test case | What it proves |
+| --- | --- | --- |
+| 1 | renders the TokTickIT heading | The product name is on screen |
+| 2 | offers a Check System button | The only control the brief asks for is present |
+| 3 | shows no system status before the button is clicked | The page does **not** fetch on mount — the brief requires the status to appear only after a click |
 
-### UI-02 — Success path
+### UI-02 — Success path · Vitest · 2 cases
 
-- Clicking `Check System` shows a loading state, and the button is disabled
-  while it is in flight.
-- The loading state is replaced by `Online` and the four categories.
-- The list is rendered from the API response, not from a hard-coded array —
-  asserted by returning a category that is not in the seed and expecting it on
-  screen.
+`fetch` is mocked. These describe how the page reacts to the API, not whether
+the API works; API-02 covers that.
 
-### UI-03 — Failure paths
+| # | Test case | What it proves |
+| --- | --- | --- |
+| 1 | shows a loading state and then the categories from the API | The categories request is held open with a pending promise so the loading state is genuinely observable, rather than asserting on a race. Also checks the button is disabled while in flight |
+| 2 | renders whatever the API returns rather than a hard-coded list | Returns a category that is **not** in the seed (`Printer`) and expects it on screen — this is what proves the list is not hard-coded |
 
-- API unreachable → `Offline` plus "Unable to connect to TokTickIT API", and no
-  category list.
-- API up but categories fail → `Offline` plus "Unable to load request categories
-  from the database".
-- The button is enabled again after a failure, so the check can be retried.
+### UI-03 — Failure paths · Vitest · 3 cases
 
-The two failure messages differ on purpose: telling a stopped database apart
-from an unreachable API is the reason the page calls both endpoints.
+| # | Test case | What it proves |
+| --- | --- | --- |
+| 1 | reports Offline with a useful message when the API is unreachable | `System Status: Offline` plus "Unable to connect to TokTickIT API", and no category list |
+| 2 | names the database when the API is up but the categories fail | A stopped database must not look like an unreachable API. The two messages differ on purpose, and each is asserted separately |
+| 3 | lets the user retry after a failure | The button is enabled again, so a failed check is not a dead end |
+
+## Why the failure messages differ
+
+Telling a stopped database apart from an unreachable API is the reason the page
+calls both endpoints instead of one. UI-03 cases 1 and 2 are what stop that
+distinction being quietly lost.
+
+## Running a subset
+
+```bash
+npm test -w server -- API-01                          # one file
+npm test -w client -- UI-03                           # one file
+npm test -w server -- API-02 -t "orders by displayOrder"   # one case
+```
+
+`-t` filters on the text inside `it()` and `describe()`.
