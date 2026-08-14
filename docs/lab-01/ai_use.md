@@ -1,6 +1,6 @@
 # Lab 1 — AI Use and Reflection
 
-> **`[ WRITE THIS ]` marks what is mine to write — 7 of them.** §13: the agent is
+> **`[ WRITE THIS ]` marks what is mine to write — 6 of them.** §13: the agent is
 > an assistant, not the owner of the work. It can record what happened; it cannot
 > tell me what I learned.
 
@@ -21,7 +21,7 @@ they were choices between options I was offered rather than instructions I gave.
 
 | # | Prompt Name | Actual Prompt Text |
 | --- | --- | --- |
-| 1 | **Plan Lab 1** | `/grill-with-docs ให้ดู labsheet ใน material/UTF-8_Lab1_Labsheet.pdf แล้วก็ดูว่าต้องทำอะไรบ้าง`<br>→ Found five self-contradictions in the lab sheet before asking anything.<br>**My Reflection:** `[ WRITE THIS ]` |
+| 1 | **Plan Lab 1** | `/grill-with-docs ให้ดู labsheet ใน material/UTF-8_Lab1_Labsheet.pdf แล้วก็ดูว่าต้องทำอะไรบ้าง`<br>→ Found five self-contradictions in the lab sheet before asking anything.<br>**My Reflection:** I chose the `grill-with-docs` skill to summarise the lab sheet's requirements and draft a plan, since it outlines the actions and planning steps needed before implementation begins. It turned out to be a useful skill: it gave me a clearer view of the overall shape of the work, and of the constraints on the design. It also saved time — planning properly first was better than implementing and then having to go back and rework it. |
 | 2 | **Ask instead of choosing blind** | `คือยังไงนะอธิบายเพิ่มเติมได้ไหม`<br>→ I did not know what an ADR was, so I refused the question. After the explanation I dropped the idea.<br>**My Reflection:** `[ WRITE THIS ]` |
 | 3 | **Challenge the branch naming** | `ใช้ main/dev/feature แทน lab1-staging`<br>→ The agent disagreed with evidence: `dev` appears once, `lab1-staging` six times. I changed my mind.<br>**My Reflection:** `[ WRITE THIS ]` |
 | 4 | **Enforce the branch structure** | `merge #5 แล้วก็ rebase #6 ทำตาม branch ที่กำหนด`<br>→ Branches had been stacked on each other. #6 went 3 commits → 2, #7 went 11 → 2.<br>**My Reflection:** `[ WRITE THIS ]` |
