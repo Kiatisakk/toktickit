@@ -16,7 +16,9 @@ the review history.
 
 ---
 
-## Part A — Pull Requests they reviewed for me
+## Reviews I received
+
+*My four Pull Requests, reviewed by Supawit Marayat.*
 
 ### PR #5 — Set up the TokTickIT project foundation
 
@@ -75,7 +77,9 @@ pass — `APPROVED` again on `2027fac` — *"LGTM"*.
 
 ---
 
-## Part B — Pull Requests I reviewed for them
+## Reviews I gave
+
+*Supawit Marayat's four Pull Requests, reviewed by me.*
 
 ### PR #19 — Set up the TokTickIT project foundation
 
