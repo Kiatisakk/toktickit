@@ -1,6 +1,6 @@
 # Lab 1 — AI Use and Reflection
 
-> **`[ WRITE THIS ]` marks what is mine to write — 8 of them.** §13: the agent is
+> **`[ WRITE THIS ]` marks what is mine to write — 7 of them.** §13: the agent is
 > an assistant, not the owner of the work. It can record what happened; it cannot
 > tell me what I learned.
 
@@ -27,7 +27,6 @@ they were choices between options I was offered rather than instructions I gave.
 | 4 | **Enforce the branch structure** | `merge #5 แล้วก็ rebase #6 ทำตาม branch ที่กำหนด`<br>→ Branches had been stacked on each other. #6 went 3 commits → 2, #7 went 11 → 2.<br>**My Reflection:** `[ WRITE THIS ]` |
 | 5 | **Overrule the agent** | `displayOrder น่าจะแนะนำว่าให้เพิ่ม`<br>→ The agent had argued on the PR that the column belonged in Lab 2. It reversed and said why its own argument was weak. A schema change, a migration and a new test followed.<br>**My Reflection:** `[ WRITE THIS ]` |
 | 6 | **Check the source material** | `ใน material บอกไหมว่าใครต้องกด`<br>→ Revealed the agent had planned the whole lab from two of the three handouts, never opening the Git cheat sheet.<br>**My Reflection:** `[ WRITE THIS ]` |
-| 7 | **Decide where docs live** | `git มันคือ version control ไม่ใช่ที่เก็บไฟล์`<br>→ `tests.md` ships with the code; evidence docs finish on their own branch; `submission.md` deleted; screenshots go in the PDF.<br>**My Reflection:** `[ WRITE THIS ]` |
 
 ## 3. My reflection on improving the prompts
 
