@@ -1,6 +1,6 @@
 # Lab 1 — AI Use and Reflection
 
-> **`[ WRITE THIS ]` marks what is mine to write — 11 of them.** §13: the agent is
+> **`[ WRITE THIS ]` marks what is mine to write — 8 of them.** §13: the agent is
 > an assistant, not the owner of the work. It can record what happened; it cannot
 > tell me what I learned.
 
@@ -24,23 +24,20 @@ I gave.
 | # | Prompt Name | Actual Prompt Text |
 | --- | --- | --- |
 | 1 | **Plan Lab 1** | `/grill-with-docs ให้ดู labsheet ใน material/UTF-8_Lab1_Labsheet.pdf แล้วก็ดูว่าต้องทำอะไรบ้าง`<br>→ Found five self-contradictions in the lab sheet before asking anything.<br>**My Reflection:** `[ WRITE THIS ]` |
-| 2 | **Set the scope of delegation** | *(answering "How much should I take on?")* `ทำทุกอย่างที่ automate ได้ รวม GitHub API`<br>→ Issues, board, branches and every Pull Request were created from the terminal.<br>**My Reflection:** `[ WRITE THIS ]` |
-| 3 | **Ask instead of choosing blind** | `คือยังไงนะอธิบายเพิ่มเติมได้ไหม`<br>→ I did not know what an ADR was, so I refused the question. After the explanation I dropped the idea.<br>**My Reflection:** `[ WRITE THIS ]` |
-| 4 | **Challenge the branch naming** | `ใช้ main/dev/feature แทน lab1-staging`<br>→ The agent disagreed with evidence: `dev` appears once, `lab1-staging` six times. I changed my mind.<br>**My Reflection:** `[ WRITE THIS ]` |
-| 5 | **Enforce the branch structure** | `merge #5 แล้วก็ rebase #6 ทำตาม branch ที่กำหนด`<br>→ Branches had been stacked on each other. #6 went 3 commits → 2, #7 went 11 → 2.<br>**My Reflection:** `[ WRITE THIS ]` |
-| 6 | **Catch a scope leak** | `เห็นใน comment ที่ตอบกลับ #7 มีการเอ่ยถึง #8 ด้วย` … `อยากให้ edit comment เอาออก`<br>→ A review answer pointed at an Issue that had not started. Six comments rewritten or deleted.<br>**My Reflection:** `[ WRITE THIS ]` |
-| 7 | **Overrule the agent** | `displayOrder น่าจะแนะนำว่าให้เพิ่ม`<br>→ The agent had argued on the PR that the column belonged in Lab 2. It reversed and said why its own argument was weak.<br>**My Reflection:** `[ WRITE THIS ]` |
-| 8 | **Undo an unreviewed release** | `ปิด pr 11 แล้วก็ย้อนกลับไปก่อน merge lab1-staging เข้า main`<br>→ The release had merged with no approval. `main` was reset to before it.<br>**My Reflection:** `[ WRITE THIS ]` |
-| 9 | **Check the source material** | `ใน material บอกไหมว่าใครต้องกด`<br>→ Revealed the agent had planned the whole lab from two of the three handouts, never opening the Git cheat sheet.<br>**My Reflection:** `[ WRITE THIS ]` |
-| 10 | **Decide where docs live** | `git มันคือ version control ไม่ใช่ที่เก็บไฟล์`<br>→ `tests.md` ships with the code; evidence docs finish on their own branch; `submission.md` deleted; screenshots go in the PDF.<br>**My Reflection:** `[ WRITE THIS ]` |
+| 2 | **Ask instead of choosing blind** | `คือยังไงนะอธิบายเพิ่มเติมได้ไหม`<br>→ I did not know what an ADR was, so I refused the question. After the explanation I dropped the idea.<br>**My Reflection:** `[ WRITE THIS ]` |
+| 3 | **Challenge the branch naming** | `ใช้ main/dev/feature แทน lab1-staging`<br>→ The agent disagreed with evidence: `dev` appears once, `lab1-staging` six times. I changed my mind.<br>**My Reflection:** `[ WRITE THIS ]` |
+| 4 | **Enforce the branch structure** | `merge #5 แล้วก็ rebase #6 ทำตาม branch ที่กำหนด`<br>→ Branches had been stacked on each other. #6 went 3 commits → 2, #7 went 11 → 2.<br>**My Reflection:** `[ WRITE THIS ]` |
+| 5 | **Overrule the agent** | `displayOrder น่าจะแนะนำว่าให้เพิ่ม`<br>→ The agent had argued on the PR that the column belonged in Lab 2. It reversed and said why its own argument was weak. A schema change, a migration and a new test followed.<br>**My Reflection:** `[ WRITE THIS ]` |
+| 6 | **Check the source material** | `ใน material บอกไหมว่าใครต้องกด`<br>→ Revealed the agent had planned the whole lab from two of the three handouts, never opening the Git cheat sheet.<br>**My Reflection:** `[ WRITE THIS ]` |
+| 7 | **Decide where docs live** | `git มันคือ version control ไม่ใช่ที่เก็บไฟล์`<br>→ `tests.md` ships with the code; evidence docs finish on their own branch; `submission.md` deleted; screenshots go in the PDF.<br>**My Reflection:** `[ WRITE THIS ]` |
 
 ## 3. My reflection on improving the prompts
 
 `[ WRITE THIS ]`
 
-> Worth answering: the agent argued back at prompts 4 and 7 and was right once
-> each way — useful or annoying? Prompts 5, 6, 8 and 9 are all me catching
-> something it had done or missed without flagging. And of the four decisions I
+> Worth answering: the agent argued back at prompts 3 and 5 and was right once
+> each way — useful or annoying? Prompts 4 and 6 are both me catching something
+> it had done, or failed to do, without flagging. And of the four decisions I
 > flagged in my own Pull Requests as "look here", my reviewer commented on none
 > of them.
 
