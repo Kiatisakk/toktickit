@@ -9,8 +9,9 @@ Review ran **both directions** with the same partner: they reviewed my four
 Pull Requests, and I reviewed four of theirs. Everything recorded below is
 quoted from the review history on the two repositories.
 
-Peer review is mandatory for all Pull Requests. Every Pull Request into
-`lab1-staging` in this repository was reviewed and approved before it merged.
+Peer review is mandatory for all Pull Requests. **Every Pull Request that
+implements an Issue was reviewed and approved before it merged** — all four, in
+both repositories.
 
 ## My reviewer
 
