@@ -4,7 +4,7 @@
 > an assistant, not the owner of the work. It can record what happened; it cannot
 > tell me what I learned.
 
-## What I used
+## 1. Which AI I used
 
 **Claude Code** running **Claude Opus 5**, not Antigravity — §5 says the course
 will "most likely" use Antigravity "subject to the availability of Google Cloud
@@ -15,11 +15,11 @@ sub-agents**. Two skills were loaded by the opening command: `grilling`
 
 The first command asked for an interrogation rather than for code. It produced
 **13 decisions before a single file was written**. The ones that redirected the
-work appear below as prompts; the rest are in *What I remain responsible for*,
+work appear below as prompts; the rest are in *Decisions that were mine*,
 because they were choices between options I was offered rather than instructions
 I gave.
 
-## Selected key prompts
+## 2. Selected key prompts
 
 | # | Prompt Name | Actual Prompt Text |
 | --- | --- | --- |
@@ -34,7 +34,7 @@ I gave.
 | 9 | **Check the source material** | `ใน material บอกไหมว่าใครต้องกด`<br>→ Revealed the agent had planned the whole lab from two of the three handouts, never opening the Git cheat sheet.<br>**My Reflection:** `[ WRITE THIS ]` |
 | 10 | **Decide where docs live** | `git มันคือ version control ไม่ใช่ที่เก็บไฟล์`<br>→ `tests.md` ships with the code; evidence docs finish on their own branch; `submission.md` deleted; screenshots go in the PDF.<br>**My Reflection:** `[ WRITE THIS ]` |
 
-## Reflection on improving my prompts
+## 3. My reflection on improving the prompts
 
 `[ WRITE THIS ]`
 
@@ -44,7 +44,10 @@ I gave.
 > flagged in my own Pull Requests as "look here", my reviewer commented on none
 > of them.
 
-## What I remain responsible for
+## Extra — Decisions that were mine, not the AI's
+
+*Not asked for by Part 3. Included because §13 says judgment and responsibility
+cannot be delegated, and this is the evidence.*
 
 | Decision | What I chose | What I gave up |
 | --- | --- | --- |
@@ -57,9 +60,10 @@ I gave.
 | Documentation | Finished on its own reviewed branch | Committing straight to a protected branch |
 | `submission.md` | Deleted — not in §8 or the checklist | Tracking screenshots and URLs in git |
 
-## Mistakes the agent made, and who caught them
+## Extra — Where the AI was wrong, and who found it
 
-A log of only the successes would be dishonest.
+*Not asked for by Part 3. Included because a log of only the successes would
+imply I trusted it blindly. **I caught three of the six.***
 
 | What went wrong | Caught by |
 | --- | --- |
