@@ -14,8 +14,8 @@ sub-agents**. Two skills were loaded by the opening command: `grilling`
 The first command asked for an interrogation rather than for code. It produced
 **13 decisions before a single file was written**, and the plan was written to
 disk and approved before implementation began. The decisions that redirected the
-work appear below as prompts; the rest are in *Decisions that were mine*, because
-they were choices between options I was offered rather than instructions I gave.
+work appear below as prompts. The rest were choices between options the agent put
+to me rather than instructions I composed, so they are not listed here.
 
 ## 2. Selected key prompts
 
@@ -35,33 +35,3 @@ has to read through files to find what it needs, which spends tokens
 unnecessarily, and prompting in Thai consumes more tokens than English does. This
 should improve as I get a better understanding of the project's scope and detail,
 and can point it at the right place from the start.
-
-## Extra — Decisions that were mine, not the AI's
-
-*Not asked for by Part 3. Included because §13 says judgment and responsibility
-cannot be delegated, and this is the evidence.*
-
-| Decision | What I chose | What I gave up |
-| --- | --- | --- |
-| Integration branch | `lab1-staging` | `dev`, which §4 also mentions |
-| Database | PostgreSQL in Docker, port 5433 | The PostgreSQL 18 already installed |
-| API-02 | Integration test against a real database | A hermetic test with Prisma mocked |
-| System Status | Aggregate of two API calls | A health check that probes the database |
-| Category ordering | A `displayOrder` column, in Lab 1 | Sorting on the serial `id` |
-| Release into `main` | Undone, to be reopened with an approval | Leaving an unreviewed merge standing |
-| Documentation | Finished on its own reviewed branch | Committing straight to a protected branch |
-| `submission.md` | Deleted — not in §8 or the checklist | Tracking screenshots and URLs in git |
-
-## Extra — Where the AI was wrong, and who found it
-
-*Not asked for by Part 3. Included because a log of only the successes would
-imply I trusted it blindly. **I caught three of the six.***
-
-| What went wrong | Caught by |
-| --- | --- |
-| Planned the whole lab from two of the three handouts | **Me**, days later |
-| A commit deleted two `.gitignore` files without their replacements | The agent, after pushing |
-| A review answer pointed at an Issue that had not started | **Me** |
-| A comment in `seed.ts` described an endpoint absent from that branch | The agent, once I pointed at the symptom |
-| Argued `displayOrder` could wait — about timing, not correctness | The reviewer raised it; **I** overruled |
-| Advised keeping merged branches; the cheat sheet says delete them | **Me**, once it was finally read |
