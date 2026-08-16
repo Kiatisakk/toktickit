@@ -1,60 +1,37 @@
 # Lab 1 — AI Use and Reflection
 
-## Which agent I used
+> **Every reflection below is mine.** §13: the agent is an assistant, not the
+> owner of the work — it can record what happened, but it cannot tell me what I
+> learned.
 
-I used **Claude Code** (Anthropic's terminal-based coding agent) with the
-**Claude Opus 5** model, rather than Antigravity. §5 of the lab sheet says the
-course will "most likely" use Antigravity "subject to the availability of Google
-Cloud Platform support", so this is the tool I actually had.
+## 1. Which AI I used
 
-The work ran through a `grill-with-docs` workflow: instead of asking the agent
-to write code straight away, I had it read the lab sheet, look up everything it
-could verify from my machine, and then interview me one decision at a time. It
-asked 13 questions and I answered each one before any code was written.
+**Claude Code** running **Claude Opus 5**, this is the tool I had. One session, one model, **no
+sub-agents**. Two skills were loaded by the opening command: `grilling`
+(interview me one decision at a time before writing anything) and
+`domain-modeling` (challenge vague terms, record them in `CONTEXT.md`).
 
-## Selected key prompts
+The first command asked for an interrogation rather than for code. It produced
+**13 decisions before a single file was written**, and the plan was written to
+disk and approved before implementation began. The decisions that redirected the
+work appear below as prompts. The rest were choices between options the agent put
+to me rather than instructions I composed, so they are not listed here.
 
-> **TO FILL IN — the `My Reflection` lines below are placeholders.** Replace each
-> one with what you actually noticed. Be specific: what did the agent get wrong
-> first, what did you have to correct, what surprised you.
+## 2. Selected key prompts
 
-| Prompt Name | Actual Prompt Text |
-| --- | --- |
-| **Plan Lab 1 Implementation** | `/grill-with-docs ให้ดู labsheet ใน material/UTF-8_Lab1_Labsheet.pdf แล้วก็ดูว่าต้องทำอะไรบ้าง`<br><br>**My Reflection:** `___` |
-| **Set the scope of delegation** | *(answering "How much of Lab 1 should I take on?")* "ทำทุกอย่างที่ automate ได้ รวม GitHub API" — do everything that can be automated, including driving the GitHub API.<br><br>**My Reflection:** `___` |
-| **Choose the database setup** | *(answering "How should the database be set up?")* "เปิด Docker แล้วใช้ container" — start Docker and use a container, rather than the PostgreSQL 18 already installed on my machine.<br><br>**My Reflection:** `___` |
-| **Resolve a contradiction in the brief** | *(answering "What does System Status actually mean?")* "Online ก็ต่อเมื่อสำเร็จทั้ง 2 call" — Online only when both calls succeed, keeping `/api/health` free of any database probe.<br><br>**My Reflection:** `___` |
-| **Ask for an explanation instead of an answer** | "คือยังไงนะอธิบายเพิ่มเติมได้ไหม" — explain that further. I did not know what an ADR was, so I asked before answering rather than guessing.<br><br>**My Reflection:** `___` |
-| **Correct the branch naming** | "ใช้ main/dev/feature แทน lab1-staging" — use `main/dev/feature`. The agent pushed back with where each name appears in the brief (`dev` once in §4, `lab1-staging` five times including the PR-target table), and I changed my mind.<br><br>**My Reflection:** `___` |
-| **Cut unnecessary scope** | "ไม่เอา ADR ละ" — drop the ADR. The reasoning moved into `CONTEXT.md` and a code comment instead of a separate `docs/adr/` folder the brief never asked for.<br><br>**My Reflection:** `___` |
-| **Approve the plan before any code** | *(approving the written plan file)* Nothing was implemented until the whole plan — branch strategy, test layout, decisions, verification steps — was written down and I had read it.<br><br>**My Reflection:** `___` |
-
-## Reflection on improving my prompts
-
-> **TO FILL IN.** A few honest paragraphs. Some things you might have noticed
-> and could write about — only use the ones that are actually true for you:
->
-> - The first prompt did not ask for code. It asked the agent to read the brief
->   and interrogate me. Was that better or worse than asking for code directly?
-> - The agent found five places where the lab sheet contradicts itself. Would
->   you have caught those by reading it yourself?
-> - When you said "use `main/dev/feature`", the agent disagreed and showed its
->   evidence rather than just complying. Was that useful or annoying?
-> - You asked "what is an ADR?" mid-flow instead of picking an option blind.
->   What would have happened if you had just picked one?
-> - Which parts of the result can you actually explain to someone else, and
->   which parts would you have to go and read first?
-
-## What I remain responsible for
-
-The agent wrote the code, but the specifications, the decisions and the
-verification are mine. In particular I own these choices, each of which I was
-asked about explicitly and each of which could have gone the other way:
-
-| Decision | What I chose | What I gave up |
+| # | Prompt Name | Actual Prompt Text |
 | --- | --- | --- |
-| Integration branch name | `lab1-staging` | `dev`, which §4 also mentions |
-| Database | PostgreSQL in Docker on port 5433 | The PostgreSQL 18 already installed locally |
-| API-02 | Integration test against a real database | A faster, hermetic test with Prisma mocked |
-| System Status | Aggregate of two API calls | A health check that probes the database itself |
-| Peer review | Four Pull Requests left open for a reviewer | Merging straight through to `main` |
+| 1 | **Plan Lab 1** | `/grill-with-docs ให้ดู labsheet ใน material/UTF-8_Lab1_Labsheet.pdf แล้วก็ดูว่าต้องทำอะไรบ้าง`<br>→ Found five self-contradictions in the lab sheet before asking anything.<br>**My Reflection:** I chose the `grill-with-docs` skill to summarise the lab sheet's requirements and draft a plan, since it outlines the actions and planning steps needed before implementation begins. It turned out to be a useful skill: it gave me a clearer view of the overall shape of the work, and of the constraints on the design. It also saved time — planning properly first was better than implementing and then having to go back and rework it. |
+| 2 | **Ask instead of choosing blind** | `คือยังไงนะอธิบายเพิ่มเติมได้ไหม`<br>→ I did not know what an ADR was, so I refused the question. After the explanation I dropped the idea.<br>**My Reflection:** Sometimes the AI introduces new techniques that would improve the quality of my work, but there are times when I do not fully understand what it is suggesting. Being able to ask it to elaborate — while keeping the original context — helps me gain a better understanding before making any decision. |
+| 3 | **Challenge the branch naming** | `ใช้ main/dev/feature แทน lab1-staging`<br>→ The agent disagreed with evidence: `dev` appears once, `lab1-staging` six times. I changed my mind.<br>**My Reflection:** I used this prompt to debate the AI when I wanted to deviate from the established plan — largely because I had misunderstood the requirements. The AI stepped in to enforce the specific instructions outlined in the lab, preventing me from going down the wrong path. It is reassuring to have the AI there to guide me and make sure I stick to the necessary instructions. |
+| 4 | **Enforce the branch structure** | `merge #5 แล้วก็ rebase #6 ทำตาม branch ที่กำหนด`<br>→ Branches had been stacked on each other. #6 went 3 commits → 2, #7 went 11 → 2.<br>**My Reflection:** This was a huge help. The branches had ended up stacked on one another, and I asked the AI to restructure them — otherwise I would have had to start all over. It was a complex issue that would definitely have taken me a day or two to resolve on my own, yet the AI managed to fix it correctly in under 30 minutes. |
+| 5 | **Overrule the agent** | `displayOrder น่าจะแนะนำว่าให้เพิ่ม`<br>→ The agent had argued on the PR that the column belonged in Lab 2. It reversed and said why its own argument was weak. A schema change, a migration and a new test followed.<br>**My Reflection:** This prompt came about after the reviewer suggested adding this feature. I agreed it was a good idea; while the AI suggested it could be added later, I felt there was no harm in including it right away, so I decided to go ahead and add it immediately. |
+| 6 | **Check the source material** | `ใน material บอกไหมว่าใครต้องกด`<br>→ Revealed the agent had planned the whole lab from two of the three handouts, never opening the Git cheat sheet.<br>**My Reflection:** There was a discussion in the Facebook group about merging Pull Requests — specifically that the reviewer is supposed to perform the merge. Since I had already completed the work but merged it myself, I wanted to check whether that requirement was actually specified in the course materials. Using the AI to verify it saved me a significant amount of time that would otherwise have gone on digging through the documentation. |
+
+## 3. My reflection on improving the prompts
+
+I still struggle with how I give the AI context when troubleshooting. It frequently
+has to read through files to find what it needs, which spends tokens
+unnecessarily, and prompting in Thai consumes more tokens than English does. This
+should improve as I get a better understanding of the project's scope and detail,
+and can point it at the right place from the start.
