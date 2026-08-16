@@ -1,6 +1,6 @@
 # Lab 1 — AI Use and Reflection
 
-> **`[ WRITE THIS ]` marks what is mine to write — 2 of them.** §13: the agent is
+> **`[ WRITE THIS ]` marks what is mine to write — 1 of them.** §13: the agent is
 > an assistant, not the owner of the work. It can record what happened; it cannot
 > tell me what I learned.
 
@@ -26,7 +26,7 @@ they were choices between options I was offered rather than instructions I gave.
 | 3 | **Challenge the branch naming** | `ใช้ main/dev/feature แทน lab1-staging`<br>→ The agent disagreed with evidence: `dev` appears once, `lab1-staging` six times. I changed my mind.<br>**My Reflection:** I used this prompt to debate the AI when I wanted to deviate from the established plan — largely because I had misunderstood the requirements. The AI stepped in to enforce the specific instructions outlined in the lab, preventing me from going down the wrong path. It is reassuring to have the AI there to guide me and make sure I stick to the necessary instructions. |
 | 4 | **Enforce the branch structure** | `merge #5 แล้วก็ rebase #6 ทำตาม branch ที่กำหนด`<br>→ Branches had been stacked on each other. #6 went 3 commits → 2, #7 went 11 → 2.<br>**My Reflection:** This was a huge help. The branches had ended up stacked on one another, and I asked the AI to restructure them — otherwise I would have had to start all over. It was a complex issue that would definitely have taken me a day or two to resolve on my own, yet the AI managed to fix it correctly in under 30 minutes. |
 | 5 | **Overrule the agent** | `displayOrder น่าจะแนะนำว่าให้เพิ่ม`<br>→ The agent had argued on the PR that the column belonged in Lab 2. It reversed and said why its own argument was weak. A schema change, a migration and a new test followed.<br>**My Reflection:** This prompt came about after the reviewer suggested adding this feature. I agreed it was a good idea; while the AI suggested it could be added later, I felt there was no harm in including it right away, so I decided to go ahead and add it immediately. |
-| 6 | **Check the source material** | `ใน material บอกไหมว่าใครต้องกด`<br>→ Revealed the agent had planned the whole lab from two of the three handouts, never opening the Git cheat sheet.<br>**My Reflection:** `[ WRITE THIS ]` |
+| 6 | **Check the source material** | `ใน material บอกไหมว่าใครต้องกด`<br>→ Revealed the agent had planned the whole lab from two of the three handouts, never opening the Git cheat sheet.<br>**My Reflection:** There was a discussion in the Facebook group about merging Pull Requests — specifically that the reviewer is supposed to perform the merge. Since I had already completed the work but merged it myself, I wanted to check whether that requirement was actually specified in the course materials. Using the AI to verify it saved me a significant amount of time that would otherwise have gone on digging through the documentation. |
 
 ## 3. My reflection on improving the prompts
 
