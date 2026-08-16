@@ -1,8 +1,8 @@
 # Lab 1 — AI Use and Reflection
 
-> **`[ WRITE THIS ]` marks what is mine to write — 1 of them.** §13: the agent is
-> an assistant, not the owner of the work. It can record what happened; it cannot
-> tell me what I learned.
+> **Every reflection below is mine.** §13: the agent is an assistant, not the
+> owner of the work — it can record what happened, but it cannot tell me what I
+> learned.
 
 ## 1. Which AI I used
 
@@ -30,13 +30,11 @@ they were choices between options I was offered rather than instructions I gave.
 
 ## 3. My reflection on improving the prompts
 
-`[ WRITE THIS ]`
-
-> Worth answering: the agent argued back at prompts 3 and 5 and was right once
-> each way — useful or annoying? Prompts 4 and 6 are both me catching something
-> it had done, or failed to do, without flagging. And of the four decisions I
-> flagged in my own Pull Requests as "look here", my reviewer commented on none
-> of them.
+I still struggle with how I give the AI context when troubleshooting. It frequently
+has to read through files to find what it needs, which spends tokens
+unnecessarily, and prompting in Thai consumes more tokens than English does. This
+should improve as I get a better understanding of the project's scope and detail,
+and can point it at the right place from the start.
 
 ## Extra — Decisions that were mine, not the AI's
 
