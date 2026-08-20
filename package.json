@@ -1,8 +1,9 @@
 {
   "name": "toktickit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "TokTickIT IT Service Desk — CPE 334 Lab 1 full-stack vertical slice",
+  "description": "TokTickIT IT Service Desk — CPE 334 full-stack monorepo",
+  "type": "module",
   "workspaces": [
     "client",
     "server"
@@ -11,12 +12,17 @@
     "dev": "concurrently -n server,client -c blue,magenta \"npm run dev -w server\" \"npm run dev -w client\"",
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "check": "ultracite check",
+    "fix": "ultracite fix",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:migrate": "npm run db:migrate --workspace server",
     "db:seed": "npm run db:seed --workspace server"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "oxfmt": "^0.64.0",
+    "oxlint": "^1.79.0",
+    "ultracite": "^7.10.5"
   }
 }
