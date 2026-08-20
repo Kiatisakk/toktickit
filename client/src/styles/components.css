@@ -1,0 +1,349 @@
+/*
+ * Reusable component styles.
+ *
+ * Every class here is semantic and owned by us. That is deliberate: §8.8 of the
+ * labsheet requires automated assertions against required CSS classes, and
+ * asserting a string of framework utility classes is neither stable nor
+ * readable. `tkt-field--invalid` says what it means; `border-danger ps-2 mt-1`
+ * does not.
+ *
+ * Values come from styles/tokens.css. No literal colour appears below.
+ */
+
+/* ---------------------------------------------------------------- shell -- */
+
+.tkt-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.tkt-header {
+  background-color: var(--tkt-green);
+  color: var(--tkt-text-inverse);
+}
+
+.tkt-header__inner {
+  align-items: center;
+  display: flex;
+  gap: var(--tkt-space-6);
+  margin: 0 auto;
+  max-width: var(--tkt-content-max);
+  padding: var(--tkt-space-3) var(--tkt-space-4);
+  width: 100%;
+}
+
+.tkt-brand {
+  align-items: center;
+  color: var(--tkt-text-inverse);
+  display: inline-flex;
+  font-size: var(--tkt-font-section);
+  font-weight: 600;
+  gap: var(--tkt-space-2);
+  text-decoration: none;
+}
+
+.tkt-nav {
+  display: flex;
+  flex: 1;
+  gap: var(--tkt-space-1);
+}
+
+.tkt-nav-link {
+  border-bottom: 3px solid transparent;
+  color: var(--tkt-text-inverse);
+  padding: var(--tkt-space-2) var(--tkt-space-3);
+  text-decoration: none;
+}
+
+.tkt-nav-link:hover {
+  background-color: var(--tkt-green-accent);
+}
+
+/* The active page is marked by an underline *and* aria-current, so the state
+   does not depend on colour alone. */
+.tkt-nav-link--active {
+  border-bottom-color: var(--tkt-text-inverse);
+  font-weight: 600;
+}
+
+.tkt-identity {
+  align-items: center;
+  color: var(--tkt-text-inverse);
+  display: flex;
+  gap: var(--tkt-space-2);
+  margin-left: auto;
+}
+
+.tkt-identity__name {
+  font-weight: 600;
+}
+
+.tkt-nav-toggle {
+  background: none;
+  border: 1px solid currentcolor;
+  border-radius: var(--tkt-radius-sm);
+  color: var(--tkt-text-inverse);
+  display: none;
+  padding: var(--tkt-space-1) var(--tkt-space-2);
+}
+
+.tkt-breadcrumb {
+  margin: 0 auto;
+  max-width: var(--tkt-content-max);
+  padding: var(--tkt-space-3) var(--tkt-space-4);
+  width: 100%;
+}
+
+.tkt-breadcrumb__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tkt-space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tkt-breadcrumb__item {
+  color: var(--tkt-text-muted);
+  font-size: var(--tkt-font-small);
+}
+
+.tkt-breadcrumb__item + .tkt-breadcrumb__item::before {
+  content: "›";
+  margin-right: var(--tkt-space-2);
+}
+
+.tkt-main {
+  flex: 1;
+  margin: 0 auto;
+  max-width: var(--tkt-content-max);
+  padding: var(--tkt-space-4) var(--tkt-space-4) var(--tkt-space-12);
+  width: 100%;
+}
+
+/* --------------------------------------------------------------- fields -- */
+
+.tkt-field-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: var(--tkt-space-4);
+}
+
+/* Labels sit above their control, per §8.3. */
+.tkt-field-label {
+  color: var(--tkt-text);
+  font-size: var(--tkt-font-label);
+  font-weight: 600;
+  margin-bottom: var(--tkt-space-2);
+}
+
+.tkt-required {
+  color: var(--tkt-error);
+  margin-left: var(--tkt-space-1);
+}
+
+.tkt-field {
+  background-color: var(--tkt-surface);
+  border: 1px solid var(--tkt-border);
+  border-radius: var(--tkt-radius-sm);
+  color: var(--tkt-text);
+  font-size: var(--tkt-font-body);
+  min-height: var(--tkt-control-height);
+  padding: var(--tkt-space-2) var(--tkt-space-3);
+  width: 100%;
+}
+
+/* Only vertical resizing: a horizontally resizable textarea can break the
+   layout, which §8.3 forbids. */
+.tkt-field--multiline {
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.tkt-field--invalid {
+  border-color: var(--tkt-error);
+}
+
+.tkt-field--readonly {
+  background-color: var(--tkt-readonly);
+  color: var(--tkt-text-muted);
+}
+
+.tkt-field--disabled,
+.tkt-field:disabled {
+  background-color: var(--tkt-readonly);
+  color: var(--tkt-text-muted);
+  cursor: not-allowed;
+}
+
+.tkt-field-error {
+  color: var(--tkt-error);
+  font-size: var(--tkt-font-small);
+  margin-top: var(--tkt-space-1);
+}
+
+.tkt-field-hint {
+  color: var(--tkt-text-muted);
+  font-size: var(--tkt-font-small);
+  margin-top: var(--tkt-space-1);
+}
+
+/* -------------------------------------------------------------- buttons -- */
+
+.tkt-btn {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--tkt-radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: var(--tkt-font-body);
+  font-weight: 600;
+  gap: var(--tkt-space-2);
+  justify-content: center;
+  min-height: var(--tkt-control-height);
+  padding: var(--tkt-space-2) var(--tkt-space-4);
+}
+
+.tkt-btn--primary {
+  background-color: var(--tkt-green);
+  color: var(--tkt-text-inverse);
+}
+
+.tkt-btn--primary:hover:not(:disabled) {
+  background-color: var(--tkt-green-accent);
+}
+
+.tkt-btn--secondary {
+  background-color: var(--tkt-surface);
+  border-color: var(--tkt-border);
+  color: var(--tkt-text);
+}
+
+.tkt-btn--danger {
+  background-color: var(--tkt-surface);
+  border-color: var(--tkt-error);
+  color: var(--tkt-error);
+}
+
+.tkt-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.tkt-btn--busy {
+  cursor: progress;
+}
+
+.tkt-btn__spinner {
+  animation: tkt-spin 0.8s linear infinite;
+  border: 2px solid currentcolor;
+  border-radius: 50%;
+  border-right-color: transparent;
+  height: 1rem;
+  width: 1rem;
+}
+
+@keyframes tkt-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* --------------------------------------------------------------- states -- */
+
+.tkt-state {
+  align-items: center;
+  background-color: var(--tkt-surface);
+  border: 1px solid var(--tkt-border);
+  border-radius: var(--tkt-radius);
+  display: flex;
+  flex-direction: column;
+  gap: var(--tkt-space-3);
+  padding: var(--tkt-space-12) var(--tkt-space-4);
+  text-align: center;
+}
+
+.tkt-state__icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.tkt-state__title {
+  font-size: var(--tkt-font-section);
+  font-weight: 600;
+  margin: 0;
+}
+
+.tkt-state__description {
+  color: var(--tkt-text-muted);
+  margin: 0;
+  max-width: 32rem;
+}
+
+.tkt-state--error {
+  border-color: var(--tkt-error);
+}
+
+.tkt-state--error .tkt-state__title {
+  color: var(--tkt-error);
+}
+
+/* -------------------------------------------------------------- surface -- */
+
+.tkt-card {
+  background-color: var(--tkt-surface);
+  border: 1px solid var(--tkt-border);
+  border-radius: var(--tkt-radius);
+  box-shadow: var(--tkt-shadow);
+  padding: var(--tkt-space-6);
+}
+
+.tkt-page-title {
+  font-size: var(--tkt-font-page-title);
+  font-weight: 600;
+  margin: 0 0 var(--tkt-space-2);
+}
+
+.tkt-page-subtitle {
+  color: var(--tkt-text-muted);
+  margin: 0 0 var(--tkt-space-6);
+}
+
+/* ----------------------------------------------------------- responsive -- */
+
+@media (width <= 767px) {
+  .tkt-nav {
+    display: none;
+    flex-basis: 100%;
+    flex-direction: column;
+  }
+
+  .tkt-nav--open {
+    display: flex;
+  }
+
+  .tkt-nav-toggle {
+    display: inline-flex;
+    order: 2;
+  }
+
+  .tkt-header__inner {
+    flex-wrap: wrap;
+    gap: var(--tkt-space-2);
+  }
+
+  /* The current requester stays visible even when navigation is collapsed:
+     knowing whose data is on screen is what this shell exists to say. */
+  .tkt-identity {
+    order: 3;
+  }
+
+  .tkt-card {
+    padding: var(--tkt-space-4);
+  }
+
+  .tkt-btn {
+    min-height: 2.75rem;
+  }
+}
