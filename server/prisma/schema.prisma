@@ -10,6 +10,49 @@ datasource db {
   provider = "postgresql"
 }
 
+/// What a User is allowed to do. Lab 2 seeds only REQUESTER.
+///
+/// All three values exist from the start even though two are unreachable this
+/// sprint. Lab 3 introduces authentication and the other two roles; defining
+/// them now means that lab adds rows and behaviour rather than migrating an
+/// enum, and it keeps the schema aligned with the three roles CONTEXT.md
+/// already defines. See specification.md decision D-01.
+enum Role {
+  REQUESTER
+  IT_STAFF
+  ADMIN
+}
+
+/// An account in TokTickIT.
+///
+/// In Lab 2 a User is only ever a Development Requester: a seeded identity the
+/// selection screen offers so that requester-scoped behaviour can be exercised
+/// before login exists. There is no password, no session and no token here, and
+/// the `X-Development-Requester-Id` header that names one is not a credential —
+/// see BR-03.
+///
+/// Named `User` rather than `RequesterUser` deliberately. Lab 3 replaces the
+/// header with a real authenticated identity, which under this model is a new
+/// column and new rows rather than a table rename and a rewrite of every
+/// foreign key pointing at it.
+model User {
+  id    Int    @id @default(autoincrement())
+  name  String
+  email String @unique
+
+  role Role @default(REQUESTER)
+
+  /// Inactive users never appear in the selector and can never become the
+  /// current context (BR-07). Deactivating rather than deleting keeps the
+  /// tickets they own intact.
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  // The selector reads active users on every load.
+  @@index([isActive])
+}
+
 /// The kind of request a Ticket represents — reference data, not free text.
 /// Lab 1 seeds four: Account and Access, Hardware, Software, Network.
 model Category {
@@ -23,6 +66,33 @@ model Category {
   /// which silently moves it to the end. This column is what the API sorts on,
   /// so presentation order survives that.
   displayOrder Int @unique
+
+  /// Retired categories stop being offered but keep existing, so tickets that
+  /// already reference one are never orphaned. From Lab 2 onwards reference
+  /// data is deactivated rather than deleted.
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+}
+
+/// The system or asset a Ticket is about — a service, application, device or
+/// platform. Reference data, like Category.
+///
+/// Category and Related System are deliberately independent: Category says what
+/// kind of problem, Related System says what the problem is about. §5.1 of the
+/// labsheet lists the required relationships and none connects the two, and the
+/// handout's own example list has no Related System that belongs to "Account
+/// and Access" — a dependent dropdown would produce a category that cannot be
+/// submitted. See decision D-06.
+model RelatedSystem {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  /// Presentation order, kept separate from `id` for the same reason Category
+  /// keeps one.
+  displayOrder Int @unique
+
+  isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
 }
