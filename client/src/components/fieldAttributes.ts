@@ -13,6 +13,18 @@ interface FieldStateOptions {
 }
 
 /**
+ * Ids for a field's message elements.
+ *
+ * Both sides of the `aria-describedby` contract go through these two functions
+ * — `Field` renders the elements with them, and `fieldAria` points at them.
+ * Building the string in two places instead would mean a rename on one side
+ * silently aims `aria-describedby` at nothing, and TypeScript could not catch
+ * it because both halves would still be valid strings.
+ */
+export const errorId = (controlId: string) => `${controlId}-error`;
+export const hintId = (controlId: string) => `${controlId}-hint`;
+
+/**
  * ARIA attributes tying a control to its message.
  *
  * The error wins over the hint when both are present — a field that is wrong
@@ -24,9 +36,9 @@ export const fieldAria = (controlId: string, options: FieldStateOptions) => {
   let describedBy: string | undefined;
 
   if (error) {
-    describedBy = `${controlId}-error`;
+    describedBy = errorId(controlId);
   } else if (hint) {
-    describedBy = `${controlId}-hint`;
+    describedBy = hintId(controlId);
   }
 
   return {

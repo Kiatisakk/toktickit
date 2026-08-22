@@ -49,6 +49,41 @@ requires and what Lab 1 got wrong on every Pull Request.
 
 ---
 
+### PR #23 — Zen Green foundation, routing and tooling
+
+[Kiatisakk/toktickit#23](https://github.com/Kiatisakk/toktickit/pull/23) ·
+`feature/zen-green-foundation` → `lab2-staging` · linked to Issue #15
+
+| | |
+| --- | --- |
+| Review state | **Commented** — 2026-08-22 16:04 UTC, three inline comments |
+| Review body | "Three changes I would like to see before approval - details inline." |
+
+All three were correct and all three were taken. Nothing was argued down.
+
+| # | File | What he said | What I did |
+| --- | --- | --- | --- |
+| 1 | `client/tsconfig.app.json` | `strictNullChecks` alone leaves `noImplicitAny`, `strictFunctionTypes` and the rest off. A foundation PR sets the standard every later screen inherits, so enabling the full family here avoids config churn in every screen PR afterwards. | Enabled `strict: true` in all three client tsconfigs. Build clean, no code changes needed. |
+| 2 | `CLAUDE.md` | The file is new in this PR but already cites `lab1-staging` as the PR target, while this very PR targets `lab2-staging`. Future agents read it as ground truth. | Rewrote the workflow section around `<lab>-staging` with a note naming the current lab, and fixed the stale `docs/lab1-report` example. Six occurrences. |
+| 3 | `client/src/components/fieldAttributes.ts` | The message ids are built by string convention in two places. Rename either and `aria-describedby` silently points at nothing, with no compile error. Suggested exporting an id builder consumed by both. | Added `errorId()` and `hintId()`; `Field.tsx` and `fieldAria` both go through them. The contract now exists once. |
+
+**On comment 1 — his premise was wrong in my favour, and the finding was still right.**
+He asked whether stopping at null checks was deliberate. It was not a decision at all:
+`strictNullChecks` was what the linter's installer wrote, and I committed it without
+looking. Worse than he assumed — `server/tsconfig.json` has carried `strict: true` since
+Lab 1, so the repository had two standards and the newer half was the looser one.
+
+**On comment 3 — the coupling was real, though not silent.** The existing test resolves
+`aria-describedby` through `document.getElementById` and asserts the element it finds
+carries the message, so a rename would have failed a test rather than shipping broken. His
+underlying point stands regardless: a convention held together by two independent string
+literals is worth removing when the fix is four lines.
+
+Verification after the changes: 50 tests across 6 files passing, `tsc -b && vite build`
+clean under full strict, no lint error or warning in any file this PR adds.
+
+---
+
 ## Reviews I gave
 
 ### beambeambeam/toktickit#39 — Lab 2 specification
@@ -94,7 +129,6 @@ blocking item:
 Entries are added by the Pull Request they describe:
 
 - [ ] PR for `refactor/lab1-lint-compliance`
-- [ ] Issue #15 — Zen Green foundation *(this Pull Request)*
 - [ ] Issue #16 — Development Requester context
 - [ ] Issue #17 — Ticket creation
 - [ ] Issue #18 — My Tickets

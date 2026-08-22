@@ -88,14 +88,17 @@ Write code that is **accessible, performant, type-safe, and maintainable**. Focu
 ### Framework-Specific Guidance
 
 **Next.js:**
+
 - Use Next.js `<Image>` component for images
 - Use `next/head` or App Router metadata API for head elements
 - Use Server Components for async data fetching instead of async Client Components
 
 **React 19+:**
+
 - Use ref as a prop instead of `React.forwardRef`
 
 **Solid/Svelte/Vue/Qwik:**
+
 - Use `class` and `for` attributes (not `className` or `htmlFor`)
 
 ---
@@ -126,7 +129,7 @@ Most formatting and common issues are automatically fixed by Oxlint + Oxfmt. Run
 
 # TokTickIT GitHub Workflow
 
-Rules from `material/TokTickIT_GitHub_Workflow_Guide_TH_EN-1.pdf` (CPE 334), applying to every lab.
+Rules from `material/TokTickIT_GitHub_Workflow_Guide_TH_EN-1.pdf` (CPE 334), applying to every lab. The guide is written around Lab 1 and says so; below, **`<lab>-staging`** stands for the staging branch of whichever lab is in progress — `lab1-staging`, `lab2-staging`, and so on. Lab 2 is current, so it is `lab2-staging` today.
 
 ## Board statuses
 
@@ -137,9 +140,9 @@ Six columns in this exact order, on the **TokTickIT Individual Sprints** project
 | Backlog | The Issue exists but has not been read and understood yet. |
 | Specified | The Issue is understood and ready to implement. |
 | Started | The feature branch exists and implementation has begun. |
-| PR Review | A PR to `lab1-staging` is open and the reviewer is checking it. |
+| PR Review | A PR to `<lab>-staging` is open and the reviewer is checking it. |
 | Fixing | Changes were requested or tests failed; fixing on the same branch. |
-| Done | Approved, tests pass, merged into `lab1-staging`, all acceptance criteria met. |
+| Done | Approved, tests pass, merged into `<lab>-staging`, all acceptance criteria met. |
 
 - Every Issue enters the board in **Backlog**.
 - Move to **Specified** only after the requirements have actually been read.
@@ -150,52 +153,38 @@ Six columns in this exact order, on the **TokTickIT Individual Sprints** project
 
 ## Linking a PR to its Issue
 
-This is the thing that gets checked. Linking a *branch* is not the same thing and does not count.
+This is the thing that gets checked. Linking a _branch_ is not the same thing and does not count.
 
 1. Open the PR, find **Development** in the right sidebar, click the gear, pick the Issue.
 2. Do it right after creating the PR, not days later.
-3. Verify: the sidebar must read *"Successfully merging this pull request may close these issues"*.
-   If it still says **None yet**, the Issue is not linked.
+3. Verify: the sidebar must read _"Successfully merging this pull request may close these issues"_. If it still says **None yet**, the Issue is not linked.
 4. Only move the card to **PR Review** after the link is confirmed. The card then shows the PR number.
 
-**A keyword alone does not link anything here.** `Closes #18` / `Resolves #18` / `Fixes #18`
-only link when the PR targets the repository's default branch. Ours target `lab1-staging`, so
-GitHub downgrades them to a plain mention. Type one for readability if you like, then still
-link through the Development panel.
+**A keyword alone does not link anything here.** `Closes #18` / `Resolves #18` / `Fixes #18` only link when the PR targets the repository's default branch. Ours target `<lab>-staging`, so GitHub downgrades them to a plain mention. Type one for readability if you like, then still link through the Development panel.
 
-Because the merge lands in `lab1-staging` and not the default branch, GitHub will not close
-the Issue. **Close the Issue by hand** and drag the card to Done.
+Because the merge lands in `<lab>-staging` and not the default branch, GitHub will not close the Issue. **Close the Issue by hand** and drag the card to Done.
 
-Linking the *branch* at the Started stage is optional, signals only that work has begun, and never replaces linking the PR.
+Linking the _branch_ at the Started stage is optional, signals only that work has begun, and never replaces linking the PR.
 
 ## Branches and Pull Requests
 
-- **Everything reaches `lab1-staging` through a Pull Request.** Never commit or push directly
-  to `main` or `lab1-staging` — documentation commits included.
-- Docs while the Issue's code is still in progress: edit them on the **same feature branch**,
-  ship them in the **same PR**. Do not open a second branch.
-- Docs after the code is merged, when the change is substantial: open `docs/<lab>-<topic>`
-  (e.g. `docs/lab1-report`) and a PR for it. A typo or broken link gets the same treatment,
-  just as a fast lane.
-- If a docs PR belongs to an Issue, link it as usual; if there is no Issue, say so in one line
-  in the PR description.
+- **Everything reaches `<lab>-staging` through a Pull Request.** Never commit or push directly to `main` or `<lab>-staging` — documentation commits included.
+- Docs while the Issue's code is still in progress: edit them on the **same feature branch**, ship them in the **same PR**. Do not open a second branch.
+- Docs after the code is merged, when the change is substantial: open `docs/<lab>-<topic>` (e.g. `docs/lab2-report`) and a PR for it. A typo or broken link gets the same treatment, just as a fast lane.
+- If a docs PR belongs to an Issue, link it as usual; if there is no Issue, say so in one line in the PR description.
 
 ## Reviewing (when I am the reviewer)
 
-1. Read the **Files changed** tab against the acceptance criteria on the Issue — not merely
-   whether the code runs.
+1. Read the **Files changed** tab against the acceptance criteria on the Issue — not merely whether the code runs.
 2. Leave line comments with the blue plus, then **Start a review**.
-3. Finish with **Review changes** and pick one: **Comment** (questions, no verdict),
-   **Approve** (meets the acceptance criteria), or **Request changes** (say exactly what to fix).
+3. Finish with **Review changes** and pick one: **Comment** (questions, no verdict), **Approve** (meets the acceptance criteria), or **Request changes** (say exactly what to fix).
 4. **If I approve, I am the one who clicks "Merge pull request"** — never leave it to the author.
 5. If I request changes, tell the author so they know to start fixing.
 
 ## Authoring (when the PR is mine)
 
-1. **Reply to every comment** — what was changed, or why I disagree. An approval with silence
-   under it does not count as a review.
-2. Move the card to **Fixing** while working, and push to the **same branch**. The PR updates
-   itself; never open a new one.
+1. **Reply to every comment** — what was changed, or why I disagree. An approval with silence under it does not count as a review.
+2. Move the card to **Fixing** while working, and push to the **same branch**. The PR updates itself; never open a new one.
 3. Once the fix is pushed, reply on the thread and move the card back to **PR Review**.
-4. Resolve a conversation only after replying to it *and* actually fixing it.
+4. Resolve a conversation only after replying to it _and_ actually fixing it.
 5. Never accept an approval and merge in silence — reply to the reviewer's comments first.

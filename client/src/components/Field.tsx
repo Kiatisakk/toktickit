@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { errorId, hintId } from "./fieldAttributes";
+
 export interface FieldProps {
   /** Rendered above the control, per §8.3. */
   label: string;
@@ -45,13 +47,13 @@ export const Field = ({
     {children}
 
     {error ? (
-      <p className="tkt-field-error" id={`${controlId}-error`} role="alert">
+      <p className="tkt-field-error" id={errorId(controlId)} role="alert">
         {error}
       </p>
     ) : null}
 
     {!error && hint ? (
-      <p className="tkt-field-hint" id={`${controlId}-hint`}>
+      <p className="tkt-field-hint" id={hintId(controlId)}>
         {hint}
       </p>
     ) : null}
