@@ -26,6 +26,10 @@ beside them.
 | 5 | *"รีวิวให้หน่อยเดะเอาไปตอบบีมเอง"*<br>"Review it for me, I will take it and reply to Beam myself." | Drew the line between analysis and action. The AI read the partner's specification and produced the findings; posting the review stayed with me. | — |
 | 6 | *"ขอแบบสรุป ๆ ง่าย ๆ"*<br>"Give me a short simple version." | Cut a long review down to its one blocking point. What was posted was a single paragraph rather than three tiers of findings. | — |
 
+| 7 | *"รอบีมตรวจ pr 23 ก่อนค่อยทำอะไรก็ตาม"*<br>"Wait for Beam to review PR 23 before doing anything at all." | Stopped work rather than starting the next Issue in parallel. The next Issue creates the `User` table, which locks the naming decision the reviewer had not yet commented on — building it first would have meant a migration to undo. | #15 |
+| 8 | *"แล้ว 5 อันที่นายจงใจทำไว้แก้ยังนะ"*<br>"What about the five things you deliberately flagged for him to challenge?" | Checked whether the review had actually engaged with the flagged decisions. It had not — three real findings, none of them on the ten decisions raised across two Pull Requests. Comparing the two specifications then showed the partner had independently chosen the opposite on three of them, so they are genuinely contested rather than obvious. | #15 |
+| 9 | *"merge อันนี้"* (on the partner's Pull Request)<br>"Merge this one." | Checking before merging found a stray git submodule pointer with no `.gitmodules`, and then that the branch ruleset forbade every merge method at once — `required_linear_history` and `allowed_merge_methods: ["merge"]` cannot both be satisfied. The instruction could not be carried out, and saying so with the evidence was more useful than trying. | — |
+
 <!-- Prompts from later Issues are appended here by the Pull Request that used them. -->
 
 ## 3. My reflection

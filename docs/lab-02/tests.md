@@ -53,9 +53,10 @@ in the development database and is never touched by a test run.
 
 | ID | Requirement / AC | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
-| API-01 | AC-01, BR-07 | Seed idempotency and required counts | Second run changes nothing; 4 categories, ≥6 related systems, ≥4 active and ≥1 inactive requester | `server/tests/lab-02/seed.api.test.ts` | Planned |
-| API-02 | AC-01 | `GET /api/requesters` | Only active requesters; the inactive one is absent | `server/tests/lab-02/requesters.api.test.ts` | Planned |
-| API-03 | AC-04, BR-03 | Context header validation | Missing, malformed, unknown and inactive each return `400` with their own code | `server/tests/lab-02/requester-context.api.test.ts` | Planned |
+| API-01 | AC-01, AC-04, BR-07 | Seed idempotency and required counts | Second run changes nothing, ids included; 4 categories, 7 related systems, 4 active and 1 inactive requester | `server/tests/lab-02/seed.api.test.ts` | **Pass** |
+| API-02 | AC-01, BR-07 | `GET /api/requesters` | Only active requesters; the inactive one is absent; no role or active flag exposed | `server/tests/lab-02/requesters.api.test.ts` | **Pass** |
+| API-21 | AC-08 | `GET /api/related-systems` and `/api/categories` | Active rows only, in display order rather than alphabetically | `server/tests/lab-02/requesters.api.test.ts` | **Pass** |
+| API-03 | AC-04, BR-03, BR-07, BR-20 | Context header validation | Missing, blank, malformed, unknown and inactive each return `400` with their own code; no response leaks a path or a database message | `server/tests/lab-02/requester-context.api.test.ts` | **Pass** |
 | API-04 | AC-09 | `POST /api/tickets` happy path | `201`; one row; status `NEW`; owner is the context; number returned | `server/tests/lab-02/create-ticket.api.test.ts` | Planned |
 | API-05 | AC-10, BR-18 | Field validation | Each rule returns `400 VALIDATION_FAILED` with `details` naming the field; no row created | `server/tests/lab-02/create-ticket.api.test.ts` | Planned |
 | API-06 | AC-11, BR-11 | Body cannot override ownership | Ticket is owned by the header's requester, not the body's | `server/tests/lab-02/create-ticket.api.test.ts` | Planned |
@@ -78,11 +79,11 @@ in the development database and is never touched by a test run.
 
 | ID | Requirement / AC | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
-| UI-01 | AC-02 | Selector states | Loading, empty and failure each render their own block | `client/tests/lab-02/RequesterSelection.test.tsx` | Planned |
-| UI-02 | AC-03, BR-03 | Selector wording | Screen states it is a testing context and not a login screen | `client/tests/lab-02/RequesterSelection.test.tsx` | Planned |
-| UI-03 | AC-04, BR-10 | Route guard | Opening My Tickets with no context renders the selector | `client/tests/lab-02/RequesterGuard.test.tsx` | Planned |
-| UI-04 | AC-05 | Context persistence | Remounting after a simulated reload keeps the same requester | `client/tests/lab-02/RequesterContext.test.tsx` | Planned |
-| UI-05 | AC-06, BR-08 | Switching clears data | A's rows are gone before B's request resolves | `client/tests/lab-02/RequesterContext.test.tsx` | Planned |
+| UI-01 | AC-02 | Selector states | Loading, empty and failure each render their own block, each with the right next action | `client/tests/lab-02/RequesterSelection.test.tsx` | **Pass** |
+| UI-02 | AC-03, BR-03 | Selector wording | Screen says it is not a login screen, that Lab 3 brings authentication, and never uses the words "sign in" or "log in" | `client/tests/lab-02/RequesterSelection.test.tsx` | **Pass** |
+| UI-03 | AC-04, BR-10 | Route guard | Opening My Tickets with no context renders the selector, and waits rather than redirecting while a stored id is still resolving | `client/tests/lab-02/RequesterGuard.test.tsx` | **Pass** |
+| UI-04 | AC-05, BR-07 | Context persistence | A stored id resolves back to its requester; one that is no longer active is discarded rather than trusted | `client/tests/lab-02/RequesterContext.test.tsx` | **Pass** |
+| UI-05 | AC-06, BR-08 | Switching clears data | Selecting a different requester persists the change and bumps the generation scoped screens key off | `client/tests/lab-02/RequesterContext.test.tsx` | **Pass** |
 | UI-06 | AC-07, BR-09 | Switching mid-draft | Draft discarded and navigation lands on My Tickets | `client/tests/lab-02/CreateTicket.test.tsx` | Planned |
 | UI-07 | AC-08 | Reference data source | Options render from the mocked API; none are hard-coded | `client/tests/lab-02/CreateTicket.test.tsx` | Planned |
 | UI-08 | AC-10 | Field-level messages | Each message renders adjacent to its control, not in a top summary | `client/tests/lab-02/CreateTicket.test.tsx` | Planned |
@@ -135,7 +136,7 @@ in the development database and is never touched by a test run.
 | AC-05 | UI-04 |
 | AC-06 | UI-05, E2E-02 |
 | AC-07 | UI-06 |
-| AC-08 | UI-07 |
+| AC-08 | API-21, UI-07 |
 | AC-09 | UNIT-01, UNIT-02, API-04, API-07, E2E-01 |
 | AC-10 | UNIT-03, API-05, UI-08 |
 | AC-11 | API-06 |
@@ -194,8 +195,8 @@ Filled in as each Issue merges; completed before the release Pull Request.
 
 | Suite | Files | Tests | Passing | Recorded on |
 | --- | --- | --- | --- | --- |
-| Server (unit + API) | — | — | — | — |
-| Client (component + style) | 6 | 50 | 50 | 2026-08-21 (Issue #15) |
+| Server (unit + API) | 5 | 36 | 36 | 2026-08-23 (Issue #16) |
+| Client (component + style) | 9 | 76 | 76 | 2026-08-23 (Issue #16) |
 | End-to-end | — | — | — | — |
 
 ---

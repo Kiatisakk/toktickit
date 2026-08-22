@@ -56,8 +56,11 @@ requires and what Lab 1 got wrong on every Pull Request.
 
 | | |
 | --- | --- |
-| Review state | **Commented** — 2026-08-22 16:04 UTC, three inline comments |
+| First review | **Commented** — 2026-08-22 16:04 UTC, three inline comments |
 | Review body | "Three changes I would like to see before approval - details inline." |
+| My replies | 2026-08-22 16:53 UTC, one on each thread |
+| Second review | **Approved** — 2026-08-22 17:13 UTC, "LGTM" |
+| Merged by | @beambeambeam, 2026-08-22 17:13 UTC |
 
 All three were correct and all three were taken. Nothing was argued down.
 
@@ -81,6 +84,9 @@ literals is worth removing when the fix is four lines.
 
 Verification after the changes: 50 tests across 6 files passing, `tsc -b && vite build`
 clean under full strict, no lint error or warning in any file this PR adds.
+
+I left the three threads open rather than resolving them myself, so that the reviewer
+confirmed the changes were what he meant before they closed.
 
 ---
 
@@ -129,7 +135,6 @@ blocking item:
 Entries are added by the Pull Request they describe:
 
 - [ ] PR for `refactor/lab1-lint-compliance`
-- [ ] Issue #16 — Development Requester context
 - [ ] Issue #17 — Ticket creation
 - [ ] Issue #18 — My Tickets
 - [ ] Issue #19 — Ticket Detail and attachments

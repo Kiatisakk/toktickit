@@ -33,6 +33,7 @@ npm install
 
 # 2. Create the environment files from their templates
 cp server/.env.example server/.env
+cp server/.env.test.example server/.env.test
 cp client/.env.example client/.env      # optional; defaults work as-is
 
 # 3. Start PostgreSQL
@@ -41,11 +42,20 @@ npm run db:up
 # 4. Create the database tables
 npm run db:migrate
 
-# 5. Insert the four request categories
+# 5. Insert the reference data
 npm run db:seed
+
+# 6. Prepare the separate database the tests use
+npm run db:test:setup
 ```
 
-The seed is idempotent — running it again does not create duplicates.
+The seed is idempotent — running it again does not create duplicates. It writes
+the four request categories, seven related systems, and five Development
+Requesters, one of which is deliberately inactive.
+
+Tests run against their own database, `toktickit_test`, in the same container.
+Sharing one database would mean every test run wiped the demonstration data the
+screenshots depend on.
 
 ## Running the app
 
@@ -71,13 +81,18 @@ npm test
 
 This runs both workspaces:
 
-- **server** — Supertest API tests. `API-02` queries the real database, so
-  `npm run db:up`, `npm run db:migrate` and `npm run db:seed` must have been run
-  first.
-- **client** — Vitest UI tests in jsdom. These mock `fetch` and never contact a
-  real backend.
+- **server** — Vitest and Supertest against a real PostgreSQL database. Step 6
+  of the setup must have been run first, and the suite refuses to start if
+  `DATABASE_URL` is not pointing at `toktickit_test`.
+- **client** — Vitest and React Testing Library in jsdom. These stub `fetch` and
+  never contact a real backend.
 
-The full list is in [docs/lab-01/tests.md](./docs/lab-01/tests.md).
+jsdom has no layout engine, so anything about rendered colour, clipping or
+horizontal overflow is checked with Playwright instead. That suite arrives with
+the end-to-end Issue.
+
+The test plans are in [docs/lab-01/tests.md](./docs/lab-01/tests.md) and
+[docs/lab-02/tests.md](./docs/lab-02/tests.md).
 
 ## API
 
@@ -97,6 +112,26 @@ The full list is in [docs/lab-01/tests.md](./docs/lab-01/tests.md).
   { "id": 4, "name": "Network" }
 ]
 ```
+
+### `GET /api/related-systems`
+
+Active related systems in display order — `{ "id": 1, "name": "Email" }` and so on.
+
+### `GET /api/requesters`
+
+Active Development Requesters for the selection screen. Inactive ones never
+appear here and can never become the current context.
+
+```json
+[{ "id": 1, "name": "Jennifer Anderson", "email": "jennifer.anderson@example.ac.th" }]
+```
+
+### Requester context
+
+Every requester-scoped endpoint requires the `X-Development-Requester-Id` header.
+It is a testing mechanism, **not authentication** — anyone can set it to
+anything, and Lab 3 replaces it with a real authenticated identity. The full
+contract is in [docs/lab-02/api-spec.md](./docs/lab-02/api-spec.md).
 
 ## Repository layout
 
