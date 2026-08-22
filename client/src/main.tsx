@@ -8,6 +8,7 @@ import "./styles/tokens.css";
 import "./styles/components.css";
 import "./index.css";
 
+import { RequesterProvider } from "./context/RequesterContext";
 import { router } from "./routes/router";
 
 const container = document.getElementById("root");
@@ -18,6 +19,8 @@ if (!container) {
 
 createRoot(container).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <RequesterProvider>
+      <RouterProvider router={router} />
+    </RequesterProvider>
   </StrictMode>
 );

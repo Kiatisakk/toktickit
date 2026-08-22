@@ -1,6 +1,7 @@
-import { type ReactNode, useState } from "react";
-import { Link, NavLink } from "react-router";
+import { type ReactNode, useContext, useState } from "react";
+import { Link, NavLink, useNavigate } from "react-router";
 
+import { RequesterContext } from "../context/requesterContextValue";
 import { Breadcrumb, type Crumb } from "./Breadcrumb";
 
 interface AppShellProps {
@@ -33,6 +34,23 @@ export const AppShell = ({
   children,
 }: AppShellProps) => {
   const [navOpen, setNavOpen] = useState(false);
+  const navigate = useNavigate();
+
+  // Read the context when there is one, but do not require it. The selection
+  // screen renders inside this shell before any requester exists, and the
+  // component tests render the shell on its own with explicit props.
+  const context = useContext(RequesterContext);
+
+  const displayName = requesterName ?? context?.requester?.name;
+
+  const changeRequester =
+    onChangeRequester ??
+    (context?.requester
+      ? () => {
+          context.clear();
+          void navigate("/select-requester");
+        }
+      : undefined);
 
   return (
     <div className="tkt-shell">
@@ -75,12 +93,12 @@ export const AppShell = ({
           <div className="tkt-identity">
             <span aria-hidden="true">👤</span>
             <span className="tkt-identity__name">
-              {requesterName ?? "No requester selected"}
+              {displayName ?? "No requester selected"}
             </span>
-            {onChangeRequester ? (
+            {changeRequester ? (
               <button
                 className="tkt-btn tkt-btn--secondary"
-                onClick={onChangeRequester}
+                onClick={changeRequester}
                 type="button"
               >
                 Change Requester

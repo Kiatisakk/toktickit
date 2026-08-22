@@ -347,3 +347,41 @@
     min-height: 2.75rem;
   }
 }
+
+/* ----------------------------------------------- requester selection -- */
+
+.tkt-select-card {
+  margin: var(--tkt-space-8) auto;
+  max-width: 34rem;
+}
+
+/*
+ * The Lab 3 notice. Amber rather than green: §7 reserves warning colour for
+ * genuine warnings, and "the identity you just chose is not protected" is one.
+ */
+.tkt-notice {
+  background-color: var(--tkt-warning-pale);
+  border: 1px solid var(--tkt-warning);
+  border-radius: var(--tkt-radius-sm);
+  color: var(--tkt-text);
+  font-size: var(--tkt-font-small);
+  margin: var(--tkt-space-4) 0;
+  padding: var(--tkt-space-3);
+}
+
+.tkt-actions {
+  display: flex;
+  gap: var(--tkt-space-3);
+  justify-content: flex-end;
+  margin-top: var(--tkt-space-6);
+}
+
+@media (width <= 767px) {
+  .tkt-actions {
+    flex-direction: column-reverse;
+  }
+
+  .tkt-actions .tkt-btn {
+    width: 100%;
+  }
+}
