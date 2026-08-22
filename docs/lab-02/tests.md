@@ -97,12 +97,13 @@ in the development database and is never touched by a test run.
 
 | ID | Requirement / AC | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
-| STYLE-01 | AC-25 | Required marker | Asterisk present, and a message appears as well as the asterisk | `client/tests/lab-02/style/fields.test.tsx` | Planned |
-| STYLE-02 | AC-25 | Read-only vs editable | Distinct classes; read-only controls are not editable | `client/tests/lab-02/style/fields.test.tsx` | Planned |
-| STYLE-03 | AC-25 | Button hierarchy | Primary, secondary, destructive, disabled and busy each carry their class; disabled cannot be activated | `client/tests/lab-02/style/buttons.test.tsx` | Planned |
+| STYLE-01 | AC-25 | Required marker | Asterisk present and `aria-hidden`; control marked `required`; message appears as well as the asterisk | `client/tests/lab-02/style/fields.test.tsx` | **Pass** |
+| STYLE-02 | AC-25 | Read-only vs editable | Distinct classes; read-only controls are not editable; invalid and disabled each carry their own modifier | `client/tests/lab-02/style/fields.test.tsx` | **Pass** |
+| STYLE-03 | AC-25 | Button hierarchy | Primary, secondary, destructive, disabled and busy each carry their class; busy sets `aria-busy` and disables; neither busy nor disabled can be activated | `client/tests/lab-02/style/buttons.test.tsx` | **Pass** |
 | STYLE-04 | AC-25 | Badges | Every badge renders its word, so meaning does not depend on colour | `client/tests/lab-02/style/badges.test.tsx` | Planned |
-| STYLE-05 | AC-25 | Accessible names | Every icon-only control has one | `client/tests/lab-02/style/a11y.test.tsx` | Planned |
-| STYLE-06 | AC-25 | Labels and focus order | Every control is labelled; tab order follows reading order | `client/tests/lab-02/style/a11y.test.tsx` | Planned |
+| STYLE-05 | AC-25 | Accessible names | Navigation toggle carries a name, `aria-expanded` and `aria-controls`; decorative icons are `aria-hidden`; both landmarks are named | `client/tests/lab-02/style/shell.test.tsx` | **Pass** |
+| STYLE-06 | AC-25 | Labels and message wiring | Every control is reachable by its label; `aria-describedby` points at the message; `aria-invalid` set when invalid | `client/tests/lab-02/style/fields.test.tsx` | **Pass** |
+| STYLE-07 | AC-25, BR-35 | Shell and state blocks | Active nav marked by class **and** `aria-current`; breadcrumb marks the current page; empty and no-results carry different `data-state` values | `client/tests/lab-02/style/shell.test.tsx` | **Pass** |
 
 ### Responsive and visual
 
@@ -151,7 +152,7 @@ in the development database and is never touched by a test run.
 | AC-22 | API-17, UI-14, E2E-01 |
 | AC-23 | API-18 |
 | AC-24 | API-19 |
-| AC-25 | STYLE-01…06, RESP-01…04 |
+| AC-25 | STYLE-01…07, RESP-01…04 |
 
 No acceptance criterion is unmapped, and no planned test exists without a criterion to
 justify it.
@@ -194,7 +195,7 @@ Filled in as each Issue merges; completed before the release Pull Request.
 | Suite | Files | Tests | Passing | Recorded on |
 | --- | --- | --- | --- | --- |
 | Server (unit + API) | — | — | — | — |
-| Client (component + style) | — | — | — | — |
+| Client (component + style) | 6 | 50 | 50 | 2026-08-21 (Issue #15) |
 | End-to-end | — | — | — | — |
 
 ---

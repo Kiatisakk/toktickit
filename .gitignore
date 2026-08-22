@@ -33,6 +33,10 @@ coverage/
 .vite/
 .vitest/
 
+# Agent configuration written by tooling — CLAUDE.md at the root is tracked,
+# but the .claude/ directory holds machine-local state.
+.claude/
+
 # Editor / OS
 .vscode/*
 !.vscode/extensions.json
