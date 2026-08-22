@@ -13,7 +13,8 @@
     "db:migrate:dev": "prisma migrate dev && prisma generate",
     "db:seed": "prisma db seed",
     "db:generate": "prisma generate",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "db:test:setup": "dotenv -e .env.test -- prisma migrate deploy && dotenv -e .env.test -- prisma db seed"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
@@ -27,6 +28,7 @@
     "@types/node": "^24.13.3",
     "@types/supertest": "^7.2.1",
     "dotenv": "^17.4.2",
+    "dotenv-cli": "^11.0.0",
     "prisma": "^7.9.1",
     "supertest": "^7.2.2",
     "tsx": "^4.23.5",

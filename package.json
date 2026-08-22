@@ -2,7 +2,7 @@
   "name": "toktickit",
   "version": "0.2.0",
   "private": true,
-  "description": "TokTickIT IT Service Desk — CPE 334 full-stack monorepo",
+  "description": "TokTickIT IT Service Desk \u2014 CPE 334 full-stack monorepo",
   "type": "module",
   "workspaces": [
     "client",
@@ -17,7 +17,8 @@
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:migrate": "npm run db:migrate --workspace server",
-    "db:seed": "npm run db:seed --workspace server"
+    "db:seed": "npm run db:seed --workspace server",
+    "db:test:setup": "npm run db:test:setup --workspace server"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

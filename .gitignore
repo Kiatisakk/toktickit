@@ -19,6 +19,7 @@ server/src/generated/prisma/
 .env
 .env.*
 !.env.example
+!.env.test.example
 *.local
 
 # Logs
