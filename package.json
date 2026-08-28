@@ -2,12 +2,12 @@
   "name": "toktickit",
   "version": "0.2.0",
   "private": true,
-  "description": "TokTickIT IT Service Desk \u2014 CPE 334 full-stack monorepo",
-  "type": "module",
+  "description": "TokTickIT IT Service Desk — CPE 334 full-stack monorepo",
   "workspaces": [
     "client",
     "server"
   ],
+  "type": "module",
   "scripts": {
     "dev": "concurrently -n server,client -c blue,magenta \"npm run dev -w server\" \"npm run dev -w client\"",
     "build": "npm run build --workspaces --if-present",
