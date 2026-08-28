@@ -1,13 +1,20 @@
 import { prisma } from "../src/prisma.js";
 
 /**
- * The four supported IT request categories.
+ * Reference data for TokTickIT.
  *
- * This list is the source of truth. After seeding, the Category table contains
- * exactly these names and nothing else, and each row's `displayOrder` matches
- * its position here — so reordering this list reorders the screen, and nothing
- * depends on the serial ids.
+ * The three lists below are the source of truth. After seeding, each table
+ * contains exactly what is listed here, in this order, and anything that used
+ * to be listed is deactivated rather than deleted — from Lab 2 onwards tickets
+ * reference this data, so removing a row would orphan them.
+ *
+ * Idempotent: running it twice changes nothing (§5.3, AC-04).
+ *
+ * Demonstration tickets are NOT seeded here. They live in `seed-demo.ts` so
+ * that the test database can hold reference data alone and pagination counts
+ * stay deterministic — see decision D-11.
  */
+
 const CATEGORY_NAMES = [
   "Account and Access",
   "Hardware",
@@ -16,77 +23,249 @@ const CATEGORY_NAMES = [
 ];
 
 /**
- * Writes CATEGORY_NAMES to the database, in three passes inside one
- * transaction.
+ * At least six realistic systems, per §5.3.
  *
- * Positions are assigned in two passes rather than one because `displayOrder`
- * is unique. Swapping two categories in the list above would otherwise try to
- * give a row a position another row still holds, and the write would fail
- * halfway through. Parking everything on negative positions first means no two
- * rows ever contend for the same value.
- *
- * The transaction matters for the same reason: a crash between the passes would
- * otherwise leave every category sitting at a negative position.
+ * Deliberately not grouped under a category: the two are independent, and
+ * "Account and Access" would otherwise have nothing to offer (decision D-06).
  */
-async function seed() {
-  const { removed } = await prisma.$transaction(async (tx) => {
-    // Pass 1 — make sure every listed category exists, parked out of the way.
-    for (const [index, name] of CATEGORY_NAMES.entries()) {
-      const parked = -(index + 1);
+const RELATED_SYSTEM_NAMES = [
+  "Email",
+  "Campus Wi-Fi",
+  "VPN",
+  "LEB2 App",
+  "Grade Submission App",
+  "Printer",
+  "Corporate Laptop",
+];
 
-      await tx.category.upsert({
+/**
+ * Development Requesters — seeded identities the selection screen offers.
+ *
+ * Four active and one inactive, as §5.3 requires. The inactive one exists to be
+ * absent: BR-07 says it never appears in the selector and can never become the
+ * current context, and API-02 asserts exactly that.
+ *
+ * Every row is a REQUESTER. Lab 3 adds the other roles.
+ */
+const REQUESTERS = [
+  {
+    email: "jennifer.anderson@example.ac.th",
+    name: "Jennifer Anderson",
+    isActive: true,
+  },
+  {
+    email: "somchai.wattana@example.ac.th",
+    name: "Somchai Wattana",
+    isActive: true,
+  },
+  {
+    email: "pimchanok.srisai@example.ac.th",
+    name: "Pimchanok Srisai",
+    isActive: true,
+  },
+  {
+    email: "thanakorn.boonmee@example.ac.th",
+    name: "Thanakorn Boonmee",
+    isActive: true,
+  },
+  {
+    email: "natthaphong.chaiyaporn@example.ac.th",
+    name: "Natthaphong Chaiyaporn",
+    isActive: false,
+  },
+];
+
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+/**
+ * Writes an ordered reference list in three passes.
+ *
+ * Positions are assigned twice rather than once because `displayOrder` is
+ * unique. Reordering the list would otherwise try to give a row a position
+ * another row still holds, and the write would fail halfway through. Parking
+ * everything on negative positions first means no two rows ever contend for the
+ * same value.
+ *
+ * Rows no longer listed are deactivated, not deleted, and each is moved to its
+ * own negative position. Leaving a retired row on a positive slot would make it
+ * collide the moment a listed item needed that slot back, and the collision
+ * would surface as a failed transaction rather than as anything readable.
+ */
+const seedCategories = async (tx: Tx) => {
+  await Promise.all(
+    CATEGORY_NAMES.map((name, index) =>
+      tx.category.upsert({
         where: { name },
-        update: { displayOrder: parked },
-        create: { name, displayOrder: parked },
-      });
-    }
+        update: { displayOrder: -(index + 1), isActive: true },
+        create: { name, displayOrder: -(index + 1), isActive: true },
+      })
+    )
+  );
 
-    // Pass 2 — drop anything no longer listed.
-    //
-    // Upsert alone does not make this seed idempotent across *edits*: `name` is
-    // the identity we upsert on, so renaming an entry above creates a new row
-    // and orphans the old one. A rerun would leave five categories, not four.
-    // Deleting the unlisted ones keeps the table equal to CATEGORY_NAMES
-    // however the list changes, and frees the positions they were holding.
-    //
-    // Safe while Category is reference data written only by this seed. Once
-    // tickets reference categories (Lab 2), deleting one has to become a
-    // decision rather than a side effect of running the seed.
-    const { count: removed } = await tx.category.deleteMany({
-      where: { name: { notIn: CATEGORY_NAMES } },
-    });
-
-    // Pass 3 — move everything to its real position.
-    for (const [index, name] of CATEGORY_NAMES.entries()) {
-      await tx.category.update({
-        where: { name },
-        data: { displayOrder: index + 1 },
-      });
-    }
-
-    return { removed };
+  // Retire first, then park each retired row on its own negative slot. A single
+  // updateMany cannot do this: displayOrder is unique, so every row needs a
+  // different value.
+  const { count: retired } = await tx.category.updateMany({
+    where: { name: { notIn: CATEGORY_NAMES }, isActive: true },
+    data: { isActive: false },
   });
 
-  const total = await prisma.category.count();
+  const stale = await tx.category.findMany({
+    where: { name: { notIn: CATEGORY_NAMES } },
+    orderBy: { id: "asc" },
+    select: { id: true },
+  });
 
-  if (total !== CATEGORY_NAMES.length) {
+  await Promise.all(
+    stale.map((row, index) =>
+      tx.category.update({
+        where: { id: row.id },
+        data: { displayOrder: -(CATEGORY_NAMES.length + index + 1) },
+      })
+    )
+  );
+
+  await Promise.all(
+    CATEGORY_NAMES.map((name, index) =>
+      tx.category.update({
+        where: { name },
+        data: { displayOrder: index + 1 },
+      })
+    )
+  );
+
+  return retired;
+};
+
+const seedRelatedSystems = async (tx: Tx) => {
+  await Promise.all(
+    RELATED_SYSTEM_NAMES.map((name, index) =>
+      tx.relatedSystem.upsert({
+        where: { name },
+        update: { displayOrder: -(index + 1), isActive: true },
+        create: { name, displayOrder: -(index + 1), isActive: true },
+      })
+    )
+  );
+
+  // Retire first, then park each retired row on its own negative slot. A single
+  // updateMany cannot do this: displayOrder is unique, so every row needs a
+  // different value.
+  const { count: retired } = await tx.relatedSystem.updateMany({
+    where: { name: { notIn: RELATED_SYSTEM_NAMES }, isActive: true },
+    data: { isActive: false },
+  });
+
+  const stale = await tx.relatedSystem.findMany({
+    where: { name: { notIn: RELATED_SYSTEM_NAMES } },
+    orderBy: { id: "asc" },
+    select: { id: true },
+  });
+
+  await Promise.all(
+    stale.map((row, index) =>
+      tx.relatedSystem.update({
+        where: { id: row.id },
+        data: { displayOrder: -(RELATED_SYSTEM_NAMES.length + index + 1) },
+      })
+    )
+  );
+
+  await Promise.all(
+    RELATED_SYSTEM_NAMES.map((name, index) =>
+      tx.relatedSystem.update({
+        where: { name },
+        data: { displayOrder: index + 1 },
+      })
+    )
+  );
+
+  return retired;
+};
+
+/**
+ * Requesters are keyed on email, which is what makes a rerun idempotent: a
+ * changed display name updates the existing row rather than creating a second
+ * identity for the same person.
+ *
+ * There is no ordering column here, so no parking pass is needed.
+ */
+const seedRequesters = (tx: Tx) =>
+  Promise.all(
+    REQUESTERS.map((requester) =>
+      tx.user.upsert({
+        where: { email: requester.email },
+        update: { name: requester.name, isActive: requester.isActive },
+        create: {
+          email: requester.email,
+          name: requester.name,
+          isActive: requester.isActive,
+          role: "REQUESTER",
+        },
+      })
+    )
+  );
+
+const seed = async () => {
+  const { retiredCategories, retiredSystems } = await prisma.$transaction(
+    async (tx) => {
+      const categories = await seedCategories(tx);
+      const systems = await seedRelatedSystems(tx);
+      await seedRequesters(tx);
+
+      return { retiredCategories: categories, retiredSystems: systems };
+    }
+  );
+
+  // Assertions rather than logs: a seed that silently produced the wrong number
+  // of rows would break the tests that count them, several files away from the
+  // cause.
+  const [categories, systems, activeRequesters, inactiveRequesters] =
+    await Promise.all([
+      prisma.category.count({ where: { isActive: true } }),
+      prisma.relatedSystem.count({ where: { isActive: true } }),
+      prisma.user.count({ where: { role: "REQUESTER", isActive: true } }),
+      prisma.user.count({ where: { role: "REQUESTER", isActive: false } }),
+    ]);
+
+  if (categories !== CATEGORY_NAMES.length) {
     throw new Error(
-      `Expected ${CATEGORY_NAMES.length} categories after seeding, found ${total}.`,
+      `Expected ${CATEGORY_NAMES.length} active categories, found ${categories}.`
     );
   }
 
-  console.log(
-    `Seeded ${total} categories` +
-      (removed > 0 ? `, removed ${removed} no longer listed` : "") +
-      ".",
-  );
-}
+  if (systems !== RELATED_SYSTEM_NAMES.length) {
+    throw new Error(
+      `Expected ${RELATED_SYSTEM_NAMES.length} active related systems, found ${systems}.`
+    );
+  }
 
-seed()
-  .catch((error: unknown) => {
-    console.error(error);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  if (activeRequesters < 4) {
+    throw new Error(
+      `§5.3 requires at least four active Development Requesters, found ${activeRequesters}.`
+    );
+  }
+
+  if (inactiveRequesters < 1) {
+    throw new Error(
+      `§5.3 requires at least one inactive Development Requester, found ${inactiveRequesters}.`
+    );
+  }
+
+  const retired = retiredCategories + retiredSystems;
+
+  console.log(
+    `Seeded ${categories} categories, ${systems} related systems, ${activeRequesters} active and ${inactiveRequesters} inactive requesters${
+      retired > 0 ? `, retired ${retired} no longer listed` : ""
+    }.`
+  );
+};
+
+try {
+  await seed();
+} catch (error) {
+  console.error(error);
+  process.exitCode = 1;
+} finally {
+  await prisma.$disconnect();
+}

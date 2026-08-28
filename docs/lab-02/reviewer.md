@@ -56,8 +56,11 @@ requires and what Lab 1 got wrong on every Pull Request.
 
 | | |
 | --- | --- |
-| Review state | **Commented** — 2026-08-22 16:04 UTC, three inline comments |
+| First review | **Commented** — 2026-08-22 16:04 UTC, three inline comments |
 | Review body | "Three changes I would like to see before approval - details inline." |
+| My replies | 2026-08-22 16:53 UTC, one on each thread |
+| Second review | **Approved** — 2026-08-22 17:13 UTC, "LGTM" |
+| Merged by | @beambeambeam, 2026-08-22 17:13 UTC |
 
 All three were correct and all three were taken. Nothing was argued down.
 
@@ -82,6 +85,52 @@ literals is worth removing when the fix is four lines.
 Verification after the changes: 50 tests across 6 files passing, `tsc -b && vite build`
 clean under full strict, no lint error or warning in any file this PR adds.
 
+I left the three threads open rather than resolving them myself, so that the reviewer
+confirmed the changes were what he meant before they closed.
+
+---
+
+### PR #24 — Development Requester context and selection screen
+
+[Kiatisakk/toktickit#24](https://github.com/Kiatisakk/toktickit/pull/24) ·
+`feature/requester-context` → `lab2-staging` · linked to Issue #16
+
+| | |
+| --- | --- |
+| Review state | **Commented** — 2026-08-28 15:59 UTC, eleven inline comments |
+| Review body | "Review findings for the Standards and Spec checks. Standards limited to fragile implementation issues; Spec includes missing and broken acceptance behavior." |
+
+The strongest review of the sprint so far, and by some distance. Every one of the eleven
+was correct and every one was taken. Four were defects that would have shipped.
+
+| # | File | What he found | What I did |
+| --- | --- | --- | --- |
+| 1 | `server/prisma/seed.ts` | Retired rows keep their positive `displayOrder`, which is unique — so the slot stays occupied and the transaction fails the moment a listed item needs it back | Retired rows are now parked on their own negative slot. Two tests cover it |
+| 2 | `client/src/lib/api.ts` | `response.json() as T` lets a malformed payload reach every caller wearing a type it does not have | `apiGet` returns `unknown`; each endpoint narrows with a type guard and raises `UNEXPECTED_RESPONSE` on a shape mismatch |
+| 3 | `client/src/components/AppShell.tsx` | Prop and context are two identity sources, so the header can disagree with the context every request is actually made as | Props removed. Identity comes from the context alone; the shell tests now supply a context instead |
+| 4 | `server/tests/setup.ts` | `URL.pathname.slice(1)` turns `/home/...` into a relative path on any Unix host, and does not decode percent-escapes | `fileURLToPath` in both places |
+| 5 | `docs/lab-02/reviewer.md` | Issue #16 was struck off the pending list without a PR #24 entry replacing it | This entry |
+| 6 | `client/src/routes/RequesterSelection.tsx` | §8.1 lists Continue as required, but it is absent while loading; the empty state has no action at all | Continue renders disabled from the first paint; the empty state gained a "Check again" action |
+| 7 | `client/src/routes/RequesterSelection.tsx` | Cancel goes to `/`, which redirects to a guarded route, which redirects back here — it cannot leave | Cancel now appears only when a requester is already selected, and goes to My Tickets. §8.1 does not require it otherwise |
+| 8 | `server/src/middleware/requesterContext.ts` | `0`, `007` and values past 2^53 pass a digits-only check and then report as `UNKNOWN`, but the contract calls them `INVALID` | Positive safe integer validated before the lookup |
+| 9 | `server/src/app.ts` | Unmatched `/api` paths and `express.json()` parse failures leave through Express's HTML defaults, not the documented envelope | Terminal 404 and error middleware added, with `API-19` written to cover both |
+| 10 | `client/src/context/RequesterContext.tsx` | A slow startup resolution can land after a manual selection and put the stored requester back | A manual choice sets a flag the resolution checks before applying. Aborting alone was not enough — the response may already be in hand |
+| 11 | `server/src/middleware/requesterContext.ts` | The lookup checks `id` and `isActive` but not `role`, so an active IT_STAFF row becomes a valid requester context once Lab 3 seeds one | `role: "REQUESTER"` is part of the lookup |
+
+**Nothing was argued down, and four of these were real defects rather than preferences** —
+the seed collision, the Cancel loop, the `INVALID`/`UNKNOWN` mismatch, and the selection
+race. The other seven were latent: they had not bitten yet because Lab 2 seeds only
+requesters, runs on Windows, and has one screen.
+
+**What this review did that the previous two did not** is read the code against the
+handout rather than only against itself. Findings 6 and 7 are §8.1 compliance, 8 is the
+`api-spec.md` contract, and 9 is the error-envelope rule applied to paths no route
+handles. Those are the checks I had asked for and not received on PR #22 and #23.
+
+Verification after the changes: 128 tests passing (server 47, client 81), build clean, no
+lint error or warning in any Lab 2 file. Five new tests were added specifically to hold
+these fixes in place.
+
 ---
 
 ## Reviews I gave
@@ -94,7 +143,9 @@ clean under full strict, no lint error or warning in any file this PR adds.
 | | |
 | --- | --- |
 | Review state | **Changes requested** — 2026-08-19 07:09 UTC |
-| Status | Still open at the time of writing |
+| His fix | `356cec9`, 2026-08-22 — numbering added, plus five further documents |
+| Second review | **Approved** — 2026-08-22 17:18 UTC |
+| Merged by | @beambeambeam, 2026-08-28 |
 
 **What I asked for**
 
@@ -120,7 +171,16 @@ blocking item:
   which the approved Ticket Detail illustration shows — Resolution Summary already drawn as
   an empty italic placeholder.
 
-**Awaiting his response.** This entry is updated when he replies or pushes a fix.
+**He fixed it.** `specification.md` now carries 35 numbered rules including BR-01, BR-02
+and BR-03 verbatim, and the same push added `api-spec.md`, `ui-spec.md`, `tests.md`,
+`reviewer.md` and `ai-use.md` — 992 lines across six files.
+
+**Two things I noticed at merge time and did not block on.** A stray git submodule pointer
+(`reports`, mode 160000, with no `.gitmodules`) had been committed, which contradicts his
+own Pull Request description saying that directory was intentionally uncommitted. And the
+merge itself was impossible for several days: the `lab*-staging` ruleset on his repository
+required a linear history while permitting only merge commits, so no merge method
+satisfied both. He removed the linear-history rule and merged it himself.
 
 ---
 
@@ -129,7 +189,6 @@ blocking item:
 Entries are added by the Pull Request they describe:
 
 - [ ] PR for `refactor/lab1-lint-compliance`
-- [ ] Issue #16 — Development Requester context
 - [ ] Issue #17 — Ticket creation
 - [ ] Issue #18 — My Tickets
 - [ ] Issue #19 — Ticket Detail and attachments

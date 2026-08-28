@@ -5,17 +5,47 @@ import { describe, expect, it } from "vitest";
 import { AppShell } from "../../../src/components/AppShell";
 import { Breadcrumb } from "../../../src/components/Breadcrumb";
 import { StateBlock } from "../../../src/components/StateBlock";
+import {
+  RequesterContext,
+  type RequesterContextValue,
+} from "../../../src/context/requesterContextValue";
 
 /** STYLE-05 and STYLE-06 — see docs/lab-02/tests.md. */
 
-const renderShell = (path: string, props: Record<string, unknown> = {}) =>
-  render(
+/**
+ * The shell takes its identity from the context and from nowhere else, so a
+ * test that wants a name supplies a context rather than a prop. Rendering with
+ * no provider is the honest "nobody selected yet" case, which is what the
+ * selection screen itself does.
+ */
+const renderShell = (
+  path: string,
+  requester: RequesterContextValue["requester"] = null
+) => {
+  const value: RequesterContextValue = {
+    status: requester ? "selected" : "none",
+    requester,
+    generation: 0,
+    select: () => undefined,
+    clear: () => undefined,
+  };
+
+  return render(
     <MemoryRouter initialEntries={[path]}>
-      <AppShell {...props}>
-        <p>Screen content</p>
-      </AppShell>
+      <RequesterContext.Provider value={value}>
+        <AppShell>
+          <p>Screen content</p>
+        </AppShell>
+      </RequesterContext.Provider>
     </MemoryRouter>
   );
+};
+
+const JENNIFER = {
+  id: 1,
+  name: "Jennifer Anderson",
+  email: "jennifer.anderson@example.ac.th",
+};
 
 describe("application shell", () => {
   it("shows the TokTickIT identity", () => {
@@ -62,21 +92,28 @@ describe("application shell", () => {
     expect(screen.getByText("No requester selected")).toBeInTheDocument();
   });
 
-  it("shows the current requester once one is given", () => {
-    renderShell("/my-tickets", { requesterName: "Jennifer Anderson" });
+  it("shows the current requester once the context has one", () => {
+    renderShell("/my-tickets", JENNIFER);
 
     expect(screen.getByText("Jennifer Anderson")).toBeInTheDocument();
   });
 
-  it("offers Change Requester only when a handler is supplied", () => {
-    renderShell("/my-tickets", {
-      requesterName: "Jennifer Anderson",
-      onChangeRequester: () => undefined,
-    });
+  it("offers Change Requester once there is a requester to change", () => {
+    renderShell("/my-tickets", JENNIFER);
 
     expect(
       screen.getByRole("button", { name: "Change Requester" })
     ).toBeInTheDocument();
+  });
+
+  // There is nothing to change from before one is chosen, and the selection
+  // screen renders inside this shell.
+  it("hides Change Requester when nobody is selected", () => {
+    renderShell("/my-tickets");
+
+    expect(
+      screen.queryByRole("button", { name: "Change Requester" })
+    ).toBeNull();
   });
 
   it("gives the mobile navigation toggle an accessible name and expanded state", () => {

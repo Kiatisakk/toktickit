@@ -3,20 +3,29 @@ import { createBrowserRouter, Navigate } from "react-router";
 import App from "../App";
 import { NotFound } from "./NotFound";
 import { Placeholder } from "./Placeholder";
+import { RequesterGuard } from "./RequesterGuard";
+import { RequesterSelection } from "./RequesterSelection";
 
 /**
  * The Lab 2 route table.
  *
- * Four of these render a placeholder today. The foundation Issue owns routing,
- * the shell and the shared components; each screen then arrives in its own
- * Issue against its own acceptance criteria, without also having to touch the
+ * Three routes still render a placeholder naming the Issue that delivers them.
+ * The foundation Issue owns routing and the shell; each screen then arrives on
+ * its own against its own acceptance criteria without also having to touch the
  * router.
+ *
+ * Everything requester-scoped sits behind `RequesterGuard`, so BR-10 holds for
+ * every screen at once rather than being re-implemented per screen.
  *
  * `/system-status` keeps the Lab 1 vertical slice reachable and renders `App`
  * directly rather than inside the shell — `App` brings its own `<main>`, and
  * nesting one inside another is invalid. Its three Lab 1 tests import that
  * component directly and are unaffected by any of this.
  */
+const guarded = (element: React.ReactNode) => (
+  <RequesterGuard>{element}</RequesterGuard>
+);
+
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -24,21 +33,11 @@ export const router = createBrowserRouter([
   },
   {
     path: "/select-requester",
-    element: (
-      <Placeholder
-        breadcrumbs={[
-          { label: "Home", to: "/" },
-          { label: "Development Requester Selection" },
-        ]}
-        description="Choosing which seeded Development Requester the application acts as."
-        issue={16}
-        title="Select Development Requester"
-      />
-    ),
+    element: <RequesterSelection />,
   },
   {
     path: "/tickets/new",
-    element: (
+    element: guarded(
       <Placeholder
         breadcrumbs={[
           { label: "My Tickets", to: "/my-tickets" },
@@ -52,7 +51,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/my-tickets",
-    element: (
+    element: guarded(
       <Placeholder
         breadcrumbs={[{ label: "My Tickets" }]}
         description="Searching, filtering, sorting and paging through your own tickets."
@@ -63,7 +62,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/tickets/:ticketId",
-    element: (
+    element: guarded(
       <Placeholder
         breadcrumbs={[
           { label: "My Tickets", to: "/my-tickets" },
