@@ -97,8 +97,11 @@ confirmed the changes were what he meant before they closed.
 
 | | |
 | --- | --- |
-| Review state | **Commented** — 2026-08-28 15:59 UTC, eleven inline comments |
+| First review | **Commented** — 2026-08-28 15:59 UTC, eleven inline comments |
 | Review body | "Review findings for the Standards and Spec checks. Standards limited to fragile implementation issues; Spec includes missing and broken acceptance behavior." |
+| My replies | 2026-08-28 16:50 UTC, one on each of the eleven threads |
+| Second review | **Approved** — 2026-08-28 16:53 UTC, "LGTM" |
+| Merged by | @beambeambeam, 2026-08-28 16:55 UTC |
 
 The strongest review of the sprint so far, and by some distance. Every one of the eleven
 was correct and every one was taken. Four were defects that would have shipped.
@@ -130,6 +133,33 @@ handles. Those are the checks I had asked for and not received on PR #22 and #23
 Verification after the changes: 128 tests passing (server 47, client 81), build clean, no
 lint error or warning in any Lab 2 file. Five new tests were added specifically to hold
 these fixes in place.
+
+---
+
+### PR #25 — make the formatter check able to pass at all
+
+[Kiatisakk/toktickit#25](https://github.com/Kiatisakk/toktickit/pull/25) ·
+`chore/line-endings` → `lab2-staging` · **no Issue**, stated in the description
+
+| | |
+| --- | --- |
+| Review state | **Approved** — "LGTM" |
+| Inline comments | none |
+| Merged by | @beambeambeam |
+
+Repository hygiene rather than sprint scope, so no Issue under §10. `npm run check` had
+never been able to pass: Git for Windows rewrites every file to CRLF on checkout and oxfmt
+only accepts LF, so `ultracite fix` and `git checkout` undid each other forever. That left
+`specification.md` §10 and Issue #21 requiring a green check that could not be produced,
+and made the check useless as a signal — sixty-five files failing every run hides a real
+one.
+
+Fixed with `.gitattributes`, the formatter kept out of markdown, and one pass of
+`ultracite fix` over the fourteen files it had never reached.
+
+**Nothing to respond to** — approved without comments. The description named three
+decisions to challenge (excluding markdown, reformatting Lab 1 code, folding the one lint
+fix into the formatting commit) and none drew one.
 
 ---
 
@@ -188,7 +218,6 @@ satisfied both. He removed the linear-history rule and merged it himself.
 
 Entries are added by the Pull Request they describe:
 
-- [ ] PR for `refactor/lab1-lint-compliance`
 - [ ] Issue #17 — Ticket creation
 - [ ] Issue #18 — My Tickets
 - [ ] Issue #19 — Ticket Detail and attachments

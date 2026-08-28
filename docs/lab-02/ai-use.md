@@ -17,6 +17,12 @@ implementation began.
 Recorded as they were used. Prompts written in Thai are kept verbatim, with a translation
 beside them.
 
+> **This list has outgrown the limit and must be cut before submission.** §14 Part 4 asks
+> for six to ten; there are eleven, and Issues #18 to #20 will add more. The final Issue
+> selects rather than appends — that is what "selected key prompts" means, and appending
+> was the right thing to do while the work was happening because a prompt cannot be
+> recovered accurately weeks later.
+
 | # | Prompt | What it produced | Issue |
 | --- | --- | --- | --- |
 | 1 | `/grill-with-docs @material/UTF-8_Lab_02_labsheet-1.pdf read instruction in this lab2` | Rather than asking for a plan, this asked to be interrogated. It produced four rounds of questions — thirty decisions in total — before a line of anything was written. | #14 |
@@ -29,6 +35,9 @@ beside them.
 | 7 | *"รอบีมตรวจ pr 23 ก่อนค่อยทำอะไรก็ตาม"*<br>"Wait for Beam to review PR 23 before doing anything at all." | Stopped work rather than starting the next Issue in parallel. The next Issue creates the `User` table, which locks the naming decision the reviewer had not yet commented on — building it first would have meant a migration to undo. | #15 |
 | 8 | *"แล้ว 5 อันที่นายจงใจทำไว้แก้ยังนะ"*<br>"What about the five things you deliberately flagged for him to challenge?" | Checked whether the review had actually engaged with the flagged decisions. It had not — three real findings, none of them on the ten decisions raised across two Pull Requests. Comparing the two specifications then showed the partner had independently chosen the opposite on three of them, so they are genuinely contested rather than obvious. | #15 |
 | 9 | *"merge อันนี้"* (on the partner's Pull Request)<br>"Merge this one." | Checking before merging found a stray git submodule pointer with no `.gitmodules`, and then that the branch ruleset forbade every merge method at once — `required_linear_history` and `allowed_merge_methods: ["merge"]` cannot both be satisfied. The instruction could not be carried out, and saying so with the evidence was more useful than trying. | — |
+
+| 10 | *"เล่าปัญหาให้ฟังหน่อย"*<br>"Tell me about the problem." | Asked for the explanation rather than the fix. The answer had to start from what a line ending actually is, and the act of writing it out surfaced that a claim made minutes earlier — that hiding whitespace would show an empty diff — was wrong, and that the sixty-five-file diff predicted would in fact be sixteen. | PR #25 |
+| 11 | *"แยก PR ได้ใช่มั้ยมันไม่ผิดกฏในแลปใช่มะต้องให้บีม Review ด้วยมั้ย"*<br>"A separate PR is allowed, it does not break the lab rules, and does Beam still need to review it?" | Three rule questions at once, answered from the handout rather than from habit: §10 scopes Issues to sprint work so none was needed, Part 7 covers Issue-less PRs explicitly, and Part 9 has no small-change exemption, so the reviewer still merges. | PR #25 |
 
 <!-- Prompts from later Issues are appended here by the Pull Request that used them. -->
 

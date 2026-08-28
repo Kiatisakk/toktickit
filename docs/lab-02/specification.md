@@ -627,6 +627,15 @@ run — and that data is what the Part 7 evidence photographs, spread deliberate
 four requesters with a pagination-length list for one and none at all for another.
 Rebuilding it after every test run is not a reasonable ask.
 
+### D-13 "Ticket Date" is a label, not a column
+
+BR-05 names three server-set timestamps — ticket date, created, updated — but the model
+carries two. Ticket Date is how the screens label `createdAt`; there is no separate column.
+
+A distinct date field could only ever agree with `createdAt` or disagree with it, and
+disagreeing would mean the ticket claims to have been raised on a day it was not. One
+value, one meaning.
+
 ### D-12 Bootstrap is retained beneath the Zen Green layer
 
 Zen Green is applied by overriding Bootstrap's CSS custom properties, and every component
