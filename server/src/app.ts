@@ -7,6 +7,7 @@ import { categoriesRouter } from "./routes/categories.js";
 import { healthRouter } from "./routes/health.js";
 import { relatedSystemsRouter } from "./routes/relatedSystems.js";
 import { requestersRouter } from "./routes/requesters.js";
+import { ticketsRouter } from "./routes/tickets.js";
 
 /**
  * Builds the Express application.
@@ -32,6 +33,7 @@ export const createApp = (): Express => {
   app.use("/api", categoriesRouter);
   app.use("/api", relatedSystemsRouter);
   app.use("/api", requestersRouter);
+  app.use("/api", ticketsRouter);
 
   // Anything under /api that matched no route is a missing resource, and it has
   // to say so in the documented envelope. Without this, Express answers with its
