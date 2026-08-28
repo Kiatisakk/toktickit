@@ -385,3 +385,45 @@
     width: 100%;
   }
 }
+
+/* ------------------------------------------------------- form layout -- */
+
+/*
+ * Classification fields sit side by side on desktop and stack below 768px,
+ * per §8.7. Summary and Description stay full width at every size — they are
+ * the two fields that need room to be readable.
+ */
+.tkt-grid {
+  display: grid;
+  gap: var(--tkt-space-4);
+}
+
+.tkt-grid--3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.tkt-callout {
+  border-radius: var(--tkt-radius-sm);
+  font-size: var(--tkt-font-small);
+  margin: var(--tkt-space-4) 0 0;
+  padding: var(--tkt-space-3);
+}
+
+.tkt-callout--error {
+  background-color: var(--tkt-error-pale);
+  border: 1px solid var(--tkt-error);
+  color: var(--tkt-error);
+}
+
+@media (width <= 991px) {
+  /* Two columns where practical at tablet width. */
+  .tkt-grid--3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (width <= 767px) {
+  .tkt-grid--3 {
+    grid-template-columns: 1fr;
+  }
+}

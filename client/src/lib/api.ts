@@ -47,9 +47,10 @@ interface RequestOptions {
  * wearing a type it does not have. Narrowing is each caller's job, immediately
  * below.
  */
-export const apiGet = async (
+const send = async (
   path: string,
-  options: RequestOptions = {}
+  method: "GET" | "POST",
+  options: RequestOptions & { body?: unknown } = {}
 ): Promise<unknown> => {
   const headers: Record<string, string> = {};
 
@@ -57,13 +58,21 @@ export const apiGet = async (
     headers[REQUESTER_HEADER] = String(options.requesterId);
   }
 
+  if (options.body !== undefined) {
+    headers["Content-Type"] = "application/json";
+  }
+
   let response: Response;
 
   try {
-    const init: RequestInit = { headers };
+    const init: RequestInit = { method, headers };
 
     if (options.signal) {
       init.signal = options.signal;
+    }
+
+    if (options.body !== undefined) {
+      init.body = JSON.stringify(options.body);
     }
 
     response = await fetch(`${API_BASE_URL}${path}`, init);
@@ -83,6 +92,15 @@ export const apiGet = async (
 
   return await response.json();
 };
+
+export const apiGet = (path: string, options: RequestOptions = {}) =>
+  send(path, "GET", options);
+
+export const apiPost = (
+  path: string,
+  body: unknown,
+  options: RequestOptions = {}
+) => send(path, "POST", { ...options, body });
 
 /**
  * Turns a failed response into an ApiError.
@@ -190,3 +208,49 @@ export const fetchRelatedSystems = async (signal?: AbortSignal) =>
     isReferenceItem,
     "the related systems"
   );
+
+export interface CreatedTicket {
+  id: number;
+  ticketNumber: string;
+  summary: string;
+  currentStatus: string;
+  createdAt: string;
+}
+
+const isCreatedTicket = (value: unknown): value is CreatedTicket =>
+  isRecord(value) &&
+  typeof value["id"] === "number" &&
+  typeof value["ticketNumber"] === "string" &&
+  typeof value["summary"] === "string";
+
+export interface NewTicket {
+  categoryId: number;
+  relatedSystemId: number;
+  summary: string;
+  description: string;
+  requestedPriority: string;
+}
+
+/**
+ * Creates one ticket for the current Development Requester.
+ *
+ * The requester is not part of the payload. Ownership comes from the header the
+ * server validates, and sending it in the body as well would suggest a client
+ * could choose (BR-11).
+ */
+export const createTicket = async (
+  ticket: NewTicket,
+  requesterId: number
+): Promise<CreatedTicket> => {
+  const created = await apiPost("/api/tickets", ticket, { requesterId });
+
+  if (!isCreatedTicket(created)) {
+    throw new ApiError(
+      "UNEXPECTED_RESPONSE",
+      "The ticket was submitted, but the response could not be read.",
+      0
+    );
+  }
+
+  return created;
+};
