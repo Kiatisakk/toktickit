@@ -83,7 +83,6 @@ export const RequesterSelection = () => {
         { label: "Home", to: "/" },
         { label: "Development Requester Selection" },
       ]}
-      {...(current ? { requesterName: current.name } : {})}
     >
       <div className="tkt-card tkt-select-card">
         <h1 className="tkt-page-title">Select Development Requester</h1>
@@ -94,11 +93,23 @@ export const RequesterSelection = () => {
         </p>
 
         {state.kind === "loading" ? (
-          <StateBlock
-            description="Reading active Development Requesters from the database."
-            kind="loading"
-            title="Loading requesters…"
-          />
+          <>
+            <StateBlock
+              description="Reading active Development Requesters from the database."
+              kind="loading"
+              title="Loading requesters…"
+            />
+            {/*
+              §8.1 lists Continue among the screen's required elements, so it is
+              present from the first render rather than appearing once the fetch
+              resolves. Disabled, because there is nothing to continue with yet.
+            */}
+            <div className="tkt-actions">
+              <Button disabled variant="primary">
+                Continue
+              </Button>
+            </div>
+          </>
         ) : null}
 
         {state.kind === "failed" ? (
@@ -119,7 +130,15 @@ export const RequesterSelection = () => {
 
         {state.kind === "loaded" && state.requesters.length === 0 ? (
           <StateBlock
-            description="No active Development Requester exists yet. Run npm run db:seed to create the seeded identities."
+            action={
+              <Button
+                onClick={() => window.location.reload()}
+                variant="primary"
+              >
+                Check again
+              </Button>
+            }
+            description="No active Development Requester exists yet. Run npm run db:seed to create the seeded identities, then check again."
             kind="empty"
             title="No requesters available"
           />
@@ -148,9 +167,22 @@ export const RequesterSelection = () => {
             </p>
 
             <div className="tkt-actions">
-              <Button onClick={() => void navigate("/")} variant="secondary">
-                Cancel
-              </Button>
+              {/*
+                Cancel appears only when a requester is already selected, which
+                is the "change my mind" case. With none selected there is
+                nowhere to cancel to: every other screen is guarded, so "/"
+                would redirect to My Tickets, which would redirect straight back
+                here. A button that cannot go anywhere is worse than no button,
+                and §8.1 does not list Cancel among the required elements.
+              */}
+              {current ? (
+                <Button
+                  onClick={() => void navigate("/my-tickets")}
+                  variant="secondary"
+                >
+                  Cancel
+                </Button>
+              ) : null}
               <Button
                 disabled={selectedId === ""}
                 onClick={onContinue}

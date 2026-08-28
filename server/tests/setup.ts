@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 import { config } from "dotenv";
 
 /**
@@ -11,7 +13,11 @@ import { config } from "dotenv";
  * the demonstration tickets the submission screenshots depend on would not
  * survive it.
  */
-config({ path: new URL("../.env.test", import.meta.url).pathname.slice(1) });
+// fileURLToPath rather than URL.pathname. On Windows the pathname is
+// "/C:/Users/..." and slicing the leading slash happens to work; on any Unix
+// host it turns "/home/..." into a relative "home/...", and neither form
+// decodes percent-escapes in a path containing spaces.
+config({ path: fileURLToPath(new URL("../.env.test", import.meta.url)) });
 
 if (!process.env["DATABASE_URL"]?.includes("toktickit_test")) {
   throw new Error(

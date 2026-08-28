@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { prisma } from "../../src/prisma.js";
 
@@ -25,6 +26,59 @@ const countAll = async () => {
 
   return { categories, systems, activeRequesters, inactiveRequesters };
 };
+
+const runSeed = () =>
+  execSync("npm run db:test:setup", {
+    cwd: fileURLToPath(new URL("../../..", import.meta.url)),
+    stdio: "pipe",
+  });
+
+describe("retiring a row that is no longer listed", () => {
+  const LEGACY = "Legacy Category Fixture";
+
+  afterEach(async () => {
+    await prisma.category.deleteMany({ where: { name: LEGACY } });
+  });
+
+  // displayOrder is unique. Leaving a retired row on a positive slot means the
+  // slot stays occupied, and the transaction fails the moment a listed item
+  // needs it back — as a constraint violation, several layers from the cause.
+  it("moves it off its positive slot", async () => {
+    const free = (await prisma.category.count()) + 50;
+
+    await prisma.category.create({
+      data: { name: LEGACY, displayOrder: free, isActive: true },
+    });
+
+    runSeed();
+
+    const legacy = await prisma.category.findUniqueOrThrow({
+      where: { name: LEGACY },
+      select: { isActive: true, displayOrder: true },
+    });
+
+    expect(legacy.isActive).toBe(false);
+    expect(legacy.displayOrder).toBeLessThan(0);
+  }, 60_000);
+
+  it("leaves the listed categories on their own positions", async () => {
+    const free = (await prisma.category.count()) + 50;
+
+    await prisma.category.create({
+      data: { name: LEGACY, displayOrder: free, isActive: true },
+    });
+
+    runSeed();
+
+    const active = await prisma.category.findMany({
+      where: { isActive: true },
+      orderBy: { displayOrder: "asc" },
+      select: { displayOrder: true },
+    });
+
+    expect(active.map((row) => row.displayOrder)).toEqual([1, 2, 3, 4]);
+  }, 60_000);
+});
 
 describe("reference seed", () => {
   it("contains exactly the four required categories, in order", async () => {
@@ -84,13 +138,7 @@ describe("reference seed", () => {
       select: { id: true, name: true, displayOrder: true },
     });
 
-    // execSync rather than execFileSync: this genuinely is a shell command, and
-    // execFileSync with shell:true concatenates arguments without escaping them,
-    // which Node deprecated for exactly that reason.
-    execSync("npm run db:test:setup", {
-      cwd: new URL("../../..", import.meta.url).pathname.slice(1),
-      stdio: "pipe",
-    });
+    runSeed();
 
     const after = await countAll();
     const categoriesAfter = await prisma.category.findMany({

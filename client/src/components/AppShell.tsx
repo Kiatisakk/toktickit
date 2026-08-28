@@ -5,16 +5,6 @@ import { RequesterContext } from "../context/requesterContextValue";
 import { Breadcrumb, type Crumb } from "./Breadcrumb";
 
 interface AppShellProps {
-  /**
-   * Name of the current Development Requester. Undefined before one has been
-   * chosen — the selection screen renders inside this shell too, and it has to
-   * be honest that nobody is selected yet.
-   *
-   * The context that supplies this arrives with the Development Requester
-   * Issue; the shell only displays what it is given.
-   */
-  requesterName?: string;
-  onChangeRequester?: () => void;
   breadcrumbs?: Crumb[];
   children: ReactNode;
 }
@@ -27,30 +17,30 @@ const NAV_ITEMS = [
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   isActive ? "tkt-nav-link tkt-nav-link--active" : "tkt-nav-link";
 
-export const AppShell = ({
-  requesterName,
-  onChangeRequester,
-  breadcrumbs,
-  children,
-}: AppShellProps) => {
+/**
+ * The application shell.
+ *
+ * Identity comes from `RequesterContext` and nowhere else. An earlier version
+ * also accepted the name as a prop, with the prop winning — which meant the
+ * header could confidently display someone other than the requester every API
+ * call was actually being made as. One source, or the header is decoration.
+ *
+ * The context is optional rather than required: the selection screen renders
+ * inside this shell before any requester exists.
+ */
+export const AppShell = ({ breadcrumbs, children }: AppShellProps) => {
   const [navOpen, setNavOpen] = useState(false);
   const navigate = useNavigate();
 
-  // Read the context when there is one, but do not require it. The selection
-  // screen renders inside this shell before any requester exists, and the
-  // component tests render the shell on its own with explicit props.
   const context = useContext(RequesterContext);
+  const requester = context?.requester ?? null;
 
-  const displayName = requesterName ?? context?.requester?.name;
-
-  const changeRequester =
-    onChangeRequester ??
-    (context?.requester
-      ? () => {
-          context.clear();
-          void navigate("/select-requester");
-        }
-      : undefined);
+  const changeRequester = requester
+    ? () => {
+        context?.clear();
+        void navigate("/select-requester");
+      }
+    : undefined;
 
   return (
     <div className="tkt-shell">
@@ -93,7 +83,7 @@ export const AppShell = ({
           <div className="tkt-identity">
             <span aria-hidden="true">👤</span>
             <span className="tkt-identity__name">
-              {displayName ?? "No requester selected"}
+              {requester?.name ?? "No requester selected"}
             </span>
             {changeRequester ? (
               <button

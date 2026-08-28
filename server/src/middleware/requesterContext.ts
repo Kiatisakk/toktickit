@@ -56,6 +56,20 @@ export const requireRequesterContext = async (
   // Safe as a plain coercion: the guard above proved the string is digits only.
   const id = Number(raw.trim());
 
+  // Digits alone are not enough. "0" and "007" pass the pattern, and anything
+  // past 2^53 stops being represented exactly. The contract says a value that
+  // is not a positive integer is INVALID, so it has to be rejected here rather
+  // than falling through to a lookup that would report it as UNKNOWN.
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    sendError(
+      res,
+      400,
+      ErrorCode.requesterContextInvalid,
+      "The selected Development Requester is not valid."
+    );
+    return;
+  }
+
   // The try wraps only the call that can throw. Everything after it is our own
   // branching, and folding it inside would mean a mistake in this file
   // surfaced to the client as an internal error.
@@ -67,8 +81,12 @@ export const requireRequesterContext = async (
   } | null;
 
   try {
-    user = await prisma.user.findUnique({
-      where: { id },
+    // The role is part of the lookup, not an afterthought. Lab 2 seeds only
+    // requesters, so today every row matches — but Lab 3 adds IT_STAFF and
+    // ADMIN rows, and without this an active staff id supplied in the header
+    // would silently become a valid Development Requester context.
+    user = await prisma.user.findFirst({
+      where: { id, role: "REQUESTER" },
       select: { id: true, name: true, email: true, isActive: true },
     });
   } catch (error) {

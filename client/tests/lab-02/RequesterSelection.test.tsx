@@ -45,15 +45,25 @@ afterEach(() => {
 });
 
 describe("loading state", () => {
-  it("shows a loading block while the requesters are being fetched", () => {
+  beforeEach(() => {
     vi.stubGlobal(
       "fetch",
       vi.fn(() => new Promise<Response>(() => undefined))
     );
+  });
 
+  it("shows a loading block while the requesters are being fetched", () => {
     renderScreen();
 
     expect(screen.getByText("Loading requesters…")).toBeInTheDocument();
+  });
+
+  // §8.1 lists Continue among the screen's required elements, so it is present
+  // from the first render rather than appearing once the fetch resolves.
+  it("still shows Continue, disabled, while loading", () => {
+    renderScreen();
+
+    expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
   });
 });
 
@@ -142,6 +152,21 @@ describe("empty state", () => {
     await screen.findByText("No requesters available");
     expect(screen.queryByRole("button", { name: "Continue" })).toBeNull();
   });
+
+  // An empty state with no way forward is a dead end. ui-spec.md requires the
+  // empty and error states to carry an action.
+  it("offers a way to re-check after seeding", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse([]))
+    );
+
+    renderScreen();
+
+    expect(
+      await screen.findByRole("button", { name: "Check again" })
+    ).toBeInTheDocument();
+  });
 });
 
 describe("failure state", () => {
@@ -207,6 +232,16 @@ describe("wording", () => {
     expect(
       screen.getByText(/only active development requesters are shown/i)
     ).toBeInTheDocument();
+  });
+
+  // Every other screen is guarded, so with nobody selected "/" would redirect to
+  // My Tickets, which would redirect straight back here. A Cancel that cannot
+  // leave is worse than no Cancel, and §8.1 does not require one.
+  it("hides Cancel when there is nowhere to cancel to", async () => {
+    renderScreen();
+
+    await screen.findByLabelText(/development requester/i);
+    expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
   });
 
   it("never calls itself a sign-in", async () => {

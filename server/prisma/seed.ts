@@ -86,8 +86,10 @@ type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
  * everything on negative positions first means no two rows ever contend for the
  * same value.
  *
- * Rows no longer listed are deactivated, not deleted. Their position is pushed
- * far negative so it stops blocking a live row.
+ * Rows no longer listed are deactivated, not deleted, and each is moved to its
+ * own negative position. Leaving a retired row on a positive slot would make it
+ * collide the moment a listed item needed that slot back, and the collision
+ * would surface as a failed transaction rather than as anything readable.
  */
 const seedCategories = async (tx: Tx) => {
   await Promise.all(
@@ -100,10 +102,28 @@ const seedCategories = async (tx: Tx) => {
     )
   );
 
+  // Retire first, then park each retired row on its own negative slot. A single
+  // updateMany cannot do this: displayOrder is unique, so every row needs a
+  // different value.
   const { count: retired } = await tx.category.updateMany({
     where: { name: { notIn: CATEGORY_NAMES }, isActive: true },
     data: { isActive: false },
   });
+
+  const stale = await tx.category.findMany({
+    where: { name: { notIn: CATEGORY_NAMES } },
+    orderBy: { id: "asc" },
+    select: { id: true },
+  });
+
+  await Promise.all(
+    stale.map((row, index) =>
+      tx.category.update({
+        where: { id: row.id },
+        data: { displayOrder: -(CATEGORY_NAMES.length + index + 1) },
+      })
+    )
+  );
 
   await Promise.all(
     CATEGORY_NAMES.map((name, index) =>
@@ -128,10 +148,28 @@ const seedRelatedSystems = async (tx: Tx) => {
     )
   );
 
+  // Retire first, then park each retired row on its own negative slot. A single
+  // updateMany cannot do this: displayOrder is unique, so every row needs a
+  // different value.
   const { count: retired } = await tx.relatedSystem.updateMany({
     where: { name: { notIn: RELATED_SYSTEM_NAMES }, isActive: true },
     data: { isActive: false },
   });
+
+  const stale = await tx.relatedSystem.findMany({
+    where: { name: { notIn: RELATED_SYSTEM_NAMES } },
+    orderBy: { id: "asc" },
+    select: { id: true },
+  });
+
+  await Promise.all(
+    stale.map((row, index) =>
+      tx.relatedSystem.update({
+        where: { id: row.id },
+        data: { displayOrder: -(RELATED_SYSTEM_NAMES.length + index + 1) },
+      })
+    )
+  );
 
   await Promise.all(
     RELATED_SYSTEM_NAMES.map((name, index) =>

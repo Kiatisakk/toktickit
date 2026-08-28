@@ -131,6 +131,43 @@ describe("restoring a stored selection", () => {
   });
 });
 
+describe("a manual choice racing the startup resolution", () => {
+  // Landing on the selector with a stored id starts a resolution. Choosing
+  // somebody else before it finishes must not be undone when it does — the
+  // request may already have returned and merely be waiting to be applied, so
+  // aborting it is not enough on its own.
+  it("is not overwritten when the stored id resolves late", async () => {
+    window.localStorage.setItem(STORAGE_KEY, "1");
+
+    let release: (value: Response) => void = () => undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            release = resolve;
+          })
+      )
+    );
+
+    renderProbe();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("status")).toHaveTextContent("resolving");
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /switch/i }));
+    expect(screen.getByTestId("name")).toHaveTextContent("Somchai Wattana");
+
+    release(jsonResponse(REQUESTERS));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("name")).toHaveTextContent("Somchai Wattana");
+    });
+    expect(window.localStorage.getItem(STORAGE_KEY)).toBe("2");
+  });
+});
+
 describe("changing the current requester", () => {
   it("persists the new selection", async () => {
     renderProbe();

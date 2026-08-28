@@ -39,10 +39,18 @@ interface RequestOptions {
   signal?: AbortSignal;
 }
 
-export const apiGet = async <T>(
+/**
+ * Issues the request and returns the parsed body as `unknown`.
+ *
+ * Deliberately not generic. A response body is untrusted input, and casting it
+ * to a caller-chosen `T` would let a malformed payload travel to every consumer
+ * wearing a type it does not have. Narrowing is each caller's job, immediately
+ * below.
+ */
+export const apiGet = async (
   path: string,
   options: RequestOptions = {}
-): Promise<T> => {
+): Promise<unknown> => {
   const headers: Record<string, string> = {};
 
   if (options.requesterId !== undefined) {
@@ -73,7 +81,7 @@ export const apiGet = async <T>(
     throw await toApiError(response);
   }
 
-  return (await response.json()) as T;
+  return await response.json();
 };
 
 /**
@@ -123,11 +131,62 @@ export interface ReferenceItem {
   name: string;
 }
 
-export const fetchRequesters = (signal?: AbortSignal) =>
-  apiGet<Requester[]>("/api/requesters", signal ? { signal } : {});
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
 
-export const fetchCategories = (signal?: AbortSignal) =>
-  apiGet<ReferenceItem[]>("/api/categories", signal ? { signal } : {});
+const isReferenceItem = (value: unknown): value is ReferenceItem =>
+  isRecord(value) &&
+  typeof value["id"] === "number" &&
+  typeof value["name"] === "string";
 
-export const fetchRelatedSystems = (signal?: AbortSignal) =>
-  apiGet<ReferenceItem[]>("/api/related-systems", signal ? { signal } : {});
+const isRequester = (value: unknown): value is Requester =>
+  isRecord(value) &&
+  typeof value["id"] === "number" &&
+  typeof value["name"] === "string" &&
+  typeof value["email"] === "string";
+
+/**
+ * Rejects a body that is not the documented shape.
+ *
+ * A screen showing "Unable to load" is a worse outcome than one silently
+ * rendering `undefined` only if the payload really was fine. It never is when
+ * this fires: a proxy returned HTML, a deploy is half-finished, or the contract
+ * changed under us. Failing here means the failure is reported once, at the
+ * boundary, rather than as a render crash three components deep.
+ */
+const expectArrayOf = <T>(
+  value: unknown,
+  guard: (item: unknown) => item is T,
+  what: string
+): T[] => {
+  if (!Array.isArray(value) || !value.every(guard)) {
+    throw new ApiError(
+      "UNEXPECTED_RESPONSE",
+      `The TokTickIT API returned ${what} in an unexpected format.`,
+      0
+    );
+  }
+
+  return value;
+};
+
+export const fetchRequesters = async (signal?: AbortSignal) =>
+  expectArrayOf(
+    await apiGet("/api/requesters", signal ? { signal } : {}),
+    isRequester,
+    "the Development Requesters"
+  );
+
+export const fetchCategories = async (signal?: AbortSignal) =>
+  expectArrayOf(
+    await apiGet("/api/categories", signal ? { signal } : {}),
+    isReferenceItem,
+    "the categories"
+  );
+
+export const fetchRelatedSystems = async (signal?: AbortSignal) =>
+  expectArrayOf(
+    await apiGet("/api/related-systems", signal ? { signal } : {}),
+    isReferenceItem,
+    "the related systems"
+  );

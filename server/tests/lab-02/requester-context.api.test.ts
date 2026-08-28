@@ -1,6 +1,6 @@
 import express from "express";
 import request from "supertest";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
   REQUESTER_HEADER,
@@ -83,6 +83,24 @@ describe("a missing context", () => {
   });
 });
 
+describe("a value that is digits but not a usable id", () => {
+  // "0" and "007" satisfy a digits-only pattern, and anything past 2^53 stops
+  // being represented exactly. The contract calls all of them INVALID, so they
+  // have to be rejected before the lookup — otherwise they arrive as UNKNOWN,
+  // which claims the id was well-formed but absent.
+  it.each(["0", "000", "9007199254740993", "99999999999999999999"])(
+    "rejects %j as invalid rather than unknown",
+    async (value) => {
+      const response = await request(probe)
+        .get("/probe")
+        .set(REQUESTER_HEADER, value);
+
+      expect(response.status).toBe(400);
+      expect(response.body.error.code).toBe("REQUESTER_CONTEXT_INVALID");
+    }
+  );
+});
+
 describe("a malformed context", () => {
   // Number() would accept the first four of these. Digits only, on purpose.
   //
@@ -120,6 +138,40 @@ describe("a context that cannot be used", () => {
 
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe("REQUESTER_CONTEXT_INACTIVE");
+  });
+});
+
+describe("a user who is not a requester", () => {
+  let staffId: number;
+
+  beforeAll(async () => {
+    const staff = await prisma.user.create({
+      data: {
+        name: "IT Staff Fixture",
+        email: "it-staff-fixture@example.ac.th",
+        role: "IT_STAFF",
+        isActive: true,
+      },
+      select: { id: true },
+    });
+
+    staffId = staff.id;
+  });
+
+  afterAll(async () => {
+    await prisma.user.delete({ where: { id: staffId } });
+  });
+
+  // Lab 2 seeds only requesters, so this row has to be created to test at all.
+  // Lab 3 seeds staff for real, and without the role in the lookup an active
+  // staff id in the header would quietly become a valid requester context.
+  it("cannot become a Development Requester context", async () => {
+    const response = await request(probe)
+      .get("/probe")
+      .set(REQUESTER_HEADER, String(staffId));
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("REQUESTER_CONTEXT_UNKNOWN");
   });
 });
 

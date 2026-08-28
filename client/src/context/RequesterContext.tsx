@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -40,6 +41,14 @@ export const RequesterProvider = ({ children }: { children: ReactNode }) => {
   const [requester, setRequester] = useState<Requester | null>(null);
   const [generation, setGeneration] = useState(0);
 
+  // Set the moment someone chooses or clears a requester by hand. The startup
+  // resolution can still be in flight at that point — on the selection screen it
+  // usually is — and letting it finish would quietly replace the requester the
+  // user just picked with the one that was stored. Aborting the request is not
+  // enough on its own: the response may already have arrived and be waiting to
+  // be applied.
+  const chosenByHand = useRef(false);
+
   useEffect(() => {
     if (storedId === null) {
       return;
@@ -50,6 +59,11 @@ export const RequesterProvider = ({ children }: { children: ReactNode }) => {
     const resolve = async () => {
       try {
         const requesters = await fetchRequesters(controller.signal);
+
+        if (chosenByHand.current) {
+          return;
+        }
+
         const match = requesters.find((candidate) => candidate.id === storedId);
 
         if (match) {
@@ -63,6 +77,10 @@ export const RequesterProvider = ({ children }: { children: ReactNode }) => {
         setStatus("none");
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
+        if (chosenByHand.current) {
           return;
         }
 
@@ -80,6 +98,7 @@ export const RequesterProvider = ({ children }: { children: ReactNode }) => {
   }, [storedId]);
 
   const select = useCallback((next: Requester) => {
+    chosenByHand.current = true;
     writeStoredRequesterId(next.id);
     setRequester(next);
     setStatus("selected");
@@ -87,6 +106,7 @@ export const RequesterProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const clear = useCallback(() => {
+    chosenByHand.current = true;
     clearStoredRequesterId();
     setRequester(null);
     setStatus("none");
