@@ -34,9 +34,9 @@ describe("GET /api/categories", () => {
     const response = await request(app).get("/api/categories");
 
     expect(response.body).toHaveLength(4);
-    expect(response.body.map((category: { name: string }) => category.name)).toEqual(
-      EXPECTED_CATEGORY_NAMES,
-    );
+    expect(
+      response.body.map((category: { name: string }) => category.name)
+    ).toEqual(EXPECTED_CATEGORY_NAMES);
   });
 
   it("returns exactly an id and a name for every category", async () => {
@@ -45,7 +45,7 @@ describe("GET /api/categories", () => {
     for (const category of response.body) {
       // displayOrder decides the sort order but is not part of the contract,
       // so it must not leak into the response.
-      expect(Object.keys(category).sort()).toEqual(["id", "name"]);
+      expect(Object.keys(category).toSorted()).toEqual(["id", "name"]);
       expect(typeof category.id).toBe("number");
       expect(typeof category.name).toBe("string");
     }
@@ -83,7 +83,7 @@ describe("GET /api/categories", () => {
 
       const response = await request(app).get("/api/categories");
       const names = response.body.map(
-        (category: { name: string }) => category.name,
+        (category: { name: string }) => category.name
       );
 
       expect(names.indexOf("Network")).toBeLessThan(names.indexOf("Hardware"));

@@ -2,8 +2,8 @@
   "name": "server",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "description": "TokTickIT Express REST API",
+  "type": "module",
   "scripts": {
     "dev": "node --import tsx --watch src/server.ts",
     "build": "tsc -b",
