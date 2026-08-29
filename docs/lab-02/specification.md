@@ -542,17 +542,31 @@ it. This entry is the answer.
 and assigned after successful creation. Neither says what a ticket number looks like. §9.2
 refers to "the required format" without ever defining one.
 
-**What the figures show.** `TKT-2025-001234` on Ticket Detail, and on My Tickets a run of
-eight: `TKT-2025-001227` through `TKT-2025-001234`, ascending with time. Eight contiguous
-values are not eight random ones, so the trailing digits are a sequence. §8.8 requires the
-screens to be checked against these illustrations, which is what makes them binding rather
-than decorative.
+**What the one figure shows.** Figure 1 on page 2 is the Ticket Detail screen, and its
+Ticket No. field reads `TKT-2025-001234`. That is the only ticket number printed anywhere
+in the handout. §8.8 requires the screens to be checked against the illustrations, so the
+*shape* is binding: `TKT-`, a four-digit year, a hyphen, six digits.
 
-**What we chose, with nothing in the handout to settle it.** Whether the sequence restarts
-each year. Every figure is from 2025, so `TKT-2025-001234` fits a per-year counter and a
-single running counter with the year merely printed in front equally well. We restart it:
-a number that carries a year and then ignores it is a label pretending to be information,
-and by Lab 4 the leading digits would say nothing about when the ticket was raised.
+**A correction, recorded rather than deleted.** An earlier version of this entry claimed a
+My Tickets figure showed eight contiguous numbers, `TKT-2025-001227` through
+`TKT-2025-001234`, and rested the whole "the suffix is a sequence" argument on that run. No
+such figure exists. The labsheet carries exactly two screen images — Figure 1 (Ticket
+Detail, page 2) and an uncaptioned Development Requester Selection screen (page 9) — and
+neither is My Tickets. The run was invented. It is left on the record because the same
+mistake was made twice about this one decision, and because a review comment was sent to
+the peer reviewer on the strength of it (reviewer.md, PR #22).
+
+**What we chose, with nothing in the handout to settle it.** Two things, not one: whether
+the six digits are a sequence at all, and whether that sequence restarts each year. A
+single printed value is equally consistent with a counter and with a random six-digit
+suffix. So the random suffix the peer reviewer's own specification chose is **not**
+contradicted by the handout, and our disagreement with him is a design preference rather
+than a compliance finding.
+
+We chose a per-year counter on its merits. A sequence makes ticket numbers ordered and
+makes a gap visible; a random suffix makes both impossible. And a number that carries a
+year and then ignores it is a label pretending to be information — by Lab 4 the leading
+digits would say nothing about when the ticket was raised.
 
 **How it is implemented.** The counter lives in its own table, one row per year, and is
 claimed with a single `INSERT … ON CONFLICT DO UPDATE … RETURNING` inside the same
@@ -664,3 +678,32 @@ also carries a semantic class of our own.
 Bootstrap's grid breakpoints already sit at 768 px and 992 px, exactly where §8.7 puts
 them. The semantic classes exist because §8.8 requires automated assertions against
 required CSS classes, and asserting a utility-class soup is neither stable nor readable.
+
+### D-14 The My Tickets column set is ours, and this is the justification
+
+Page 11 requires it in as many words: "Students must decide and justify the final columns
+or card fields." It offers five examples — Ticket Number, Summary, Category, Current
+Status, Last Updated — and then says outright that "the example is not a complete mandatory
+column list."
+
+We show eight: those five, plus three.
+
+**Created Date**, because Last Updated alone cannot answer "how long has this been open?",
+which is the question a requester chasing a ticket is actually asking. Two timestamps
+together give an age and a sign of life; either alone gives neither.
+
+**Requested Priority**, because it is the one field on this screen the requester themselves
+chose. BR-11 lets them set it at creation and never again, so the list is the only place
+they can check what they picked. Without it the list is a report about them rather than a
+record of what they asked for.
+
+**IT Priority**, because §4.2 excludes the staff workflow from Lab 2 but not from the
+product. Lab 2 never sets it, so the column shows an em dash on every row today. That is
+deliberate and it is the point: it says the field exists and that IT has not triaged the
+ticket yet, which is information, where a missing column would be silence. D-04 covers why
+the three unused columns exist at all.
+
+Nothing is dropped from the five examples. Related System appears on the mobile card but
+not in the desktop table: eight columns already sit at the limit of `--tkt-content-max`
+before horizontal scrolling starts, and a ticket's system is a detail-screen fact rather
+than one you scan a list by.

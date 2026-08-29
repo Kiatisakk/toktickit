@@ -13,7 +13,7 @@ interface PaginationProps {
  *
  * The summary ("Showing 1 to 10 of 42 tickets") is not decoration: it is the
  * only thing on the screen that tells a reader the list is longer than what
- * they can see. The figure in the labsheet carries the same line.
+ * they can see.
  *
  * Renders nothing when everything fits on one page — controls that can only be
  * pressed to arrive where you already are are noise.

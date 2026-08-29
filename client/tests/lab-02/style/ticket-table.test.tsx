@@ -46,7 +46,7 @@ const renderTable = () =>
   );
 
 describe("the desktop table", () => {
-  it("names every column the labsheet figure shows", () => {
+  it("names every column ui-spec.md defines", () => {
     renderTable();
 
     for (const heading of [

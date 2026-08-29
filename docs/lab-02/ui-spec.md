@@ -146,8 +146,7 @@ forbids.
 
 `Pagination` shows a range summary — "Showing 1 to 10 of 42 tickets" — alongside Previous,
 the current position, and Next. The summary is the only thing on the screen that tells a
-reader the list continues beyond what they can see, and the labsheet figure carries the
-same line.
+reader the list continues beyond what they can see.
 
 It renders nothing when everything fits on one page. Controls that can only be pressed to
 arrive where you already are are noise.
@@ -218,6 +217,12 @@ list. Then pagination with a range summary.
 Desktop columns: Ticket No. · Created Date · Summary · Category · Requested Priority · IT
 Priority · Current Status · Last Updated. Sortable headers carry a sort indicator and
 `aria-sort`.
+
+There is no My Tickets illustration in the handout to copy. §8.4 says students "must define
+the exact arrangement in ui-spec.md", and page 11 that they "must decide and justify the
+final columns or card fields" from five examples that are explicitly "not a complete
+mandatory column list". All five are present; D-14 in specification.md justifies the other
+three.
 
 Below 768 px the table becomes cards (`tkt-ticket-card`): ticket number and status on the
 first line, summary on the second, then category and priority, then the date. Every value
