@@ -97,8 +97,11 @@ confirmed the changes were what he meant before they closed.
 
 | | |
 | --- | --- |
-| Review state | **Commented** — 2026-08-28 15:59 UTC, eleven inline comments |
+| First review | **Commented** — 2026-08-28 15:59 UTC, eleven inline comments |
 | Review body | "Review findings for the Standards and Spec checks. Standards limited to fragile implementation issues; Spec includes missing and broken acceptance behavior." |
+| My replies | 2026-08-28 16:50 UTC, one on each of the eleven threads |
+| Second review | **Approved** — 2026-08-28 16:53 UTC, "LGTM" |
+| Merged by | @beambeambeam, 2026-08-28 16:55 UTC |
 
 The strongest review of the sprint so far, and by some distance. Every one of the eleven
 was correct and every one was taken. Four were defects that would have shipped.
@@ -130,6 +133,78 @@ handles. Those are the checks I had asked for and not received on PR #22 and #23
 Verification after the changes: 128 tests passing (server 47, client 81), build clean, no
 lint error or warning in any Lab 2 file. Five new tests were added specifically to hold
 these fixes in place.
+
+---
+
+### PR #25 — make the formatter check able to pass at all
+
+[Kiatisakk/toktickit#25](https://github.com/Kiatisakk/toktickit/pull/25) ·
+`chore/line-endings` → `lab2-staging` · **no Issue**, stated in the description
+
+| | |
+| --- | --- |
+| Review state | **Approved** — "LGTM" |
+| Inline comments | none |
+| Merged by | @beambeambeam |
+
+Repository hygiene rather than sprint scope, so no Issue under §10. `npm run check` had
+never been able to pass: Git for Windows rewrites every file to CRLF on checkout and oxfmt
+only accepts LF, so `ultracite fix` and `git checkout` undid each other forever. That left
+`specification.md` §10 and Issue #21 requiring a green check that could not be produced,
+and made the check useless as a signal — sixty-five files failing every run hides a real
+one.
+
+Fixed with `.gitattributes`, the formatter kept out of markdown, and one pass of
+`ultracite fix` over the fourteen files it had never reached.
+
+**Nothing to respond to** — approved without comments. The description named three
+decisions to challenge (excluding markdown, reformatting Lab 1 code, folding the one lint
+fix into the formatting commit) and none drew one.
+
+---
+
+### PR #26 — ticket creation
+
+[Kiatisakk/toktickit#26](https://github.com/Kiatisakk/toktickit/pull/26) ·
+`feature/ticket-creation` → `lab2-staging` · linked to Issue #17
+
+| | |
+| --- | --- |
+| Review state | **Commented** — 2026-08-29 16:43 UTC, nine inline comments |
+| Review body | "Review findings. Standards: fragile implementation issues only. Spec: missing or incorrect behavior. docs/* intentionally excluded per request." |
+
+Nine findings, all correct, all taken.
+
+| # | File | What he found | What I did |
+| --- | --- | --- | --- |
+| 1 | `client/src/lib/api.ts` | The `CreatedTicket` guard checks three of the five fields it then asserts, so `currentStatus` and `createdAt` could arrive undefined wearing a checked type | Guard now validates every declared field |
+| 2 | `server/src/routes/tickets.ts` | Reference rows were checked before the transaction opened, leaving a window in which one could be retired before the insert ran | The reads moved inside the transaction, so the check and the insert share one snapshot |
+| 3 | `server/src/tickets/ticketNumber.ts` | A sequence past `999999` formatted to seven digits and failed the module's own `TICKET_NUMBER_PATTERN` | Refuses out-of-range sequences instead of widening |
+| 4 | `client/src/routes/CreateTicket.tsx` | Ticket Date showed the browser's clock for a ticket that does not exist yet — wrong across midnight or with any skew | Reads "Set when you submit", the same treatment Ticket No. already had |
+| 5 | `client/src/routes/CreateTicket.tsx` | Success reused empty-state markup, had no `h1`, and offered no View Ticket action | A proper success screen with its own heading, a read-back list, and View Ticket alongside Create another |
+| 6 | `client/src/routes/CreateTicket.tsx` | Validation set messages but never moved focus to the first invalid control | Implemented, keyed on the attempt count so repeated failures re-focus |
+| 7 | `client/src/routes/CreateTicket.tsx` | With the reference data unavailable the submit control stayed enabled and silently did nothing | Disabled whenever the form cannot be completed |
+| 8 | `client/src/routes/CreateTicket.tsx` | An empty categories or systems response rendered blank dropdowns with no explanation | Its own state, with guidance and a re-check action |
+| 9 | `server/tests/lab-02/create-ticket.api.test.ts` | API validation coverage sampled five cases and omitted description bounds, the summary maximum, and related-system validation | Fourteen rejection cases, each also asserting nothing was stored, plus both boundaries accepted |
+
+**Findings 5 and 6 are my own specification, unimplemented.** `ui-spec.md` §8 says "the
+first invalid control receives focus on a failed submit" and §5.2 lists the success state
+as showing the ticket number and a next action. I wrote both documents and then did not
+follow them, which is worse than not having written them: a reviewer checking the code
+against the spec would have found agreement everywhere except where it mattered.
+
+**Finding 3 was documented as a decision it never was.** A test asserted the seven-digit
+output with a comment reading "better a seven-digit number than a silently wrong one" —
+except the value it produced fails `TICKET_NUMBER_PATTERN`, which the same module exports.
+The comment made an oversight look considered.
+
+**Finding 2 is the one I would have argued about and would have been wrong.** Reference
+data is only written by the seed today, so the window cannot open in practice. It costs
+nothing to close, it will matter the moment an administration screen exists in Lab 4, and
+"cannot happen yet" is a poor reason to leave a correctness gap in a transaction.
+
+Verification after the changes: 230 tests passing (server 123, client 107), build clean,
+no lint error or warning anywhere in the repository. Ten new tests hold the fixes in place.
 
 ---
 
@@ -188,8 +263,6 @@ satisfied both. He removed the linear-history rule and merged it himself.
 
 Entries are added by the Pull Request they describe:
 
-- [ ] PR for `refactor/lab1-lint-compliance`
-- [ ] Issue #17 — Ticket creation
 - [ ] Issue #18 — My Tickets
 - [ ] Issue #19 — Ticket Detail and attachments
 - [ ] Issue #20 — End-to-end and visual evidence

@@ -41,9 +41,9 @@ in the development database and is never touched by a test run.
 
 | ID | Requirement / AC | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
-| UNIT-01 | AC-09, BR-04 | Ticket number generator output shape | Matches `TKT-<4 digits>-<6 digits>` | `server/tests/lab-02/ticket-number.test.ts` | Planned |
-| UNIT-02 | BR-04 | Sequence increments, and restarts at `000001` in a new year | `TKT-2026-000001` follows `TKT-2025-000412` | `server/tests/lab-02/ticket-number.test.ts` | Planned |
-| UNIT-03 | AC-10, BR-13, BR-14 | Trim-then-validate helper | Whitespace-only fails; boundary lengths 5/150 and 10/5000 behave correctly | `server/tests/lab-02/validation.test.ts` | Planned |
+| UNIT-01 | AC-09, BR-04 | Ticket number generator output shape | Matches `TKT-<4 digits>-<6 digits>`, including the exact values both labsheet figures show; refuses a sequence past `999999` or below `1` rather than producing a value its own pattern rejects | `server/tests/lab-02/ticket-number.test.ts` | **Pass** |
+| UNIT-02 | BR-01, BR-04 | Sequence increments, restarts each year, and survives concurrency | Sequential claims advance; a new year restarts at `000001`; eight simultaneous claims yield eight distinct numbers | `server/tests/lab-02/ticket-number.test.ts` | **Pass** |
+| UNIT-03 | AC-10, BR-11, BR-13, BR-14 | Trim-then-validate helper | Whitespace-only fails; both boundaries pass and one character outside each fails; padding never counts toward the limit; a `requesterId` in the body is not read | `server/tests/lab-02/validation.test.ts` | **Pass** |
 | UNIT-04 | AC-15 | Query parser accepts every documented parameter | Returns the normalised query object | `server/tests/lab-02/ticket-query.test.ts` | Planned |
 | UNIT-05 | AC-16, BR-34 | Query parser rejects the undocumented | Unknown key, bad enum, `pageSize=15`, `page=0` each throw naming the parameter | `server/tests/lab-02/ticket-query.test.ts` | Planned |
 | UNIT-06 | BR-24 | Filename sanitiser | Path separators, traversal segments and control characters removed; extension preserved | `server/tests/lab-02/filename.test.ts` | Planned |
@@ -57,10 +57,10 @@ in the development database and is never touched by a test run.
 | API-02 | AC-01, BR-07 | `GET /api/requesters` | Only active requesters; the inactive one is absent; no role or active flag exposed | `server/tests/lab-02/requesters.api.test.ts` | **Pass** |
 | API-21 | AC-08 | `GET /api/related-systems` and `/api/categories` | Active rows only, in display order rather than alphabetically | `server/tests/lab-02/requesters.api.test.ts` | **Pass** |
 | API-03 | AC-04, BR-03, BR-07, BR-20 | Context header validation | Missing, blank, malformed, non-positive, unsafe-integer, unknown, inactive and non-requester each return `400` with their own code; no response leaks a path or a database message | `server/tests/lab-02/requester-context.api.test.ts` | **Pass** |
-| API-04 | AC-09 | `POST /api/tickets` happy path | `201`; one row; status `NEW`; owner is the context; number returned | `server/tests/lab-02/create-ticket.api.test.ts` | Planned |
-| API-05 | AC-10, BR-18 | Field validation | Each rule returns `400 VALIDATION_FAILED` with `details` naming the field; no row created | `server/tests/lab-02/create-ticket.api.test.ts` | Planned |
-| API-06 | AC-11, BR-11 | Body cannot override ownership | Ticket is owned by the header's requester, not the body's | `server/tests/lab-02/create-ticket.api.test.ts` | Planned |
-| API-07 | AC-09, BR-01 | Concurrent creation | Parallel creates yield distinct numbers; no duplicate survives | `server/tests/lab-02/create-ticket.api.test.ts` | Planned |
+| API-04 | AC-09, BR-02, BR-06 | `POST /api/tickets` happy path | `201`; one row; status `NEW`; owner is the context; server-issued number; IT priority, owner and resolution summary left unset | `server/tests/lab-02/create-ticket.api.test.ts` | **Pass** |
+| API-05 | AC-10, BR-18 | Field validation | All fourteen rejection cases — both text fields missing, whitespace-only, below minimum and above maximum, both reference ids missing and non-positive, and priority missing or outside the enum — each return `400 VALIDATION_FAILED` naming the field and store nothing; both boundaries are accepted; missing and retired reference rows are rejected; no ticket number is burned | `server/tests/lab-02/create-ticket.api.test.ts` | **Pass** |
+| API-06 | AC-11, BR-11 | Body cannot override ownership | Ticket is owned by the header's requester, not the body's; a missing context creates nothing | `server/tests/lab-02/create-ticket.api.test.ts` | **Pass** |
+| API-07 | AC-09, BR-01 | Concurrent creation | Eight parallel creates all return `201` with eight distinct numbers | `server/tests/lab-02/create-ticket.api.test.ts` | **Pass** |
 | API-08 | AC-14, FR-10 | List ownership | Requester B's list contains none of Requester A's tickets | `server/tests/lab-02/my-tickets.api.test.ts` | Planned |
 | API-09 | AC-15 | Search, filters, sorting | Each documented parameter narrows or orders as specified | `server/tests/lab-02/my-tickets.api.test.ts` | Planned |
 | API-10 | AC-15, BR-32 | Pagination stability | With identical `createdAt` values, paging the whole set returns every row exactly once | `server/tests/lab-02/my-tickets.api.test.ts` | Planned |
@@ -85,10 +85,10 @@ in the development database and is never touched by a test run.
 | UI-04 | AC-05, BR-07 | Context persistence | A stored id resolves back to its requester; one that is no longer active is discarded rather than trusted | `client/tests/lab-02/RequesterContext.test.tsx` | **Pass** |
 | UI-05 | AC-06, BR-08 | Switching clears data | Selecting a different requester persists the change, bumps the generation scoped screens key off, and is not overwritten when the startup resolution lands late | `client/tests/lab-02/RequesterContext.test.tsx` | **Pass** |
 | UI-06 | AC-07, BR-09 | Switching mid-draft | Draft discarded and navigation lands on My Tickets | `client/tests/lab-02/CreateTicket.test.tsx` | Planned |
-| UI-07 | AC-08 | Reference data source | Options render from the mocked API; none are hard-coded | `client/tests/lab-02/CreateTicket.test.tsx` | Planned |
-| UI-08 | AC-10 | Field-level messages | Each message renders adjacent to its control, not in a top summary | `client/tests/lab-02/CreateTicket.test.tsx` | Planned |
-| UI-09 | AC-12, BR-17 | Busy submit | Button disabled and `aria-busy` while the request is in flight | `client/tests/lab-02/CreateTicket.test.tsx` | Planned |
-| UI-10 | AC-13, BR-19 | Failure preserves input | After a rejected request every entered value is still in the form | `client/tests/lab-02/CreateTicket.test.tsx` | Planned |
+| UI-07 | AC-08 | Reference data source | Options render from the mocked API; the fields stay disabled until they load; a load failure and an empty list each have their own state, and submit is disabled in both | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
+| UI-08 | AC-10, AC-25 | Field-level messages | Each message renders inside its own field group; whitespace-only counts as empty; focus moves to the first invalid control; the API is never called for an invalid form | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
+| UI-09 | AC-12, BR-17 | Busy submit | Button disabled and renamed while the request is in flight, leaving no enabled control to click again | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
+| UI-10 | AC-13, BR-19 | Failure preserves input | Every entered value survives a failed submission; the message is readable rather than the exception; the control re-enables; server-reported field messages reach their field | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
 | UI-11 | AC-17, BR-35 | Empty vs no-results | Different text and different actions | `client/tests/lab-02/MyTickets.test.tsx` | Planned |
 | UI-12 | AC-18, FR-16 | Detail is read-only | No input, no status control, no comment box | `client/tests/lab-02/RequesterTicketDetail.test.tsx` | Planned |
 | UI-13 | AC-21, BR-27 | Attachment add and remove | Confirmation requires a reason; confirm stays disabled below 3 characters | `client/tests/lab-02/AttachmentSection.test.tsx` | Planned |
@@ -195,8 +195,8 @@ Filled in as each Issue merges; completed before the release Pull Request.
 
 | Suite | Files | Tests | Passing | Recorded on |
 | --- | --- | --- | --- | --- |
-| Server (unit + API) | 6 | 47 | 47 | 2026-08-28 (Issue #16, after review) |
-| Client (component + style) | 9 | 81 | 81 | 2026-08-28 (Issue #16, after review) |
+| Server (unit + API) | 9 | 123 | 123 | 2026-08-30 (Issue #17, after review) |
+| Client (component + style) | 10 | 107 | 107 | 2026-08-30 (Issue #17, after review) |
 | End-to-end | — | — | — | — |
 
 ---
