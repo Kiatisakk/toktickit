@@ -22,6 +22,14 @@
   --tkt-border: #dde3e0;
   --tkt-readonly: #eef1ef;
 
+  /* Hover fill for rows and list items.
+
+     The palette had no such token, so the pale green was borrowed for it — and
+     the pale green means "selected". A row that looks selected whenever the
+     pointer crosses it has spent the word on nothing. Neutral, one step off the
+     surface, and distinct from both selection and the page behind. */
+  --tkt-hover: #f2f5f3;
+
   /* Text — charcoal-green, never pure black */
   --tkt-text: #1f2a24;
   --tkt-text-muted: #5b6b62;
@@ -54,6 +62,7 @@
   --tkt-radius: 0.5rem;
   --tkt-radius-sm: 0.375rem;
   --tkt-control-height: 2.5rem;
+  --tkt-touch-target: 2.75rem;
   --tkt-shadow: 0 1px 2px rgb(31 42 36 / 6%), 0 1px 3px rgb(31 42 36 / 4%);
 
   /* Layout */

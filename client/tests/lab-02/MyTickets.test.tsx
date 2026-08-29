@@ -235,7 +235,21 @@ describe("filtering", () => {
 });
 
 describe("the loading state", () => {
-  it("says the list is loading before the response arrives", () => {
+  // ui-spec.md §7 asks for skeleton rows here, not a centred block. Raised in
+  // review of PR #27: a block of a different height makes the page jump on
+  // every refetch, and a filter change is a refetch.
+  it("shows skeleton rows before the response arrives", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => undefined))
+    );
+
+    const { container } = renderScreen();
+
+    expect(container.querySelector(".tkt-skeleton")).not.toBeNull();
+  });
+
+  it("still announces the load to a screen reader", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(() => new Promise<Response>(() => undefined))
@@ -243,13 +257,26 @@ describe("the loading state", () => {
 
     renderScreen();
 
-    expect(screen.getByText("Loading…")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Loading your tickets."
+    );
+  });
+
+  it("keeps the filter bar usable while loading", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => undefined))
+    );
+
+    renderScreen();
+
+    expect(screen.getByLabelText("Search")).toBeEnabled();
   });
 
   it("shows it again on a refetch rather than leaving stale rows", async () => {
     vi.stubGlobal("fetch", listFetch([ticket(1)]));
 
-    renderScreen();
+    const { container } = renderScreen();
     await screen.findAllByText("TKT-2026-000001");
 
     // A filter change refetches. Leaving the previous rows on screen would show
@@ -260,7 +287,97 @@ describe("the loading state", () => {
     );
     await userEvent.selectOptions(screen.getByLabelText("Category"), "4");
 
-    expect(await screen.findByText("Loading…")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(container.querySelector(".tkt-skeleton")).not.toBeNull();
+    });
+  });
+});
+
+/**
+ * Findings from the peer review of PR #27.
+ */
+describe("when the categories cannot be loaded", () => {
+  const categoriesFail = vi.fn((url: string) => {
+    if (url.includes("/api/categories")) {
+      return Promise.reject(new TypeError("Failed to fetch"));
+    }
+
+    return Promise.resolve(
+      jsonResponse({
+        data: [ticket(1)],
+        meta: { page: 1, pageSize: 10, totalItems: 1, totalPages: 1 },
+      })
+    );
+  });
+
+  // An empty dropdown that silently filters nothing is indistinguishable from a
+  // category list with no categories in it.
+  it("says the filter is unavailable rather than showing an empty one", async () => {
+    vi.stubGlobal("fetch", categoriesFail);
+
+    renderScreen();
+
+    expect(
+      await screen.findByText(
+        "Categories could not be loaded, so this filter is unavailable."
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("disables the control instead of offering a choice it cannot honour", async () => {
+    vi.stubGlobal("fetch", categoriesFail);
+
+    renderScreen();
+
+    await screen.findByText(
+      "Categories could not be loaded, so this filter is unavailable."
+    );
+    expect(screen.getByLabelText("Category")).toBeDisabled();
+  });
+
+  it("still shows the ticket list, which does not depend on it", async () => {
+    vi.stubGlobal("fetch", categoriesFail);
+
+    renderScreen();
+
+    expect(await screen.findAllByText("TKT-2026-000001")).not.toHaveLength(0);
+  });
+});
+
+describe("retrying after a failure", () => {
+  // The retry used to build an AbortController nothing ever aborted, so a
+  // filter change during a slow retry left two requests racing and the loser
+  // could answer last.
+  it("goes through the same effect, so the request is abortable", async () => {
+    let calls = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => {
+        if (url.includes("/api/categories")) {
+          return Promise.resolve(jsonResponse(CATEGORIES));
+        }
+
+        calls += 1;
+
+        if (calls === 1) {
+          return Promise.reject(new TypeError("Failed to fetch"));
+        }
+
+        return Promise.resolve(
+          jsonResponse({
+            data: [ticket(7)],
+            meta: { page: 1, pageSize: 10, totalItems: 1, totalPages: 1 },
+          })
+        );
+      })
+    );
+
+    renderScreen();
+
+    await screen.findByText("Could not load your tickets");
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(await screen.findAllByText("TKT-2026-000007")).not.toHaveLength(0);
   });
 });
 

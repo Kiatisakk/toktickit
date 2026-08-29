@@ -23,6 +23,7 @@ Defined once as CSS custom properties on `:root`. No component hard-codes a colo
 | `--tkt-text` | `#1F2A24` | Body text — charcoal-green, never pure black |
 | `--tkt-text-muted` | `#5B6B62` | Helper text, placeholders, metadata |
 | `--tkt-readonly` | `#EEF1EF` | Read-only and system-generated field backgrounds |
+| `--tkt-hover` | `#F2F5F3` | Hover fill for rows and list items |
 | `--tkt-error` | `#A4262C` | Validation text and invalid borders |
 | `--tkt-warning` | `#B4690E` | Warning callouts and badges — never decoration |
 | `--tkt-success` | `#0B7A46` | Success confirmation, paired with an icon and text |
@@ -30,6 +31,12 @@ Defined once as CSS custom properties on `:root`. No component hard-codes a colo
 Bootstrap's own variables are remapped onto these (`--bs-primary`, `--bs-body-bg`,
 `--bs-body-color`, `--bs-border-color`) so framework components inherit the palette
 without being restyled individually.
+
+`--tkt-hover` was added in review of PR #27. The palette had no hover fill, so the pale
+green was borrowed for one — and the pale green means *selected*. A row that looks selected
+whenever the pointer crosses it has spent that meaning on nothing. Controls that are
+themselves interactive, such as the page buttons, take `--tkt-green-accent` on hover as the
+table above says; the neutral fill is for rows and list items, which are not.
 
 **Contrast.** Body text on surface and on page background both exceed 7:1. Every state
 signalled by colour also carries an icon or a word, so nothing depends on colour alone.
@@ -285,6 +292,17 @@ viewport, and an ellipsis in the middle of a filename is unreadable.
 | ≥ 992 px | Multi-column layout, content centred with a sensible maximum width |
 | 768–991 px | Two columns where practical; Summary and Description keep full width |
 | < 768 px | Everything stacks; touch targets at least 44 px; table becomes cards |
+
+The 44 px rule is enforced by raising `--tkt-control-height` to `--tkt-touch-target`
+(2.75 rem) inside the mobile breakpoint, so every control sized from the token grows at
+once. Each rule remembering separately is how the page buttons came to be 36 px while this
+table said 44.
+
+Between 768 px and 991 px the table is still the presentation, and nine columns of real
+data are wider than the viewport. The table scrolls inside `.tkt-table-scroll` rather than
+widening the page: §8.7 forbids the *page* scrolling sideways, not a table. That container
+is focusable and labelled, because a scrollable box that cannot be focused hides its far
+columns from anyone not using a pointer.
 | All sizes | No horizontal page scrolling, no clipped labels, no overlapping messages, no hidden buttons, no unreadable attachment names |
 
 Wide content that genuinely cannot shrink scrolls inside its own container. The page body

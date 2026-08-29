@@ -1,20 +1,10 @@
 import { Link } from "react-router";
 
+import type { TicketListRow } from "../lib/api";
 import { Badge } from "./Badge";
 
-export interface TicketRow {
-  id: number;
-  ticketNumber: string;
-  summary: string;
-  requestedPriority: string;
-  itPriority: string | null;
-  currentStatus: string;
-  createdAt: string;
-  updatedAt: string;
-  category: { id: number; name: string };
-  relatedSystem: { id: number; name: string };
-  ticketOwner: { id: number; name: string } | null;
-}
+/** The shape is defined and validated in `lib/api`; this is the local name. */
+export type TicketRow = TicketListRow;
 
 export type SortField =
   | "ticketNumber"
@@ -79,79 +69,97 @@ export const TicketTable = ({
 
   return (
     <>
-      <table className="tkt-table">
-        <caption className="tkt-visually-hidden">
-          Your tickets, sortable by column
-        </caption>
-        <thead>
-          <tr>
-            {COLUMNS.map((column) => (
-              <th
-                aria-sort={ariaSort(column.field)}
-                key={column.label}
-                scope="col"
-              >
-                {column.field ? (
-                  <button
-                    className="tkt-sort"
-                    onClick={() => onSort(column.field as SortField)}
-                    type="button"
-                  >
-                    {column.label}
-                    <span aria-hidden="true">
-                      {column.field === sort
-                        ? order === "asc"
-                          ? " ▲"
-                          : " ▼"
-                        : " ↕"}
-                    </span>
-                  </button>
-                ) : (
-                  column.label
-                )}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {tickets.map((ticket) => (
-            <tr key={ticket.id}>
-              <td>
-                <Link to={`/tickets/${ticket.id}`}>{ticket.ticketNumber}</Link>
-              </td>
-              <td>{formatDate(ticket.createdAt)}</td>
-              <td>{ticket.summary}</td>
-              <td>{ticket.category.name}</td>
-              <td>
-                <Badge kind="priority" value={ticket.requestedPriority} />
-              </td>
-              <td>
-                <Badge
-                  emptyLabel="IT priority not set"
-                  kind="priority"
-                  value={ticket.itPriority}
-                />
-              </td>
-              <td>
-                <Badge kind="status" value={ticket.currentStatus} />
-              </td>
-              <td>
-                {ticket.ticketOwner ? (
-                  ticket.ticketOwner.name
-                ) : (
-                  <span className="tkt-unset">
-                    <span aria-hidden="true">—</span>
-                    <span className="tkt-visually-hidden">
-                      Not yet assigned to an IT owner
-                    </span>
-                  </span>
-                )}
-              </td>
-              <td>{formatDate(ticket.updatedAt)}</td>
+      {/*
+        Between 768px and 991px the table is still the presentation, and nine
+        columns of real data are wider than the viewport. The scroll belongs to
+        this container: §8.7 forbids the *page* scrolling sideways, not a table.
+        `tabIndex` and the region role are what make a scrollable box reachable
+        from the keyboard — without them the columns past the edge can be seen
+        with a mouse and not at all otherwise.
+      */}
+      <div
+        aria-label="Your tickets"
+        className="tkt-table-scroll"
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region
+        // must be focusable to be scrollable by keyboard.
+        tabIndex={0}
+      >
+        <table className="tkt-table">
+          <caption className="tkt-visually-hidden">
+            Your tickets, sortable by column
+          </caption>
+          <thead>
+            <tr>
+              {COLUMNS.map((column) => (
+                <th
+                  aria-sort={ariaSort(column.field)}
+                  key={column.label}
+                  scope="col"
+                >
+                  {column.field ? (
+                    <button
+                      className="tkt-sort"
+                      onClick={() => onSort(column.field as SortField)}
+                      type="button"
+                    >
+                      {column.label}
+                      <span aria-hidden="true">
+                        {column.field === sort
+                          ? order === "asc"
+                            ? " ▲"
+                            : " ▼"
+                          : " ↕"}
+                      </span>
+                    </button>
+                  ) : (
+                    column.label
+                  )}
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {tickets.map((ticket) => (
+              <tr key={ticket.id}>
+                <td>
+                  <Link to={`/tickets/${ticket.id}`}>
+                    {ticket.ticketNumber}
+                  </Link>
+                </td>
+                <td>{formatDate(ticket.createdAt)}</td>
+                <td>{ticket.summary}</td>
+                <td>{ticket.category.name}</td>
+                <td>
+                  <Badge kind="priority" value={ticket.requestedPriority} />
+                </td>
+                <td>
+                  <Badge
+                    emptyLabel="IT priority not set"
+                    kind="priority"
+                    value={ticket.itPriority}
+                  />
+                </td>
+                <td>
+                  <Badge kind="status" value={ticket.currentStatus} />
+                </td>
+                <td>
+                  {ticket.ticketOwner ? (
+                    ticket.ticketOwner.name
+                  ) : (
+                    <span className="tkt-unset">
+                      <span aria-hidden="true">—</span>
+                      <span className="tkt-visually-hidden">
+                        Not yet assigned to an IT owner
+                      </span>
+                    </span>
+                  )}
+                </td>
+                <td>{formatDate(ticket.updatedAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <ul className="tkt-cards">
         {tickets.map((ticket) => (

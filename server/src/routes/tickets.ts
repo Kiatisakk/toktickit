@@ -222,19 +222,28 @@ ticketsRouter.get("/tickets", requireRequesterContext, async (req, res) => {
           }),
     };
 
-    const [totalItems, data] = await Promise.all([
-      prisma.ticket.count({ where }),
-      prisma.ticket.findMany({
-        where,
-        // The immutable id is always the last key. Without it two tickets
-        // sharing a createdAt have no defined order between them, so the same
-        // row can appear on two pages or on none (BR-32).
-        orderBy: [{ [query.sort]: query.order }, { id: "desc" }],
-        skip: (query.page - 1) * query.pageSize,
-        take: query.pageSize,
-        select: LIST_SHAPE,
-      }),
-    ]);
+    // One snapshot for both reads. Run separately they see different states,
+    // so a ticket created between them makes totalItems disagree with the rows
+    // actually returned — the metadata would claim a page that is not there.
+    // Repeatable read rather than the default: under read committed each
+    // statement takes its own snapshot even inside one transaction, which is
+    // the very thing being avoided.
+    const [totalItems, data] = await prisma.$transaction(
+      [
+        prisma.ticket.count({ where }),
+        prisma.ticket.findMany({
+          where,
+          // The immutable id is always the last key. Without it two tickets
+          // sharing a createdAt have no defined order between them, so the
+          // same row can appear on two pages or on none (BR-32).
+          orderBy: [{ [query.sort]: query.order }, { id: "desc" }],
+          skip: (query.page - 1) * query.pageSize,
+          take: query.pageSize,
+          select: LIST_SHAPE,
+        }),
+      ],
+      { isolationLevel: "RepeatableRead" }
+    );
 
     res.status(200).json({
       data,

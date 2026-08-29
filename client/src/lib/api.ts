@@ -272,8 +272,29 @@ export interface TicketListMeta {
   totalPages: number;
 }
 
-export interface TicketListResponse<T> {
-  data: T[];
+/**
+ * One row of the ticket list, as the API sends it.
+ *
+ * Defined here rather than beside the table component, because this is where it
+ * is checked. A type that lives next to its renderer and is validated somewhere
+ * else is two descriptions of the same shape, and they drift.
+ */
+export interface TicketListRow {
+  id: number;
+  ticketNumber: string;
+  summary: string;
+  requestedPriority: string;
+  itPriority: string | null;
+  currentStatus: string;
+  createdAt: string;
+  updatedAt: string;
+  category: ReferenceItem;
+  relatedSystem: ReferenceItem;
+  ticketOwner: ReferenceItem | null;
+}
+
+export interface TicketListResponse {
+  data: TicketListRow[];
   meta: TicketListMeta;
 }
 
@@ -284,17 +305,26 @@ const isMeta = (value: unknown): value is TicketListMeta =>
   typeof value["totalItems"] === "number" &&
   typeof value["totalPages"] === "number";
 
-const isTicketRow = (value: unknown): boolean =>
+/** Null is a value here, not a missing field: Lab 2 never triages a ticket. */
+const isNullableReference = (value: unknown): boolean =>
+  value === null || isReferenceItem(value);
+
+const isTicketRow = (value: unknown): value is TicketListRow =>
   isRecord(value) &&
   typeof value["id"] === "number" &&
   typeof value["ticketNumber"] === "string" &&
   typeof value["summary"] === "string" &&
   typeof value["requestedPriority"] === "string" &&
+  // Checked because they are rendered. `itPriority` and `ticketOwner` were
+  // omitted from this guard while every row was cast to a caller-chosen `T`,
+  // so a malformed payload reached the badge wearing a type it did not have.
+  (value["itPriority"] === null || typeof value["itPriority"] === "string") &&
   typeof value["currentStatus"] === "string" &&
   typeof value["createdAt"] === "string" &&
   typeof value["updatedAt"] === "string" &&
   isReferenceItem(value["category"]) &&
-  isReferenceItem(value["relatedSystem"]);
+  isReferenceItem(value["relatedSystem"]) &&
+  isNullableReference(value["ticketOwner"]);
 
 /**
  * Fetches one page of the current requester's tickets.
@@ -303,11 +333,11 @@ const isTicketRow = (value: unknown): boolean =>
  * rejects anything it does not recognise (BR-34), and silently dropping a
  * parameter on the way out would hide that from whoever built the URL.
  */
-export const fetchTickets = async <T>(
+export const fetchTickets = async (
   query: URLSearchParams,
   requesterId: number,
   signal?: AbortSignal
-): Promise<TicketListResponse<T>> => {
+): Promise<TicketListResponse> => {
   const suffix = query.toString();
   const body = await apiGet(`/api/tickets${suffix ? `?${suffix}` : ""}`, {
     requesterId,
@@ -327,5 +357,7 @@ export const fetchTickets = async <T>(
     );
   }
 
-  return { data: body["data"] as T[], meta: body["meta"] };
+  // No cast. Every element has been through `isTicketRow`, so the type is
+  // earned rather than asserted.
+  return { data: body["data"], meta: body["meta"] };
 };

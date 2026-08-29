@@ -119,6 +119,38 @@ describe("the desktop table", () => {
   });
 });
 
+// Raised in review of PR #27: between 768px and 991px the table is still the
+// presentation, and nine columns of real data are wider than the viewport.
+describe("the tablet band", () => {
+  it("keeps the overflow inside a container of its own", () => {
+    const { container } = renderTable();
+    const scroller = container.querySelector(".tkt-table-scroll");
+
+    expect(scroller).not.toBeNull();
+    expect(scroller?.querySelector(".tkt-table")).not.toBeNull();
+  });
+
+  // A scrollable box that cannot be focused hides its far columns from anyone
+  // not using a pointer.
+  it("can be reached and scrolled from the keyboard", () => {
+    const { container } = renderTable();
+
+    expect(container.querySelector(".tkt-table-scroll")).toHaveAttribute(
+      "tabindex",
+      "0"
+    );
+  });
+
+  it("names the region, since a bare scrollable box announces nothing", () => {
+    const { container } = renderTable();
+
+    expect(container.querySelector(".tkt-table-scroll")).toHaveAttribute(
+      "aria-label",
+      "Your tickets"
+    );
+  });
+});
+
 describe("the mobile cards", () => {
   const card = (container: HTMLElement) =>
     container.querySelector(".tkt-ticket-card") as HTMLElement;

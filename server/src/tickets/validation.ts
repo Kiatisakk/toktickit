@@ -1,3 +1,5 @@
+import { PRIORITIES } from "./domain.js";
+
 /**
  * Validation for ticket creation.
  *
@@ -14,7 +16,7 @@ export const LIMITS = {
   description: { min: 10, max: 5000 },
 } as const;
 
-export const PRIORITIES = ["LOW", "MEDIUM", "HIGH"] as const;
+export { PRIORITIES } from "./domain.js";
 
 export type RequestedPriority = (typeof PRIORITIES)[number];
 

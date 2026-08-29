@@ -1,3 +1,5 @@
+import { PRIORITIES, STATUSES } from "./domain.js";
+
 /**
  * Parses the `GET /api/tickets` query string.
  *
@@ -10,16 +12,7 @@
  * list they did not ask for and gives them no reason to doubt it.
  */
 
-export const PRIORITIES = ["LOW", "MEDIUM", "HIGH"] as const;
-
-export const STATUSES = [
-  "NEW",
-  "OPEN",
-  "IN_PROGRESS",
-  "PENDING",
-  "RESOLVED",
-  "CLOSED",
-] as const;
+export { PRIORITIES, STATUSES } from "./domain.js";
 
 /**
  * Columns a caller may order by.
@@ -82,15 +75,45 @@ const DEFAULTS = {
   pageSize: 10,
 } as const;
 
-/** Present means "supplied and not blank". An emptied search box is not a filter. */
-const given = (raw: unknown): string | undefined => {
-  if (typeof raw !== "string") {
+/**
+ * Present means "supplied and not blank". An emptied search box is not a filter.
+ *
+ * `NON_SCALAR` is the third answer, and it is the one that matters. Express
+ * parses `?status=A&status=B` into an array and `?status[x]=1` into an object.
+ * Reading either as "absent" would drop the filter and return the unfiltered
+ * list, which is the exact failure BR-34 exists to prevent — silently showing
+ * rows the caller did not ask for. It is rejected by name instead.
+ */
+const NON_SCALAR = Symbol("non-scalar");
+
+const given = (raw: unknown): string | undefined | typeof NON_SCALAR => {
+  if (raw === undefined) {
     return undefined;
+  }
+
+  if (typeof raw !== "string") {
+    return NON_SCALAR;
   }
 
   const trimmed = raw.trim();
 
   return trimmed === "" ? undefined : trimmed;
+};
+
+/** Records the rejection and returns undefined, so callers read as before. */
+const scalar = (
+  raw: unknown,
+  field: string,
+  details: Record<string, string>
+): string | undefined => {
+  const value = given(raw);
+
+  if (value === NON_SCALAR) {
+    details[field] = `${field} must be given at most once, as a single value.`;
+    return undefined;
+  }
+
+  return value;
 };
 
 const readEnum = <T extends string>(
@@ -99,7 +122,7 @@ const readEnum = <T extends string>(
   field: string,
   details: Record<string, string>
 ): T | undefined => {
-  const value = given(raw);
+  const value = scalar(raw, field, details);
 
   if (value === undefined) {
     // A blank enum parameter is treated as absent rather than rejected: it is
@@ -120,7 +143,7 @@ const readPositiveInt = (
   field: string,
   details: Record<string, string>
 ): number | undefined => {
-  const value = given(raw);
+  const value = scalar(raw, field, details);
 
   if (value === undefined) {
     return undefined;
@@ -156,7 +179,7 @@ export const parseTicketQuery = (
 
   const value: TicketQuery = { ...DEFAULTS };
 
-  const search = given(params["search"]);
+  const search = scalar(params["search"], "search", details);
 
   if (search !== undefined) {
     value.search = search;
@@ -218,14 +241,16 @@ export const parseTicketQuery = (
     value.page = page;
   }
 
-  const pageSizeRaw = given(params["pageSize"]);
+  const pageSizeRaw = scalar(params["pageSize"], "pageSize", details);
 
   if (pageSizeRaw !== undefined) {
-    const parsed = Number(pageSizeRaw);
-    const permitted = PAGE_SIZES.some((size) => size === parsed);
+    // Compared as text, not through Number(). `Number` reads "10.0", "1e1",
+    // "+10" and "0x0A" all as ten, so a numeric comparison would accept four
+    // spellings of a value the contract permits in exactly one.
+    const permitted = PAGE_SIZES.some((size) => String(size) === pageSizeRaw);
 
     if (permitted) {
-      value.pageSize = parsed;
+      value.pageSize = Number(pageSizeRaw);
     } else {
       details["pageSize"] = `pageSize must be one of ${PAGE_SIZES.join(", ")}.`;
     }

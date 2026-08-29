@@ -203,6 +203,43 @@ describe("filters", () => {
     expect(mine.length).toBeLessThan(OWNER_A_COUNT);
   });
 
+  /**
+   * Raised in review of PR #27: every other filter was covered and this one was
+   * not. It is the filter nothing on the screen can currently exercise — §4.2
+   * excludes the staff workflow, so Lab 2 never sets an IT priority — which is
+   * exactly why it needs a fixture written by hand. An untested filter over a
+   * column that is null on every row is one that could match nothing forever
+   * and look correct.
+   */
+  it("narrows by IT priority", async () => {
+    const triaged = await prisma.ticket.findFirst({
+      where: { requesterId: ownerA, summary: { startsWith: PREFIX } },
+      orderBy: { id: "asc" },
+    });
+
+    await prisma.ticket.update({
+      where: { id: triaged?.id ?? 0 },
+      data: { itPriority: "HIGH" },
+    });
+
+    const response = await listing("?itPriority=HIGH&pageSize=50");
+    const mine = response.body.data.filter((t: { summary: string }) =>
+      t.summary.startsWith(PREFIX)
+    );
+
+    expect(mine).toHaveLength(1);
+    expect(mine[0].id).toBe(triaged?.id);
+  });
+
+  it("excludes the untriaged rows from an IT priority filter", async () => {
+    const response = await listing("?itPriority=LOW&pageSize=50");
+    const mine = response.body.data.filter((t: { summary: string }) =>
+      t.summary.startsWith(PREFIX)
+    );
+
+    expect(mine).toHaveLength(0);
+  });
+
   it("narrows by requested priority", async () => {
     const response = await listing("?requestedPriority=HIGH&pageSize=50");
     const mine = response.body.data.filter((t: { summary: string }) =>

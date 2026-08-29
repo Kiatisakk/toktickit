@@ -276,3 +276,59 @@ Entries are added by the Pull Request they describe:
 - [ ] Issue #21 — Report and submission
 - [ ] Release Pull Request into `main`
 - [ ] Further reviews given on the partner's repository
+
+---
+
+## PR #27 — My Tickets (Issue #18)
+
+**Reviewer:** Supawit Marayat (@beambeambeam). **Verdict:** Comment, sixteen line findings,
+no approval. The largest review this project has had, and every finding was real — nothing
+was withdrawn after checking.
+
+Four of the sixteen are this repository's own specification going unimplemented, which is
+the same pattern as PR #26 and the reason to read it as a category rather than four
+incidents:
+
+| Finding | Where the rule already was |
+| --- | --- |
+| Loading rendered a centred block, not skeleton rows | `ui-spec.md` §7 |
+| Mobile controls stayed at 40 px | `ui-spec.md` §7, "touch targets at least 44 px" |
+| Page buttons had no minimum height at all | same rule |
+| The IT priority filter had no test | §6.1 defines it; every other filter was covered |
+
+Three were races or contract holes that no test could have caught because no test existed
+at that seam:
+
+- The list row guard checked nine fields of eleven and then cast the result, so a malformed
+  `itPriority` or `ticketOwner` reached the badge wearing a type it did not have. Now
+  validated in full, with the cast removed, and `client/tests/lab-02/api-contract.test.ts`
+  written so that adding a field without adding it to the guard fails.
+- **Try again** built an `AbortController` nothing ever aborted. A filter change during a
+  slow retry left two requests in flight and the loser could answer last. Retry now goes
+  through the effect that owns the cleanup.
+- `count` and `findMany` ran as separate statements, so under a concurrent write the
+  metadata could describe a page the rows did not match. Both now run in one transaction at
+  repeatable read — the default isolation would not have fixed it, since read committed
+  takes a fresh snapshot per statement even inside a transaction.
+
+Two were mine arguing from a rule and getting the rule wrong:
+
+- `--tkt-green-pale` was used for row hover. §1 of `ui-spec.md` reserves it for *selected*,
+  and a row that looks selected whenever the pointer crosses it has spent the word on
+  nothing. The real problem was that the palette had no hover fill at all, so `--tkt-hover`
+  was added rather than borrowing another token's meaning.
+- The demonstration seed stamped `TKT-2099-…` on tickets created this year, to keep them
+  clear of anything made by hand. That made the number lie about its own year, breaking
+  D-02 — the rule the seed exists to demonstrate. It now uses the real year and continues
+  the real counter, and recognises its own rows by a marker in the description instead.
+
+The remaining findings: repeated and nested query parameters were read as absent rather
+than rejected, which is exactly the silence BR-34 exists to prevent; `pageSize` was compared
+with `Number`, so `1e1` and `0x0A` both passed as ten; the nine-column table had no overflow
+container in the 768–991 px band, where it is still the presentation; the priority list was
+duplicated between creation and listing; a failed category load emptied the dropdown with no
+explanation; and the demonstration seed deleted before inserting outside a transaction, so a
+failure between the two left the screens empty.
+
+**All sixteen fixed on the same branch**, with 34 new tests — 414 in total, from 380. No
+finding was disputed.

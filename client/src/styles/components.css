@@ -534,6 +534,20 @@
 
 /* ---------------------------------------------------------- table -- */
 
+/* Between 768px and 991px the table is still the presentation and nine columns
+   of real data are wider than the viewport. §8.7 forbids the *page* scrolling
+   sideways; a table scrolling inside its own box is the standard way to obey
+   that. Focusable, or the columns past the edge are reachable with a pointer
+   and by no other means. */
+.tkt-table-scroll {
+  overflow-x: auto;
+}
+
+.tkt-table-scroll:focus-visible {
+  outline: 2px solid var(--tkt-green-accent);
+  outline-offset: 2px;
+}
+
 /* The table is a surface, like every other block on the page. Left bare it
    inherits --tkt-page and reads as loose text floating on the background rather
    than as one object with a boundary.
@@ -585,7 +599,7 @@
 }
 
 .tkt-table tbody tr:hover {
-  background-color: var(--tkt-green-pale);
+  background-color: var(--tkt-hover);
 }
 
 .tkt-sort {
@@ -595,6 +609,47 @@
   cursor: pointer;
   font: inherit;
   padding: 0;
+}
+
+/* The loading state keeps the shape the list is about to have, so nothing
+   below it jumps when the rows arrive. */
+.tkt-skeleton {
+  background-color: var(--tkt-surface);
+  border: 1px solid var(--tkt-border);
+  border-radius: var(--tkt-radius);
+  box-shadow: var(--tkt-shadow);
+  padding: var(--tkt-space-3);
+}
+
+.tkt-skeleton__row {
+  display: grid;
+  gap: var(--tkt-space-3);
+  grid-template-columns: repeat(9, 1fr);
+  padding: var(--tkt-space-3) 0;
+}
+
+.tkt-skeleton__cell {
+  background-color: var(--tkt-readonly);
+  border-radius: var(--tkt-radius-sm);
+  height: 0.75rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tkt-skeleton__cell {
+    animation: tkt-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes tkt-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (width <= 767px) {
+  .tkt-skeleton__row {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 /* Cards are the mobile presentation of the same rows, not a reduced one. */
@@ -699,12 +754,15 @@
   color: var(--tkt-text);
   cursor: pointer;
   font-size: var(--tkt-font-label);
-  min-width: 2.25rem;
+  min-height: var(--tkt-control-height);
+  min-width: var(--tkt-control-height);
   padding: var(--tkt-space-2);
 }
 
 .tkt-page-btn:hover {
-  background-color: var(--tkt-green-pale);
+  background-color: var(--tkt-green-accent);
+  border-color: var(--tkt-green-accent);
+  color: var(--tkt-text-inverse);
 }
 
 .tkt-page-btn--current {
@@ -735,6 +793,14 @@
 }
 
 @media (width <= 767px) {
+  /* §8.7: touch targets of at least 44px. Raising the token lifts every control
+     that is sized from it at once, rather than each rule remembering
+     separately — which is how the page buttons came to be 36px while the
+     responsive contract said 44. */
+  :root {
+    --tkt-control-height: var(--tkt-touch-target);
+  }
+
   /* Below 768px the table is replaced by cards rather than being scrolled
      sideways, which §8.7 forbids at the page level. */
   .tkt-table {

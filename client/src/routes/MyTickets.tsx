@@ -12,6 +12,7 @@ import {
   type TicketRow,
   TicketTable,
 } from "../components/TicketTable";
+import { TicketTableSkeleton } from "../components/TicketTableSkeleton";
 import { useRequester } from "../context/useRequester";
 import {
   fetchCategories,
@@ -76,17 +77,36 @@ export const MyTickets = () => {
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const [categories, setCategories] = useState<ReferenceItem[]>([]);
+  const [categoriesFailed, setCategoriesFailed] = useState(false);
+  // Bumped by Try again. The refetch belongs to the effect so that its
+  // AbortController is the one the effect cleans up.
+  const [reloadToken, setReloadToken] = useState(0);
   const [listing, setListing] = useState<Listing>({ kind: "loading" });
 
+  // `reloadToken` is in the dependency list so Try again goes through the same
+  // effect as every other fetch. Calling `load` straight from the button made a
+  // controller nothing ever aborted: a filter change during a slow retry left
+  // two requests in flight, and whichever answered last won — which could be
+  // the one for the filters no longer on screen.
   useEffect(() => {
     const controller = new AbortController();
 
     fetchCategories(controller.signal)
-      .then(setCategories)
-      .catch(() => {
-        // The filter is a convenience. Losing it is not worth failing the whole
-        // screen over, and the list below still works without it.
+      .then((items) => {
+        setCategories(items);
+        setCategoriesFailed(false);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
+        // Losing the filter is not worth failing the whole screen over — the
+        // list below still works. But an empty dropdown that silently filters
+        // nothing looks like a category list with no categories in it, so the
+        // screen says which of the two it is.
         setCategories([]);
+        setCategoriesFailed(true);
       });
 
     return () => {
@@ -123,7 +143,7 @@ export const MyTickets = () => {
 
       setListing({ kind: "loading" });
 
-      fetchTickets<TicketRow>(query, requester.id, signal)
+      fetchTickets(query, requester.id, signal)
         .then((response) => {
           setListing({
             kind: "loaded",
@@ -166,7 +186,7 @@ export const MyTickets = () => {
     return () => {
       controller.abort();
     };
-  }, [load, generation]);
+  }, [load, generation, reloadToken]);
 
   const setFilter = (key: keyof Filters) => (value: string) => {
     setFilters((current) => ({ ...current, [key]: value }));
@@ -227,10 +247,21 @@ export const MyTickets = () => {
           value={filters.search}
         />
         <Select
+          disabled={categoriesFailed}
+          hint={
+            categoriesFailed
+              ? "Categories could not be loaded, so this filter is unavailable."
+              : undefined
+          }
           label="Category"
           onChange={(event) => setFilter("categoryId")(event.target.value)}
           options={[
-            { value: "", label: "All Categories" },
+            {
+              value: "",
+              label: categoriesFailed
+                ? "Categories unavailable"
+                : "All Categories",
+            },
             ...categories.map((item) => ({
               value: String(item.id),
               label: item.name,
@@ -260,22 +291,19 @@ export const MyTickets = () => {
         />
       </div>
 
-      {listing.kind === "loading" ? (
-        <StateBlock
-          description="Fetching your tickets."
-          kind="loading"
-          title="Loading…"
-        />
-      ) : null}
+      {/*
+        ui-spec.md §7 says "Skeleton rows, filter bar interactive" for this
+        state, and a centred block said neither: it replaced the table's shape
+        with a different one, so every refetch made the page jump. The filter
+        bar above stays mounted and usable throughout.
+      */}
+      {listing.kind === "loading" ? <TicketTableSkeleton /> : null}
 
       {listing.kind === "failed" ? (
         <StateBlock
           action={
             <Button
-              onClick={() => {
-                const controller = new AbortController();
-                load(controller.signal);
-              }}
+              onClick={() => setReloadToken((token) => token + 1)}
               variant="primary"
             >
               Try again

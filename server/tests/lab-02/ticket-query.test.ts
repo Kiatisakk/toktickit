@@ -189,3 +189,65 @@ describe("parameters the contract does not define", () => {
     expect(detailsOf({ pageSize: "15" })["pageSize"]).toMatch(/10, 20, 50/u);
   });
 });
+
+/**
+ * Findings from the peer review of PR #27.
+ *
+ * Both are the same failure in different clothes: a value the contract does not
+ * permit being read as something it is not, and the caller never being told.
+ */
+describe("values Express does not hand over as a single string", () => {
+  // `?status=NEW&status=OPEN` reaches the handler as an array, and `?status[a]=1`
+  // as an object. Reading either as "absent" would drop the filter and return
+  // the unfiltered list — the exact silence BR-34 exists to prevent.
+  it("rejects a parameter supplied twice", () => {
+    const result = parseTicketQuery({ status: ["NEW", "OPEN"] });
+
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.details["status"]).toMatch(/once/u);
+  });
+
+  it("rejects a parameter supplied as a nested object", () => {
+    const result = parseTicketQuery({ categoryId: { gt: 1 } });
+
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.details["categoryId"]).toBeDefined();
+  });
+
+  it("names every repeated parameter rather than only the first", () => {
+    const result = parseTicketQuery({ status: ["NEW"], search: ["a", "b"] });
+
+    expect(result.ok).toBe(false);
+    expect(
+      result.ok === false && Object.keys(result.details).toSorted()
+    ).toStrictEqual(["search", "status"]);
+  });
+
+  it("still accepts an ordinary single value", () => {
+    const result = parseTicketQuery({ status: "NEW" });
+
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.value.status).toBe("NEW");
+  });
+});
+
+describe("page size is compared as text, not as a number", () => {
+  // Number() reads all four of these as ten. The contract permits ten in one
+  // spelling, and a size it did not authorise is a size no test covers.
+  it.each(["10.0", "1e1", "+10", "0x0A", " 10.00"])(
+    "rejects %s",
+    (spelling) => {
+      const result = parseTicketQuery({ pageSize: spelling });
+
+      expect(result.ok).toBe(false);
+      expect(result.ok === false && result.details["pageSize"]).toBeDefined();
+    }
+  );
+
+  it.each(["10", "20", "50"])("accepts %s", (spelling) => {
+    const result = parseTicketQuery({ pageSize: spelling });
+
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.value.pageSize).toBe(Number(spelling));
+  });
+});
