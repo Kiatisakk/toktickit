@@ -280,7 +280,40 @@ describe("when the form cannot be completed", () => {
     expect(
       await screen.findByText("Nothing to file a ticket against")
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText(/^category/i)).toBeNull();
+  });
+
+  /**
+   * The control stays on the page and is disabled, rather than disappearing.
+   *
+   * Removing it changed the form's shape while the reference data settled — two
+   * reflows on the way in, and Category landing on a different row from the one
+   * Figure 1 puts it on. Disabled says the same thing without moving anything
+   * the reader has already started reading.
+   */
+  it("keeps the classification controls in place, disabled", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse([]))
+    );
+
+    renderScreen();
+
+    await screen.findByText("Nothing to file a ticket against");
+    expect(screen.getByLabelText(/^category/i)).toBeDisabled();
+  });
+
+  // "Loading…" on a list that failed to load is a promise the screen is not
+  // keeping.
+  it("says the control is unavailable rather than still loading", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse([]))
+    );
+
+    renderScreen();
+
+    await screen.findByText("Nothing to file a ticket against");
+    expect(screen.getAllByText("Unavailable").length).toBeGreaterThan(0);
   });
 
   it("disables submit when there is nothing to file against", async () => {
@@ -496,5 +529,59 @@ describe("a failed submission", () => {
     expect(
       await screen.findByText("Summary is already used by another ticket.")
     ).toBeInTheDocument();
+  });
+});
+
+/**
+ * STYLE-11 — the ticket fields Figure 1 shows.
+ *
+ * §8.2 leaves the arrangement to us and offers Figure 1 as the example; §8.8
+ * makes the illustrations binding. Current Status and IT Priority were the two
+ * fields the figure has and this form did not, and both are known before
+ * submission — BR-02 fixes the status at New, and §4.2 says nobody triages in
+ * Lab 2. Leaving them out hid settled answers rather than withholding undecided
+ * ones, which is the same argument as D-04.
+ */
+describe("the field set", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", referenceFetch());
+  });
+
+  it.each(["Ticket No.", "Ticket Date", "Requester", "Current Status"])(
+    "shows %s read-only, so it is not something to fill in",
+    async (label) => {
+      renderScreen();
+
+      expect(await screen.findByLabelText(label)).toHaveAttribute("readonly");
+    }
+  );
+
+  /**
+   * Figure 1 carries these three; a create form cannot. All are set by work
+   * §4.2 excludes from Lab 2, so here they would be permanently empty boxes on
+   * a form whose job is to collect input. They belong to Ticket Detail (§8.5).
+   */
+  it.each(["IT Priority", "Ticket Owner", "Resolution Summary"])(
+    "leaves %s to the detail screen",
+    async (label) => {
+      renderScreen();
+
+      await screen.findByLabelText(/^summary/i);
+      expect(screen.queryByLabelText(label)).toBeNull();
+    }
+  );
+
+  it("says a new ticket begins at New rather than leaving it blank", async () => {
+    renderScreen();
+
+    expect(await screen.findByLabelText("Current Status")).toHaveValue("New");
+  });
+
+  it("lays the ticket fields out four across, as the figure does", () => {
+    const { container } = renderScreen();
+
+    expect(container.querySelectorAll(".tkt-grid--4").length).toBeGreaterThan(
+      0
+    );
   });
 });

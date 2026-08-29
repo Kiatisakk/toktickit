@@ -402,6 +402,11 @@
   grid-template-columns: repeat(3, 1fr);
 }
 
+/* Four across, as Figure 1 lays the ticket fields out. */
+.tkt-grid--4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
 .tkt-callout {
   border-radius: var(--tkt-radius-sm);
   font-size: var(--tkt-font-small);
@@ -417,13 +422,15 @@
 
 @media (width <= 991px) {
   /* Two columns where practical at tablet width. */
-  .tkt-grid--3 {
+  .tkt-grid--3,
+  .tkt-grid--4 {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (width <= 767px) {
-  .tkt-grid--3 {
+  .tkt-grid--3,
+  .tkt-grid--4 {
     grid-template-columns: 1fr;
   }
 }

@@ -198,23 +198,21 @@ tab with a visible focus ring.
 
 ### 5.2 Create Ticket
 
-Read-only context at the top (Ticket Number placeholder, Ticket Date, Requester), then
-classification side by side (Category, Related System, Requested Priority), then Summary
-at full width, then Description at full width and taller, then Attachments, then actions
-at the bottom right with Cancel to the left of Create Ticket.
+Ticket fields four across, as Figure 1 lays them out. §8.2 leaves the arrangement to us and
+offers that figure as the example, and §8.8 makes the illustrations binding.
 
-System-generated and read-only values use `tkt-field--readonly` so they are visibly
-distinct from anything the user can type into.
+Row one is system-generated and read-only: Ticket No. · Ticket Date · Requester · Current
+Status. Row two is classification: Category · Related System · Requested Priority · IT
+Priority, the last read-only. Then Summary and Description at full width, then attachments,
+then the actions — the order §8.2 gives as its example arrangement.
 
-| State | Presentation |
-| --- | --- |
-| Initial | Empty form, reference data loaded, Create Ticket enabled |
-| Loading reference data | Category and Related System show a loading placeholder |
-| Validation failure | Offending fields get `tkt-field--invalid` and a message; focus moves to the first one |
-| Submitting | Create Ticket busy and disabled; fields remain readable |
-| Success | Success panel with the generated Ticket Number and two actions — View Ticket, Create Another |
-| API failure | Error callout above the actions; **every entered value is preserved** |
-| Invalid attachment | The offending file is listed with its reason; valid selections survive |
+Current Status and IT Priority are present because the figure has them and because both are
+already answered: BR-02 fixes a new ticket at New, and §4.2 says nobody triages in Lab 2, so
+the fields read *New* and *Set by IT after triage*. Omitting them would hide settled answers
+rather than withhold undecided ones, which is D-04's reasoning applied to a screen.
+
+Read-only controls take `--tkt-readonly` and muted text, so a value the form supplies is
+never mistaken for one the requester is expected to type.
 
 ### 5.3 My Tickets
 
