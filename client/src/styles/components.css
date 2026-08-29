@@ -465,3 +465,222 @@
     margin-bottom: var(--tkt-space-3);
   }
 }
+
+/* --------------------------------------------------------- badges -- */
+
+.tkt-badge {
+  border-radius: 999px;
+  display: inline-block;
+  font-size: var(--tkt-font-small);
+  font-weight: 600;
+  padding: 2px var(--tkt-space-2);
+  white-space: nowrap;
+}
+
+/* Every badge carries its word. The colour is a second signal, never the only
+   one — ui-spec.md §8. */
+.tkt-badge--low {
+  background-color: var(--tkt-green-pale);
+  color: var(--tkt-green);
+}
+.tkt-badge--medium {
+  background-color: var(--tkt-warning-pale);
+  color: var(--tkt-warning);
+}
+.tkt-badge--high {
+  background-color: var(--tkt-error-pale);
+  color: var(--tkt-error);
+}
+
+.tkt-badge--new {
+  background-color: var(--tkt-green-pale);
+  color: var(--tkt-green);
+}
+.tkt-badge--open,
+.tkt-badge--in-progress,
+.tkt-badge--pending {
+  background-color: var(--tkt-warning-pale);
+  color: var(--tkt-warning);
+}
+.tkt-badge--resolved,
+.tkt-badge--closed {
+  background-color: var(--tkt-readonly);
+  color: var(--tkt-text-muted);
+}
+
+.tkt-badge--active {
+  background-color: var(--tkt-green-pale);
+  color: var(--tkt-green);
+}
+.tkt-badge--removed {
+  background-color: var(--tkt-readonly);
+  color: var(--tkt-text-muted);
+}
+
+.tkt-badge--unset {
+  background: none;
+  color: var(--tkt-text-muted);
+  padding-left: 0;
+}
+
+.tkt-visually-hidden {
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+/* ---------------------------------------------------------- table -- */
+
+.tkt-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.tkt-table th,
+.tkt-table td {
+  border-bottom: 1px solid var(--tkt-border);
+  padding: var(--tkt-space-3);
+  text-align: left;
+  vertical-align: top;
+}
+
+.tkt-table th {
+  color: var(--tkt-text-muted);
+  font-size: var(--tkt-font-label);
+}
+
+.tkt-table tbody tr:hover {
+  background-color: var(--tkt-green-pale);
+}
+
+.tkt-sort {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+/* Cards are the mobile presentation of the same rows, not a reduced one. */
+.tkt-cards {
+  display: none;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tkt-ticket-card {
+  background-color: var(--tkt-surface);
+  border: 1px solid var(--tkt-border);
+  border-radius: var(--tkt-radius);
+  margin-bottom: var(--tkt-space-3);
+  padding: var(--tkt-space-4);
+}
+
+.tkt-ticket-card__head {
+  align-items: center;
+  display: flex;
+  gap: var(--tkt-space-3);
+  justify-content: space-between;
+}
+
+.tkt-ticket-card__summary {
+  margin: var(--tkt-space-2) 0;
+}
+
+.tkt-ticket-card__meta {
+  display: grid;
+  gap: var(--tkt-space-1) var(--tkt-space-3);
+  grid-template-columns: max-content 1fr;
+  margin: 0;
+}
+
+.tkt-ticket-card__meta dt {
+  color: var(--tkt-text-muted);
+  font-size: var(--tkt-font-small);
+}
+
+.tkt-ticket-card__meta dd {
+  font-size: var(--tkt-font-small);
+  margin: 0;
+}
+
+/* ----------------------------------------------------- pagination -- */
+
+.tkt-pagination {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tkt-space-3);
+  justify-content: space-between;
+  margin-top: var(--tkt-space-4);
+}
+
+.tkt-pagination__summary {
+  color: var(--tkt-text-muted);
+  font-size: var(--tkt-font-small);
+  margin: 0;
+}
+
+.tkt-pagination__controls {
+  align-items: center;
+  display: flex;
+  gap: var(--tkt-space-3);
+}
+
+.tkt-pagination__position {
+  font-size: var(--tkt-font-small);
+}
+
+/* -------------------------------------------------------- filters -- */
+
+.tkt-filters {
+  display: grid;
+  gap: var(--tkt-space-3);
+  grid-template-columns: 2fr repeat(4, 1fr);
+  margin-bottom: var(--tkt-space-4);
+}
+
+.tkt-list-header {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tkt-space-3);
+  justify-content: space-between;
+  margin-bottom: var(--tkt-space-4);
+}
+
+@media (width <= 991px) {
+  .tkt-filters {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (width <= 767px) {
+  /* Below 768px the table is replaced by cards rather than being scrolled
+     sideways, which §8.7 forbids at the page level. */
+  .tkt-table {
+    display: none;
+  }
+
+  .tkt-cards {
+    display: block;
+  }
+
+  .tkt-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .tkt-pagination {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tkt-pagination__controls {
+    justify-content: space-between;
+  }
+}
