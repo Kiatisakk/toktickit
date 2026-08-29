@@ -3,16 +3,17 @@ import { Link, NavLink, useNavigate } from "react-router";
 
 import { RequesterContext } from "../context/requesterContextValue";
 import { Breadcrumb, type Crumb } from "./Breadcrumb";
+import { Icon, type IconName } from "./Icon";
 
 interface AppShellProps {
   breadcrumbs?: Crumb[];
   children: ReactNode;
 }
 
-const NAV_ITEMS = [
-  { to: "/my-tickets", label: "My Tickets" },
-  { to: "/tickets/new", label: "Create Ticket" },
-] as const;
+const NAV_ITEMS: { to: string; label: string; icon: IconName }[] = [
+  { to: "/my-tickets", label: "My Tickets", icon: "ticket" },
+  { to: "/tickets/new", label: "Create Ticket", icon: "create" },
+];
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   isActive ? "tkt-nav-link tkt-nav-link--active" : "tkt-nav-link";
@@ -47,7 +48,7 @@ export const AppShell = ({ breadcrumbs, children }: AppShellProps) => {
       <header className="tkt-header">
         <div className="tkt-header__inner">
           <Link className="tkt-brand" to="/">
-            <span aria-hidden="true">🕐</span>
+            <Icon className="tkt-brand__mark" name="brand" />
             TokTickIT
           </Link>
 
@@ -73,6 +74,7 @@ export const AppShell = ({ breadcrumbs, children }: AppShellProps) => {
                 onClick={() => setNavOpen(false)}
                 to={item.to}
               >
+                <Icon name={item.icon} />
                 {item.label}
               </NavLink>
             ))}
@@ -81,7 +83,7 @@ export const AppShell = ({ breadcrumbs, children }: AppShellProps) => {
           {/* Whose data is on screen stays visible even when the navigation is
               collapsed. On a phone this is the one thing the header must say. */}
           <div className="tkt-identity">
-            <span aria-hidden="true">👤</span>
+            <Icon name="user" />
             <span className="tkt-identity__name">
               {requester?.name ?? "No requester selected"}
             </span>

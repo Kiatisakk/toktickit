@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 
 import { AppShell } from "../components/AppShell";
 import { Button } from "../components/Button";
+import { Icon } from "../components/Icon";
 import { Pagination } from "../components/Pagination";
 import { Select } from "../components/Select";
 import { StateBlock } from "../components/StateBlock";
@@ -228,12 +229,14 @@ export const MyTickets = () => {
             onClick={clearFilters}
             variant="secondary"
           >
+            <Icon name="reload" />
             Clear Filters
           </Button>
           <Button
             onClick={() => void navigate("/tickets/new")}
             variant="primary"
           >
+            <Icon name="create" />
             Create Ticket
           </Button>
         </div>
@@ -241,6 +244,7 @@ export const MyTickets = () => {
 
       <div className="tkt-filters">
         <TextInput
+          icon="search"
           label="Search"
           onChange={(event) => setFilter("search")(event.target.value)}
           placeholder="Search by ticket number or summary"
@@ -345,7 +349,7 @@ export const MyTickets = () => {
       ) : null}
 
       {listing.kind === "loaded" && listing.tickets.length > 0 ? (
-        <>
+        <div className="tkt-list">
           <TicketTable
             onSort={onSort}
             order={order}
@@ -359,7 +363,7 @@ export const MyTickets = () => {
             totalItems={listing.meta.totalItems}
             totalPages={listing.meta.totalPages}
           />
-        </>
+        </div>
       ) : null}
     </AppShell>
   );

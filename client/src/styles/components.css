@@ -35,6 +35,9 @@
 
 .tkt-brand {
   align-items: center;
+  display: inline-flex;
+  gap: var(--tkt-space-2);
+  align-items: center;
   color: var(--tkt-text-inverse);
   display: inline-flex;
   font-size: var(--tkt-font-section);
@@ -50,8 +53,11 @@
 }
 
 .tkt-nav-link {
+  align-items: center;
   border-bottom: 3px solid transparent;
   color: var(--tkt-text-inverse);
+  display: inline-flex;
+  gap: var(--tkt-space-2);
   padding: var(--tkt-space-2) var(--tkt-space-3);
   text-decoration: none;
 }
@@ -407,6 +413,14 @@
   grid-template-columns: repeat(4, 1fr);
 }
 
+.tkt-span-3 {
+  grid-column: span 3;
+}
+
+.tkt-span-4 {
+  grid-column: 1 / -1;
+}
+
 .tkt-callout {
   border-radius: var(--tkt-radius-sm);
   font-size: var(--tkt-font-small);
@@ -425,6 +439,11 @@
   .tkt-grid--3,
   .tkt-grid--4 {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* A three-column span has nothing to span in a two-column grid. */
+  .tkt-span-3 {
+    grid-column: 1 / -1;
   }
 }
 
@@ -475,7 +494,12 @@
 
 /* --------------------------------------------------------- badges -- */
 
+/* An outline on every pill. Two pale fills side by side in adjacent columns
+   read as one smear; a border gives each chip an edge and makes the row
+   scannable. `currentColor` so each variant gets its own without a rule of its
+   own to keep in step. */
 .tkt-badge {
+  border: 1px solid currentColor;
   border-radius: 999px;
   display: inline-block;
   font-size: var(--tkt-font-small);
@@ -499,20 +523,52 @@
   color: var(--tkt-error);
 }
 
+/* One colour per status, and a different treatment from priority.
+
+   Before this, Open, In Progress and Pending shared a single amber, so three
+   quarters of the lifecycle looked identical; and that amber was the same amber
+   as priority Medium, two columns away. A reader scanning a row saw the same
+   chip twice and had to read both to learn they meant unrelated things.
+
+   The hues follow the state rather than a palette: grey for untouched, blue for
+   live, green for being worked and for done, amber for waiting on someone. */
 .tkt-badge--new {
-  background-color: var(--tkt-green-pale);
-  color: var(--tkt-green);
+  background-color: var(--tkt-surface);
+  color: var(--tkt-text-muted);
 }
-.tkt-badge--open,
-.tkt-badge--in-progress,
+
+.tkt-badge--open {
+  background-color: var(--tkt-info-pale);
+  color: var(--tkt-info);
+}
+
+.tkt-badge--in-progress {
+  background-color: var(--tkt-green-pale);
+  color: var(--tkt-green-accent);
+}
+
 .tkt-badge--pending {
   background-color: var(--tkt-warning-pale);
   color: var(--tkt-warning);
 }
-.tkt-badge--resolved,
+
+.tkt-badge--resolved {
+  background-color: var(--tkt-green-pale);
+  color: var(--tkt-green);
+}
+
+/* Closed is the one filled status: a finished ticket is inert, and the flat
+   grey is what separates it from New, which shares its hue but not its weight. */
 .tkt-badge--closed {
   background-color: var(--tkt-readonly);
   color: var(--tkt-text-muted);
+}
+
+/* The two families read differently even where they share a hue: priority is a
+   filled chip, status is outlined on the surface. Attribute selector so it wins
+   over the single-class variants above without repeating each of them. */
+.tkt-badge[data-kind="status"]:not(.tkt-badge--closed) {
+  background-color: var(--tkt-surface);
 }
 
 .tkt-badge--active {
@@ -526,6 +582,7 @@
 
 .tkt-badge--unset {
   background: none;
+  border-color: transparent;
   color: var(--tkt-text-muted);
   padding-left: 0;
 }
@@ -555,28 +612,100 @@
   outline-offset: 2px;
 }
 
-/* The table is a surface, like every other block on the page. Left bare it
-   inherits --tkt-page and reads as loose text floating on the background rather
-   than as one object with a boundary.
+/* The list is one object: rows and the controls that page through them belong
+   to the same surface, as the illustration draws them. Left as two boxes the
+   page controls read as a separate widget that happens to sit underneath.
 
-   `separate` rather than `collapse` because a collapsed table ignores the
-   radius: the corners stay square and the header tint bleeds past them. */
-.tkt-table {
+   The surface lives here rather than on the table so the border wraps both. */
+.tkt-list {
   background-color: var(--tkt-surface);
   border: 1px solid var(--tkt-border);
   border-radius: var(--tkt-radius);
+  box-shadow: var(--tkt-shadow);
+}
+
+/* `separate` rather than `collapse` because a collapsed table ignores the
+   radius: the corners stay square and the header tint bleeds past them. */
+.tkt-table {
   border-collapse: separate;
   border-spacing: 0;
-  box-shadow: var(--tkt-shadow);
   width: 100%;
 }
 
+/* One line per cell, as the illustration draws it. A summary broken across two
+   lines makes every row a different height and the column impossible to scan.
+   Safe now that `.tkt-table-scroll` wraps the table: the overflow lands in that
+   box rather than on the page, which is what §8.7 forbids. */
 .tkt-table th,
 .tkt-table td {
   border-bottom: 1px solid var(--tkt-border);
   padding: var(--tkt-space-3);
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* Icons inherit the colour of whatever contains them, so a button's hover and
+   disabled states carry them along instead of leaving them behind. §8.3 keeps
+   them decorative: aria-hidden, with the label beside them saying what the
+   control actually does. */
+/* 0.85em, not 1em. An icon glyph fills its em box; a letter uses about seven
+   tenths of one. Matching the numbers makes the icon visibly larger than the
+   word beside it, which is how these ended up looking oversized. */
+.tkt-icon {
+  flex: none;
+  font-size: 0.85em;
+  line-height: 1;
+}
+
+.tkt-brand__mark {
+  font-size: 1.1em;
+}
+
+/* A mark inside a control, as the search box in the illustration has.
+
+   The wrapper is the input's own box, so `top: 50%` centres the icon by
+   construction — at any control height, including the taller one the mobile
+   breakpoint sets. Positioned against the field group instead it had to be
+   guessed at from the bottom edge, and the guess is wrong as soon as a hint or
+   a validation message appears underneath.
+
+   `pointer-events: none` so a click on the icon still lands in the field. */
+.tkt-control-icon {
+  display: block;
+  position: relative;
+}
+
+.tkt-control-icon > .tkt-icon {
+  color: var(--tkt-text-muted);
+  left: var(--tkt-space-3);
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.tkt-control-icon > .tkt-field {
+  padding-left: var(--tkt-space-8);
+}
+
+/* Summary is the exception to the rule above, being the only column that
+   carries a sentence rather than a value. Capped and allowed to wrap: left on
+   one line a long summary pushes the whole table sideways, and the point of the
+   nowrap rule is a table you can scan, not one you have to drag. */
+.tkt-table .tkt-cell-summary {
+  max-width: 24rem;
+  white-space: normal;
+}
+
+/* Alternating fill, using the page colour rather than inventing another: it is
+   already the "one step off the surface" value, and a row needs separating from
+   its neighbour without being emphasised.
+
+   Deliberately lighter than --tkt-hover. If the stripe and the hover carried the
+   same weight, pointing at a striped row would say nothing. */
+.tkt-table tbody tr:nth-child(even) {
+  background-color: var(--tkt-page);
 }
 
 /* The page 11 figure tints the header row pale green. An earlier revision used
@@ -589,9 +718,9 @@
   font-weight: 600;
 }
 
-/* Matching the table's radius on the corner cells, rather than clipping with
-   `overflow: hidden`: a table is not a reliable overflow container, and
-   clipping would cut the focus ring off the sort buttons in the header. */
+/* The header tint is the only thing that would show a square corner against the
+   list's rounded one, so the radius goes on those two cells rather than on an
+   `overflow: hidden` that would clip the focus ring off the sort buttons. */
 .tkt-table thead tr:first-child th:first-child {
   border-top-left-radius: var(--tkt-radius);
 }
@@ -600,7 +729,8 @@
   border-top-right-radius: var(--tkt-radius);
 }
 
-/* The table's own border already closes the bottom edge. */
+/* The last row's rule is the divider above the page controls; it should not be
+   drawn twice, and there is nothing below it when the controls are absent. */
 .tkt-table tbody tr:last-child td {
   border-bottom: none;
 }
@@ -706,14 +836,15 @@
 
 /* ----------------------------------------------------- pagination -- */
 
+/* The footer of the list surface, not a separate box below it. */
 .tkt-pagination {
   align-items: center;
+  border-top: 1px solid var(--tkt-border);
   display: flex;
   flex-wrap: wrap;
   gap: var(--tkt-space-3);
   justify-content: space-between;
-  margin-top: var(--tkt-space-4);
-  padding: 0 var(--tkt-space-1);
+  padding: var(--tkt-space-3);
 }
 
 .tkt-pagination__summary {
@@ -816,6 +947,23 @@
 
   .tkt-cards {
     display: block;
+  }
+
+  /* The cards already carry a surface each, so the list must not be a second
+     one around them — a box inside a box, with the inner one doing the work.
+     Below 768px the list is just a stack, and the page controls take the
+     surface for themselves. */
+  .tkt-list {
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+  }
+
+  .tkt-pagination {
+    background-color: var(--tkt-surface);
+    border: 1px solid var(--tkt-border);
+    border-radius: var(--tkt-radius);
+    box-shadow: var(--tkt-shadow);
   }
 
   .tkt-filters {

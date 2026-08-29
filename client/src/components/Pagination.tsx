@@ -12,13 +12,24 @@ interface PaginationProps {
  * The pages either side of the current one, plus the first and last, with a gap
  * standing in for whatever is skipped.
  *
- * A window rather than every page: the page 11 figure shows `1 2 3 4 5 … 6`, and
- * a requester with two thousand tickets would otherwise get two hundred buttons.
+ * A window rather than every page: a requester with two thousand tickets would
+ * otherwise get two hundred buttons.
+ *
+ * Two either side rather than one. At the first page a narrower window collapses
+ * straight to `1 2 … 6`, which hides the very run the control exists to show;
+ * two gives `1 2 3 … 6` and still caps it at seven numbers.
  */
+const NEIGHBOURS = 2;
+
 type Slot = { kind: "page"; page: number } | { kind: "gap"; before: number };
 
 const pageWindow = (page: number, totalPages: number): Slot[] => {
-  const wanted = new Set([1, totalPages, page - 1, page, page + 1]);
+  const wanted = new Set([1, totalPages]);
+
+  for (let offset = -NEIGHBOURS; offset <= NEIGHBOURS; offset += 1) {
+    wanted.add(page + offset);
+  }
+
   const pages = [...wanted]
     .filter((value) => value >= 1 && value <= totalPages)
     .toSorted((a, b) => a - b);

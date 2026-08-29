@@ -20,10 +20,15 @@ interface TicketTableProps {
   onSort: (field: SortField) => void;
 }
 
-const COLUMNS: { field: SortField | null; label: string }[] = [
+const COLUMNS: {
+  field: SortField | null;
+  label: string;
+  /** The one column allowed to run to a second line. See components.css. */
+  wraps?: boolean;
+}[] = [
   { field: "ticketNumber", label: "Ticket No." },
   { field: "createdAt", label: "Created Date" },
-  { field: "summary", label: "Summary" },
+  { field: "summary", label: "Summary", wraps: true },
   { field: null, label: "Category" },
   { field: "requestedPriority", label: "Requested Priority" },
   { field: null, label: "IT Priority" },
@@ -32,14 +37,28 @@ const COLUMNS: { field: SortField | null; label: string }[] = [
   { field: "updatedAt", label: "Last Updated" },
 ];
 
-const formatDate = (iso: string) =>
-  new Date(iso).toLocaleString(undefined, {
+/**
+ * "Aug 29, 2026 09:14 AM" — the shape the illustrations print.
+ *
+ * Two calls rather than one because `toLocaleString` puts a comma between the
+ * date and the time and offers no option to drop it. The figures have none.
+ */
+const formatDate = (iso: string) => {
+  const value = new Date(iso);
+
+  const date = value.toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",
+  });
+
+  const time = value.toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
   });
+
+  return `${date} ${time}`;
+};
 
 /**
  * The ticket list, as a table on desktop and as cards below 768px.
@@ -93,6 +112,7 @@ export const TicketTable = ({
               {COLUMNS.map((column) => (
                 <th
                   aria-sort={ariaSort(column.field)}
+                  className={column.wraps ? "tkt-cell-summary" : undefined}
                   key={column.label}
                   scope="col"
                 >
@@ -127,7 +147,7 @@ export const TicketTable = ({
                   </Link>
                 </td>
                 <td>{formatDate(ticket.createdAt)}</td>
-                <td>{ticket.summary}</td>
+                <td className="tkt-cell-summary">{ticket.summary}</td>
                 <td>{ticket.category.name}</td>
                 <td>
                   <Badge kind="priority" value={ticket.requestedPriority} />

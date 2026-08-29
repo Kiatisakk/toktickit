@@ -23,10 +23,12 @@ Defined once as CSS custom properties on `:root`. No component hard-codes a colo
 | `--tkt-text` | `#1F2A24` | Body text — charcoal-green, never pure black |
 | `--tkt-text-muted` | `#5B6B62` | Helper text, placeholders, metadata |
 | `--tkt-readonly` | `#EEF1EF` | Read-only and system-generated field backgrounds |
-| `--tkt-hover` | `#F2F5F3` | Hover fill for rows and list items |
+| `--tkt-hover` | `#E8ECEA` | Hover fill for rows and list items |
 | `--tkt-error` | `#A4262C` | Validation text and invalid borders |
 | `--tkt-warning` | `#B4690E` | Warning callouts and badges — never decoration |
 | `--tkt-success` | `#0B7A46` | Success confirmation, paired with an icon and text |
+| `--tkt-info` | `#1B5E9E` | Open status — a state that is neither good, bad nor waiting |
+| `--tkt-info-pale` | `#EAF1F8` | Background for the above |
 
 Bootstrap's own variables are remapped onto these (`--bs-primary`, `--bs-body-bg`,
 `--bs-body-color`, `--bs-border-color`) so framework components inherit the palette
@@ -102,6 +104,20 @@ icon-only control carries both an accessible name and a tooltip.
 
 ### Badges
 
+Pills carry a `1px` outline in `currentColor`, so each variant gets its own edge
+without a rule of its own to maintain. Two pale fills in adjacent columns read as one
+smear; an edge makes the row scannable.
+
+**Priority is filled, status is outlined**, and each status has its own colour: grey for
+untouched (New), blue for live (Open), green for being worked (In Progress) and for done
+(Resolved), amber for waiting on someone (Pending), flat grey for inert (Closed).
+
+The two treatments exist because the columns sit two apart and previously shared a palette.
+`Open`, `In Progress` and `Pending` were one amber between them — three quarters of the
+lifecycle looking identical — and that amber was also priority `Medium`. A reader scanning
+a row met the same chip twice and had to read both to learn they meant unrelated things.
+The word is still what carries the meaning; the colour never stands alone.
+
 `tkt-badge` plus a modifier. Every badge pairs its colour with the word, so meaning
 survives without colour.
 
@@ -113,6 +129,27 @@ survives without colour.
 
 An unset IT priority renders as `—` with the accessible text "not set", not as an empty
 cell.
+
+### Icons
+
+Bootstrap Icons, the set the illustrations were drawn from. A hand-cut path is recognisably
+not the same icon, which is worse than no icon.
+
+Sized at `0.85em`, not `1em`: an icon glyph fills its em box while a letter uses about seven
+tenths of one, so matching the numbers makes the icon visibly larger than the word beside
+it.
+
+§8.3 keeps them decorative — every one is `aria-hidden`, and the label beside it carries the
+meaning. The test that matters is not that an icon renders, but that deleting every icon on
+the page would leave every control still saying what it does.
+
+Our names map to Bootstrap's in one file, so the set can be replaced without touching a call
+site.
+
+A mark inside a control — the magnifier in the search box — is wrapped around the input
+itself (`.tkt-control-icon`), not floated over the field group. Against the group it has to
+be positioned from the bottom edge, and that guess is wrong the moment a hint or a validation
+message appears beneath, or the control height changes at the mobile breakpoint.
 
 ### State blocks
 
@@ -148,6 +185,22 @@ the focus ring off the sort buttons in the top row.
 Header labels wrap rather than carrying `white-space: nowrap`. Eight unbreakable headings
 would push the table past `--tkt-content-max` and produce the horizontal scroll §8.7
 forbids.
+
+### The list surface
+
+The table and the page controls are one object, `.tkt-list`: a single surface with the
+controls as its footer above a divider, as the illustration draws them. As two boxes the
+controls read as a separate widget that happens to sit underneath.
+
+Rows alternate with `--tkt-page`, kept lighter than `--tkt-hover` so that pointing at a
+striped row still says something.
+
+Every cell is one line except Summary, which is capped at `24rem` and wraps: it is the only
+column carrying a sentence rather than a value, and left on one line a long summary drags
+the whole table sideways. Everything else stays on its line so the column can be scanned.
+
+Below 768 px the cards carry a surface each, so `.tkt-list` gives up its own — a box inside
+a box, with the inner one doing the work — and the page controls take the surface instead.
 
 ### Pagination
 
