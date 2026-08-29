@@ -264,6 +264,23 @@ never does.
 Run at all three viewports, for each of Create Ticket, My Tickets, and Ticket Detail.
 Results are recorded in [`tests.md`](./tests.md).
 
+§8.8 asks for two separate things, and only the second is a list of tick boxes. The first
+is a "comparison against ui-spec.md and the approved illustrations for Create Ticket, My
+Tickets, and Ticket Detail **rather than personal memory**" — that comparison is
+[`figure-audit.md`](./figure-audit.md), which records what each illustration shows in words,
+element by element, against what is built. It is a separate file because it is prose about
+three specific pictures rather than a list re-run at three viewports, and because doing it
+from memory is exactly what went wrong: the My Tickets illustration was declared not to
+exist, and the screen shipped a review cycle without the Ticket Owner column it shows.
+
+One gap in the handout, recorded there and repeated here because it affects this checklist:
+§8.8 names **Create Ticket** as one of the three screens to compare against an approved
+illustration, but the labsheet contains no Create Ticket illustration. Its three images are
+Ticket Detail (Figure 1, page 2), Development Requester Selection (page 9) and My Tickets
+(page 11). §8.2 offers Figure 1 as "an example of the Ticket UI screen", so Figure 1 is the
+nearest reference Create Ticket has — for field grouping and control styling, not for
+layout, since one screen is read-only and the other is a form.
+
 - [ ] Header, primary buttons and active navigation use the specified greens
 - [ ] Page background, surfaces and borders match their tokens
 - [ ] Read-only fields are visibly distinct from editable ones

@@ -10,6 +10,20 @@ committed — the PDF they come from is tracked in `material/`, so committing th
 store the same bytes twice. This audit is the durable half: it says what the figure shows,
 in words, so a later reader can check the claim without opening anything.
 
+## Where this sits in the submission
+
+Nothing in §14 asks for a file with this name. What it answers is a §8.8 bullet, quoted in
+full: *"comparison against ui-spec.md and the approved illustrations for Create Ticket, My
+Tickets, and Ticket Detail rather than personal memory."* Part 9 (5 marks) submits rendered
+`ui-spec.md` plus the completed visual checklist, and §9 of that file links here.
+
+**The handout names three screens to compare and supplies illustrations for only two of
+them.** There is no Create Ticket illustration. The three images are Ticket Detail (Figure
+1, page 2), Development Requester Selection (page 9) and My Tickets (page 11) — and the
+Requester Selection screen, which does have one, is not among the three §8.8 lists. §8.2
+offers Figure 1 as "an example of the Ticket UI screen", which makes it the nearest
+reference Create Ticket has, for field grouping and control styling rather than for layout.
+
 ## The three illustrations
 
 | Page | Caption | Screen | Built in |
