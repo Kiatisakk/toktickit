@@ -217,11 +217,21 @@ export interface CreatedTicket {
   createdAt: string;
 }
 
+/**
+ * Checks every field `CreatedTicket` declares, not the convenient ones.
+ *
+ * A guard that validates three of five fields and then asserts the type is
+ * worse than no guard: it makes the remaining two look checked. `createdAt` and
+ * `currentStatus` reach a render as `undefined` and fail there instead, several
+ * components from the response that caused it.
+ */
 const isCreatedTicket = (value: unknown): value is CreatedTicket =>
   isRecord(value) &&
   typeof value["id"] === "number" &&
   typeof value["ticketNumber"] === "string" &&
-  typeof value["summary"] === "string";
+  typeof value["summary"] === "string" &&
+  typeof value["currentStatus"] === "string" &&
+  typeof value["createdAt"] === "string";
 
 export interface NewTicket {
   categoryId: number;

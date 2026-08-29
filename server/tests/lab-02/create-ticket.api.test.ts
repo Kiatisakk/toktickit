@@ -57,6 +57,9 @@ const body = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+/** Text of an exact length that still carries the FIXTURE cleanup prefix. */
+const pad = (length: number) => `FIXTURE ${"x".repeat(length - 8)}`;
+
 const create = (payload: Record<string, unknown>, requesterId = requesterA) =>
   request(app)
     .post("/api/tickets")
@@ -132,18 +135,102 @@ describe("creating a valid ticket", () => {
 });
 
 describe("validation failures", () => {
+  // Every rule the endpoint enforces, not a sample of them. The rules
+  // themselves are UNIT-03's subject; what this proves is that the endpoint is
+  // actually wired to them, which a passing unit test cannot show.
   it.each([
-    ["summary", { summary: "" }],
-    ["description", { description: "" }],
-    ["summary", { summary: "abc" }],
-    ["requestedPriority", { requestedPriority: "URGENT" }],
-    ["categoryId", { categoryId: 0 }],
-  ])("rejects with a message on %s", async (field, overrides) => {
-    const response = await create(body(overrides));
+    ["summary missing", "summary", { summary: "" }],
+    ["summary whitespace only", "summary", { summary: "        " }],
+    ["summary below minimum", "summary", { summary: "abcd" }],
+    ["summary above maximum", "summary", { summary: pad(151) }],
+    ["description missing", "description", { description: "" }],
+    ["description whitespace only", "description", { description: "     " }],
+    ["description below minimum", "description", { description: "too short" }],
+    [
+      "description above maximum",
+      "description",
+      { description: "y".repeat(5001) },
+    ],
+    [
+      "priority not in the enum",
+      "requestedPriority",
+      { requestedPriority: "URGENT" },
+    ],
+    ["priority missing", "requestedPriority", { requestedPriority: undefined }],
+    ["category not a positive integer", "categoryId", { categoryId: 0 }],
+    ["category missing", "categoryId", { categoryId: undefined }],
+    [
+      "related system not a positive integer",
+      "relatedSystemId",
+      { relatedSystemId: -1 },
+    ],
+    [
+      "related system missing",
+      "relatedSystemId",
+      { relatedSystemId: undefined },
+    ],
+  ])(
+    "rejects %s with a message on the field",
+    async (_case, field, overrides) => {
+      const response = await create(body(overrides));
+
+      expect(response.status).toBe(400);
+      expect(response.body.error.code).toBe("VALIDATION_FAILED");
+      expect(response.body.error.details).toHaveProperty(field);
+
+      // BR-18 for every case, not only the one sampled below: a rejected body
+      // leaves nothing behind.
+      const stored = await prisma.ticket.count({
+        where: { summary: { startsWith: "FIXTURE" } },
+      });
+
+      expect(stored).toBe(0);
+    }
+  );
+
+  it("accepts text at both boundaries", async () => {
+    const atMax = await create(
+      body({ summary: pad(150), description: "z".repeat(5000) })
+    );
+
+    expect(atMax.status).toBe(201);
+  });
+
+  it("rejects a related system that does not exist", async () => {
+    const response = await create(body({ relatedSystemId: 999_999 }));
 
     expect(response.status).toBe(400);
-    expect(response.body.error.code).toBe("VALIDATION_FAILED");
-    expect(response.body.error.details).toHaveProperty(field);
+    expect(response.body.error.details).toHaveProperty("relatedSystemId");
+  });
+
+  it("rejects a related system that exists but is retired", async () => {
+    const retired = await prisma.relatedSystem.create({
+      data: {
+        name: "FIXTURE Retired System",
+        displayOrder: -9002,
+        isActive: false,
+      },
+      select: { id: true },
+    });
+
+    const response = await create(body({ relatedSystemId: retired.id }));
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.details).toHaveProperty("relatedSystemId");
+
+    await prisma.relatedSystem.delete({ where: { id: retired.id } });
+  });
+
+  it("names every offending field at once, so the form can mark them all", async () => {
+    const response = await create(
+      body({ summary: "", description: "", categoryId: 0 })
+    );
+
+    expect(Object.keys(response.body.error.details).toSorted()).toEqual([
+      "categoryId",
+      "description",
+      "summary",
+    ]);
   });
 
   // BR-18: a rejected submission creates nothing at all, not a partial row.

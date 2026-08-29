@@ -152,6 +152,17 @@ describe("read-only context", () => {
       "tkt-field--readonly"
     );
   });
+
+  // The date belongs to the server's createdAt. Showing this browser's clock
+  // would be a guess, and a wrong one across midnight or with any skew.
+  it("does not guess the ticket date from the browser clock", async () => {
+    renderScreen();
+
+    const field = await screen.findByLabelText("Ticket Date");
+
+    expect(field).toHaveValue("Set when you submit");
+    expect(field).not.toHaveValue(new Date().toLocaleDateString());
+  });
 });
 
 describe("validation", () => {
@@ -209,6 +220,20 @@ describe("validation", () => {
     expect(screen.getByText("Summary is required.")).toBeInTheDocument();
   });
 
+  // ui-spec.md §8. Without it a keyboard user is told there are errors and left
+  // wherever the cursor happened to be, with no way to reach the first one but
+  // to tab from the top.
+  it("moves focus to the first invalid control", async () => {
+    renderScreen();
+    await screen.findByRole("option", { name: "Hardware" });
+
+    await submit();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/^category/i)).toHaveFocus();
+    });
+  });
+
   it("never calls the API when the form is invalid", async () => {
     renderScreen();
     await screen.findByRole("option", { name: "Hardware" });
@@ -219,6 +244,57 @@ describe("validation", () => {
       expect.anything(),
       expect.objectContaining({ method: "POST" })
     );
+  });
+});
+
+describe("when the form cannot be completed", () => {
+  // A control that looks live and silently does nothing is worse than one that
+  // is visibly unavailable: the user clicks, nothing happens, and there is
+  // nothing to read.
+  it("disables submit when the reference data failed to load", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      })
+    );
+
+    renderScreen();
+
+    await screen.findByText("Could not load the form");
+    expect(
+      screen.getByRole("button", { name: /create ticket/i })
+    ).toBeDisabled();
+  });
+
+  // An empty list is a successful response with nothing to choose from. Left
+  // as "loaded" it renders a blank dropdown and no explanation.
+  it("explains an empty reference list rather than rendering blank selects", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse([]))
+    );
+
+    renderScreen();
+
+    expect(
+      await screen.findByText("Nothing to file a ticket against")
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^category/i)).toBeNull();
+  });
+
+  it("disables submit when there is nothing to file against", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse([]))
+    );
+
+    renderScreen();
+
+    await screen.findByText("Nothing to file a ticket against");
+    expect(
+      screen.getByRole("button", { name: /create ticket/i })
+    ).toBeDisabled();
   });
 });
 
@@ -287,17 +363,44 @@ describe("success", () => {
     await fillValid();
     await submit();
 
-    expect(await screen.findByText(/TKT-2026-000042/)).toBeInTheDocument();
+    // Twice on purpose: once in the confirmation sentence and once in the
+    // read-back list, so it is legible whichever the eye lands on first.
+    expect(await screen.findAllByText(/TKT-2026-000042/)).toHaveLength(2);
   });
 
-  it("offers a clear next action", async () => {
+  it("gives the success screen its own heading", async () => {
     renderScreen();
     await fillValid();
     await submit();
 
     expect(
-      await screen.findByRole("button", { name: "Go to My Tickets" })
+      await screen.findByRole("heading", { level: 1, name: "Ticket created" })
     ).toBeInTheDocument();
+  });
+
+  it("offers both next actions", async () => {
+    renderScreen();
+    await fillValid();
+    await submit();
+
+    expect(
+      await screen.findByRole("button", { name: "View Ticket" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create another" })
+    ).toBeInTheDocument();
+  });
+
+  it("clears the form when another ticket is started", async () => {
+    renderScreen();
+    await fillValid();
+    await submit();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Create another" })
+    );
+
+    expect(await screen.findByLabelText(/^summary/i)).toHaveValue("");
   });
 
   it("never invents a ticket number of its own", async () => {
@@ -305,7 +408,7 @@ describe("success", () => {
     await fillValid();
     await submit();
 
-    await screen.findByText(/TKT-2026-000042/);
+    await screen.findAllByText(/TKT-2026-000042/);
     // Anything else on screen matching the pattern would mean the client is
     // guessing at a value only the server may assign (BR-01).
     const shown = document.body.textContent?.match(/TKT-\d{4}-\d{6}/gu) ?? [];

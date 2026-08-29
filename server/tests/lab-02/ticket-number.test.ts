@@ -31,10 +31,22 @@ describe("formatTicketNumber", () => {
     expect(formatTicketNumber(2025, 1227)).toBe("TKT-2025-001227");
   });
 
-  it("does not truncate a sequence past six digits", () => {
-    // Better a seven-digit number than a silently wrong one; the year would
-    // have to produce a million tickets first.
-    expect(formatTicketNumber(2025, 1_234_567)).toBe("TKT-2025-1234567");
+  // Refuses rather than widening to seven digits. A value that does not match
+  // TICKET_NUMBER_PATTERN is not a ticket number, and storing one that fails
+  // this project's own validator would surface somewhere unrelated later.
+  it("refuses a sequence past six digits", () => {
+    expect(() => formatTicketNumber(2025, 1_000_000)).toThrow();
+    expect(() => formatTicketNumber(2025, 1_234_567)).toThrow();
+  });
+
+  it("accepts the last usable sequence of a year", () => {
+    expect(formatTicketNumber(2025, 999_999)).toBe("TKT-2025-999999");
+  });
+
+  it("refuses a sequence that is not a positive integer", () => {
+    expect(() => formatTicketNumber(2025, 0)).toThrow();
+    expect(() => formatTicketNumber(2025, -1)).toThrow();
+    expect(() => formatTicketNumber(2025, 1.5)).toThrow();
   });
 
   it("always satisfies the documented pattern for realistic sequences", () => {

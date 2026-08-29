@@ -427,3 +427,41 @@
     grid-template-columns: 1fr;
   }
 }
+
+.tkt-callout--success {
+  background-color: var(--tkt-green-pale);
+  border: 1px solid var(--tkt-success);
+  color: var(--tkt-text);
+}
+
+/*
+ * Read-back of what was just created. A definition list rather than a table:
+ * these are label/value pairs, not rows of like things.
+ */
+.tkt-summary {
+  display: grid;
+  gap: var(--tkt-space-2) var(--tkt-space-4);
+  grid-template-columns: max-content 1fr;
+  margin: var(--tkt-space-6) 0 0;
+}
+
+.tkt-summary dt {
+  color: var(--tkt-text-muted);
+  font-size: var(--tkt-font-label);
+  font-weight: 600;
+}
+
+.tkt-summary dd {
+  margin: 0;
+}
+
+@media (width <= 767px) {
+  .tkt-summary {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .tkt-summary dd {
+    margin-bottom: var(--tkt-space-3);
+  }
+}
