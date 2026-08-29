@@ -711,11 +711,33 @@
 /* The page 11 figure tints the header row pale green. An earlier revision used
    --tkt-page on the reasoning that §7 reserves the pale green for selected and
    success; the illustration overrules that, and §8.8 makes it binding. */
+/* Green, and roomier than the rows beneath it, as the illustration draws it.
+   The muted grey it replaces made the header the quietest thing on a screen
+   whose columns are the thing you navigate by. */
 .tkt-table thead th {
   background-color: var(--tkt-green-pale);
-  color: var(--tkt-text-muted);
+  color: var(--tkt-green);
   font-size: var(--tkt-font-label);
   font-weight: 600;
+  padding-bottom: var(--tkt-space-4);
+  padding-top: var(--tkt-space-4);
+}
+
+/* The ticket number is the way into the ticket, so it is stated here rather
+   than inherited from Bootstrap's link colour — a framework default is not a
+   decision, and §7 fixes this green.
+
+   Both presentations, because the mobile card carries the same link. */
+.tkt-table a,
+.tkt-ticket-card a {
+  color: var(--tkt-green-accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.tkt-table a:hover,
+.tkt-ticket-card a:hover {
+  text-decoration: underline;
 }
 
 /* The header tint is the only thing that would show a square corner against the

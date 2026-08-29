@@ -195,6 +195,14 @@ controls read as a separate widget that happens to sit underneath.
 Rows alternate with `--tkt-page`, kept lighter than `--tkt-hover` so that pointing at a
 striped row still says something.
 
+The header row is `--tkt-green` on `--tkt-green-pale`, and carries more vertical padding
+than the rows beneath it. Muted grey made the header the quietest thing on a screen whose
+columns are what a reader navigates by.
+
+Ticket numbers are `--tkt-green-accent` and semibold, stated in our own rule rather than
+inherited from Bootstrap's link colour: a framework default is not a decision, and §7 fixes
+this green. The mobile card carries the same link and the same treatment.
+
 Every cell is one line except Summary, which is capped at `24rem` and wraps: it is the only
 column carrying a sentence rather than a value, and left on one line a long summary drags
 the whole table sideways. Everything else stays on its line so the column can be scanned.
