@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router";
 
 import App from "../App";
 import { CreateTicket } from "./CreateTicket";
+import { MyTickets } from "./MyTickets";
 import { NotFound } from "./NotFound";
 import { Placeholder } from "./Placeholder";
 import { RequesterGuard } from "./RequesterGuard";
@@ -42,14 +43,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/my-tickets",
-    element: guarded(
-      <Placeholder
-        breadcrumbs={[{ label: "My Tickets" }]}
-        description="Searching, filtering, sorting and paging through your own tickets."
-        issue={18}
-        title="My Tickets"
-      />
-    ),
+    element: guarded(<MyTickets />),
   },
   {
     path: "/tickets/:ticketId",

@@ -264,3 +264,68 @@ export const createTicket = async (
 
   return created;
 };
+
+export interface TicketListMeta {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+export interface TicketListResponse<T> {
+  data: T[];
+  meta: TicketListMeta;
+}
+
+const isMeta = (value: unknown): value is TicketListMeta =>
+  isRecord(value) &&
+  typeof value["page"] === "number" &&
+  typeof value["pageSize"] === "number" &&
+  typeof value["totalItems"] === "number" &&
+  typeof value["totalPages"] === "number";
+
+const isTicketRow = (value: unknown): boolean =>
+  isRecord(value) &&
+  typeof value["id"] === "number" &&
+  typeof value["ticketNumber"] === "string" &&
+  typeof value["summary"] === "string" &&
+  typeof value["requestedPriority"] === "string" &&
+  typeof value["currentStatus"] === "string" &&
+  typeof value["createdAt"] === "string" &&
+  typeof value["updatedAt"] === "string" &&
+  isReferenceItem(value["category"]) &&
+  isReferenceItem(value["relatedSystem"]);
+
+/**
+ * Fetches one page of the current requester's tickets.
+ *
+ * `query` is passed through as-is rather than being filtered here: the server
+ * rejects anything it does not recognise (BR-34), and silently dropping a
+ * parameter on the way out would hide that from whoever built the URL.
+ */
+export const fetchTickets = async <T>(
+  query: URLSearchParams,
+  requesterId: number,
+  signal?: AbortSignal
+): Promise<TicketListResponse<T>> => {
+  const suffix = query.toString();
+  const body = await apiGet(`/api/tickets${suffix ? `?${suffix}` : ""}`, {
+    requesterId,
+    ...(signal ? { signal } : {}),
+  });
+
+  if (
+    !isRecord(body) ||
+    !Array.isArray(body["data"]) ||
+    !body["data"].every(isTicketRow) ||
+    !isMeta(body["meta"])
+  ) {
+    throw new ApiError(
+      "UNEXPECTED_RESPONSE",
+      "The TokTickIT API returned the ticket list in an unexpected format.",
+      0
+    );
+  }
+
+  return { data: body["data"] as T[], meta: body["meta"] };
+};
