@@ -112,6 +112,29 @@ cell.
 One component, `tkt-state`, covers loading, empty, no-results and error. Each has an icon,
 a heading, one line of explanation, and — for empty and error — an action.
 
+### Ticket list
+
+`TicketTable` renders a table at 768px and above and a card per ticket below it. Both
+carry the same values: §8.7 allows the two presentations to look different, but a column
+dropped on a phone is information the reader cannot reach at all, since there is no wider
+view to switch to.
+
+Named for tickets rather than as a generic data table. It has exactly one caller, and a
+column-definition API written for one consumer is a guess about the second.
+
+Sortable headers are buttons carrying `aria-sort`, so the current sort is announced rather
+than only drawn as an arrow.
+
+### Pagination
+
+`Pagination` shows a range summary — "Showing 1 to 10 of 42 tickets" — alongside Previous,
+the current position, and Next. The summary is the only thing on the screen that tells a
+reader the list continues beyond what they can see, and the labsheet figure carries the
+same line.
+
+It renders nothing when everything fits on one page. Controls that can only be pressed to
+arrive where you already are are noise.
+
 ---
 
 ## 4. Application shell
