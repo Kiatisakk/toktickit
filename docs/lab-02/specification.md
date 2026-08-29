@@ -289,7 +289,7 @@ colour alone.
 | --- | --- | --- |
 | `Role` | `REQUESTER`, `IT_STAFF`, `ADMIN` | All three defined now; Lab 2 seeds only `REQUESTER`. Matches the three roles in `CONTEXT.md`. |
 | `Priority` | `LOW`, `MEDIUM`, `HIGH` | Used by both Requested Priority and IT Priority. |
-| `TicketStatus` | `NEW`, `OPEN`, `IN_PROGRESS`, `PENDING`, `RESOLVED`, `CLOSED` | Only `NEW` is reachable in Lab 2. Defining the others costs nothing and lets the status filter demonstrate a genuine no-results state. |
+| `TicketStatus` | `NEW`, `OPEN`, `IN_PROGRESS`, `PENDING`, `RESOLVED`, `CLOSED` | Only `NEW` is reachable in Lab 2 — no route writes this column. The handout never lists the statuses; these come from the illustrations. See D-15 for why the demonstration seed uses the others. |
 
 ### New models
 
@@ -706,3 +706,41 @@ Nothing is dropped from the five examples. Related System appears on the mobile 
 not in the desktop table: eight columns already sit at the limit of `--tkt-content-max`
 before horizontal scrolling starts, and a ticket's system is a detail-screen fact rather
 than one you scan a list by.
+
+### D-15 Demonstration tickets carry statuses Lab 2 cannot produce
+
+The handout never lists the statuses. Searching all twenty-two pages finds one
+rule — BR-02, "a new Ticket begins with Current Status New" — and one exclusion,
+§4.2's "status changes beyond the initial New status". The six values in
+`TicketStatus` come from the two illustrations, which draw *Open*, *In Progress*,
+*Pending* and *Resolved*, and from our own decision to define the enum in full.
+
+So the demonstration seed writes tickets in states the application cannot reach.
+That deserves a numbered decision rather than a comment in a seed file, because
+it is the sort of thing that looks like scope creep at a glance.
+
+**Why we do it.** §14 Part 7 asks for evidence that the filters work. Two of the
+four — Current Status and IT Priority — demonstrate nothing when every row is
+`NEW` with a null IT priority: the dropdown offers six statuses that all return
+the same list, and the screenshot proves the control exists rather than that it
+filters. Both illustrations show the columns populated and the statuses varied,
+and §8.8 makes the illustrations binding.
+
+**Why it is not the excluded workflow.** §4.2 excludes *building* it. No screen,
+endpoint, service or test in this repository changes a status, claims a ticket or
+resolves one; `POST /api/tickets` hard-codes `NEW`, and there is no route that
+writes `currentStatus` at all. What §4.2 excludes is the machinery. Rows in a
+development database are not machinery.
+
+**What it costs.** A reader who sees a `RESOLVED` ticket and does not read this
+entry may think the lifecycle was implemented. That is the risk we are taking,
+and it is why the seed is `db:seed:demo` — separate from `db:seed`, absent from
+the test database, and reproducible in one command.
+
+**The alternative we rejected.** Seeding `NEW` throughout is unarguably within
+scope, and leaves two of the four filters unable to show they do anything. Given
+the choice between evidence a grader can check and a purity no rule actually
+asks for, we chose the evidence.
+
+`CLOSED` is left unused so that one status filter still finds nothing, which is
+what demonstrates BR-35's no-results state now that the others all match.

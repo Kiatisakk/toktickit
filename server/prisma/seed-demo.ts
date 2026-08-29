@@ -18,8 +18,23 @@ import { formatTicketNumber } from "../src/tickets/ticketNumber.js";
  *                                       who genuinely has none
  *   the fourth             3 tickets
  *
- * Every ticket is `NEW`, because §4.2 excludes status changes. Filtering by any
- * other status is what demonstrates the no-results state (BR-35).
+ * Every field the screens can show is filled, including the three §4.2 keeps
+ * Lab 2 from setting: IT Priority, Ticket Owner and Resolution Summary.
+ *
+ * That is not the excluded workflow creeping in. §4.2 excludes *building* it —
+ * nothing here triages a ticket, claims one or resolves one, and no screen,
+ * endpoint or test in this repository can change these values. What it excludes
+ * is the machinery, not the existence of the data.
+ *
+ * The reason to fill them is §14 Part 7, which asks for evidence of the filters
+ * working. Two of the four — IT Priority and Current Status — cannot be
+ * demonstrated at all when every row is `NEW` with a null IT priority: the
+ * dropdown would offer six statuses that all return the same list. The page 11
+ * illustration shows both columns populated and the statuses varied, for the
+ * same reason.
+ *
+ * `CLOSED` is deliberately left unused, so one status filter still finds
+ * nothing and demonstrates BR-35's no-results state.
  */
 
 const SUMMARIES = [
@@ -50,8 +65,46 @@ const SUMMARIES = [
   "Webcam not detected in meetings",
 ];
 
-/** How many tickets each seeded requester gets, in seed order. */
-const DISTRIBUTION = [25, 6, 0, 3];
+/**
+ * How many tickets each seeded requester gets, in seed order.
+ *
+ * Fifty-five is six pages at the default size of ten, which is what makes the
+ * windowed page controls visible at all — `1 2 3 … 6`. Three pages showed every
+ * number and never the gap.
+ */
+const DISTRIBUTION = [55, 6, 0, 3];
+
+/**
+ * IT staff, for Ticket Owner. Named as the labsheet illustrations name them.
+ *
+ * They live in the demonstration seed rather than the reference seed because
+ * the test database must hold reference data alone (D-11), and Lab 2 has no
+ * feature that needs an IT user — only a screenshot does. Lab 3 moves them when
+ * authentication gives them a purpose.
+ */
+const IT_STAFF = [
+  { name: "Michael Brown", email: "michael.brown@example.ac.th" },
+  { name: "Sarah Johnson", email: "sarah.johnson@example.ac.th" },
+  { name: "David Lee", email: "david.lee@example.ac.th" },
+];
+
+/** The lifecycle a requester would actually see. `CLOSED` is absent on purpose. */
+const STATUS_CYCLE = [
+  "NEW",
+  "OPEN",
+  "IN_PROGRESS",
+  "NEW",
+  "PENDING",
+  "RESOLVED",
+  "OPEN",
+] as const;
+
+const RESOLUTIONS = [
+  "Replaced the battery under warranty. Verified a full charge cycle with the requester.",
+  "Reissued the VPN certificate and confirmed the tunnel from off campus.",
+  "Rebuilt the mail profile. Sync restored on the handset and the desktop client.",
+  "Granted the site permission and confirmed access from the requester's account.",
+];
 
 /**
  * How a demonstration ticket is recognised on a rerun.
@@ -95,6 +148,18 @@ const seedDemo = async () => {
   if (categories.length === 0 || systems.length === 0) {
     throw new Error("Reference data is missing. Run npm run db:seed first.");
   }
+
+  // Upserted, so a rerun neither duplicates them nor orphans the tickets
+  // already pointing at them.
+  const staff = await Promise.all(
+    IT_STAFF.map((person) =>
+      prisma.user.upsert({
+        where: { email: person.email },
+        create: { ...person, role: "IT_STAFF", isActive: true },
+        update: { name: person.name, role: "IT_STAFF", isActive: true },
+      })
+    )
+  );
 
   const year = new Date().getFullYear();
 
@@ -141,6 +206,12 @@ const seedDemo = async () => {
           raisedAt.setFullYear(year, 0, 1);
         }
 
+        const status = STATUS_CYCLE[sequence % STATUS_CYCLE.length] ?? "NEW";
+        // A ticket still at New has reached nobody yet, so it has no owner and
+        // no IT priority. That is what keeps the em dash on those columns
+        // meaningful rather than being the only thing they ever say.
+        const triaged = status !== "NEW";
+
         rows.push({
           ticketNumber: formatTicketNumber(year, start + sequence),
           requesterId: requester.id,
@@ -150,8 +221,27 @@ const seedDemo = async () => {
           description: `${DEMO_MARKER} to show. Replace by creating a ticket through the application.`,
           requestedPriority:
             PRIORITIES[sequence % PRIORITIES.length] ?? "MEDIUM",
+          currentStatus: status,
+          ...(triaged
+            ? {
+                itPriority: PRIORITIES[(sequence + 1) % PRIORITIES.length],
+                ticketOwnerId: staff[sequence % staff.length]?.id,
+              }
+            : {}),
+          ...(status === "RESOLVED"
+            ? {
+                resolutionSummary:
+                  RESOLUTIONS[sequence % RESOLUTIONS.length] ?? "Resolved.",
+              }
+            : {}),
           createdAt: raisedAt,
-          updatedAt: raisedAt,
+          // Something happened to a triaged ticket after it arrived, so its
+          // Last Updated is later than its Created Date — otherwise the two
+          // columns are identical on every row and sorting by either looks
+          // broken.
+          updatedAt: triaged
+            ? new Date(raisedAt.getTime() + 36 * 60 * 60 * 1000)
+            : raisedAt,
         });
       }
     }
