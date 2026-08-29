@@ -125,6 +125,23 @@ column-definition API written for one consumer is a guess about the second.
 Sortable headers are buttons carrying `aria-sort`, so the current sort is announced rather
 than only drawn as an arrow.
 
+Both presentations are surfaces — `--tkt-surface` on `--tkt-border`, rounded and carrying
+`--tkt-shadow`, the same treatment `.tkt-card` and the state blocks already use. A bare
+table inherits `--tkt-page` behind it and reads as loose text lying on the background
+rather than as one object with an edge, which is what every other block on the screen has.
+
+The header row is tinted `--tkt-page` rather than `--tkt-green-pale`: §7 reserves the pale
+green for selected and success, and a permanently green header would spend that meaning on
+a row that is neither.
+
+The corner radius is applied to the corner cells rather than by clipping the table with
+`overflow: hidden`. A table is not a reliable overflow container, and clipping it would cut
+the focus ring off the sort buttons in the top row.
+
+Header labels wrap rather than carrying `white-space: nowrap`. Eight unbreakable headings
+would push the table past `--tkt-content-max` and produce the horizontal scroll §8.7
+forbids.
+
 ### Pagination
 
 `Pagination` shows a range summary — "Showing 1 to 10 of 42 tickets" — alongside Previous,

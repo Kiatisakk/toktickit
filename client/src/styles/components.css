@@ -534,8 +534,19 @@
 
 /* ---------------------------------------------------------- table -- */
 
+/* The table is a surface, like every other block on the page. Left bare it
+   inherits --tkt-page and reads as loose text floating on the background rather
+   than as one object with a boundary.
+
+   `separate` rather than `collapse` because a collapsed table ignores the
+   radius: the corners stay square and the header tint bleeds past them. */
 .tkt-table {
-  border-collapse: collapse;
+  background-color: var(--tkt-surface);
+  border: 1px solid var(--tkt-border);
+  border-radius: var(--tkt-radius);
+  border-collapse: separate;
+  border-spacing: 0;
+  box-shadow: var(--tkt-shadow);
   width: 100%;
 }
 
@@ -547,9 +558,29 @@
   vertical-align: top;
 }
 
-.tkt-table th {
+/* Tinted so the header reads as a header without borrowing --tkt-green-pale,
+   which §7 reserves for selected and success. */
+.tkt-table thead th {
+  background-color: var(--tkt-page);
   color: var(--tkt-text-muted);
   font-size: var(--tkt-font-label);
+  font-weight: 600;
+}
+
+/* Matching the table's radius on the corner cells, rather than clipping with
+   `overflow: hidden`: a table is not a reliable overflow container, and
+   clipping would cut the focus ring off the sort buttons in the header. */
+.tkt-table thead tr:first-child th:first-child {
+  border-top-left-radius: var(--tkt-radius);
+}
+
+.tkt-table thead tr:first-child th:last-child {
+  border-top-right-radius: var(--tkt-radius);
+}
+
+/* The table's own border already closes the bottom edge. */
+.tkt-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .tkt-table tbody tr:hover {
@@ -577,6 +608,7 @@
   background-color: var(--tkt-surface);
   border: 1px solid var(--tkt-border);
   border-radius: var(--tkt-radius);
+  box-shadow: var(--tkt-shadow);
   margin-bottom: var(--tkt-space-3);
   padding: var(--tkt-space-4);
 }
@@ -618,6 +650,7 @@
   gap: var(--tkt-space-3);
   justify-content: space-between;
   margin-top: var(--tkt-space-4);
+  padding: 0 var(--tkt-space-1);
 }
 
 .tkt-pagination__summary {
