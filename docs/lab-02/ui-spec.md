@@ -311,6 +311,53 @@ never does.
 Run at all three viewports, for each of Create Ticket, My Tickets, and Ticket Detail.
 Results are recorded in [`tests.md`](./tests.md).
 
+### Checked against the illustrations
+
+§8.8 asks for two things here, and only one of them is a list of tick boxes. The other is a
+"comparison against ui-spec.md and the approved illustrations for Create Ticket, My Tickets,
+and Ticket Detail **rather than personal memory**". This subsection is that comparison, and
+the phrase is in the handout for a reason — done from memory it failed twice on one screen,
+which is how My Tickets reached review without the Ticket Owner column the illustration
+shows.
+
+**Where the illustrations are.** Three images in a 22-page PDF: Ticket Detail (Figure 1,
+page 2), Development Requester Selection (page 9), My Tickets (page 11). Only the first is
+captioned, so searching the document for "Figure" returns a single hit and reads like a
+complete answer. The reliable question is which pages carry images.
+
+**The handout names three screens to compare and supplies pictures for two of them.** There
+is no Create Ticket illustration, and Requester Selection — the one screen that does have a
+picture — is not among the three §8.8 lists. §8.2 offers Figure 1 as "an example of the
+Ticket UI screen", which makes it the nearest reference Create Ticket has: usable for field
+grouping and control styling, not for layout, since one screen is read-only and the other is
+a form.
+
+**My Tickets** matches the page 11 illustration on every element — nine columns in its
+order, the filter bar and its four defaults, the pale-green header tint, green ticket-number
+links, the range-summary wording, and numbered page buttons. Four of those were wrong until
+they were checked against the picture. Three departures are deliberate:
+
+| Departure | Why |
+| --- | --- |
+| Page size 10, not the figure's 8 | §6.1 fixes the allowed sizes at 10/20/50, and 8 is not one of them — following the picture would break the written rule |
+| Summary and Requested Priority also sortable | The three the figure marks are all sortable; two more take nothing away |
+| A gap only where pages are skipped | The figure draws `1 2 3 4 5 … 6`, an ellipsis hiding nothing — a drawing artefact, and one that promises a page that is not there |
+
+One item is still open: the figure gives each status its own colour — Open blue, Pending
+amber, In Progress and Resolved green — and we render them alike. Nothing on screen is wrong
+today because §4.2 keeps every ticket at New, but it will be as soon as Lab 3 moves one.
+
+**Development Requester Selection** matches the page 9 illustration except for a decorative
+avatar icon above the title, and Cancel: the figure shows it unconditionally, and it appears
+here only when a requester is already selected. With none selected there is nowhere to
+cancel to — every other route is guarded, so `/` redirects to My Tickets, which redirects
+straight back — and §8.1's required elements do not include it.
+
+**Ticket Detail** is specified from Figure 1 in §5.4 above, before the screen exists rather
+than after. The figure also shows four tabs — Public Comments, Attachments, Service Actions,
+Event Log — and §4.2 excludes the features behind three of them. The exclusion wins, so §5.4
+specifies the attachment section alone and no tab strip at all.
+
 - [ ] Header, primary buttons and active navigation use the specified greens
 - [ ] Page background, surfaces and borders match their tokens
 - [ ] Read-only fields are visibly distinct from editable ones
