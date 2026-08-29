@@ -542,28 +542,27 @@ it. This entry is the answer.
 and assigned after successful creation. Neither says what a ticket number looks like. §9.2
 refers to "the required format" without ever defining one.
 
-**What the one figure shows.** Figure 1 on page 2 is the Ticket Detail screen, and its
-Ticket No. field reads `TKT-2025-001234`. That is the only ticket number printed anywhere
-in the handout. §8.8 requires the screens to be checked against the illustrations, so the
-*shape* is binding: `TKT-`, a four-digit year, a hyphen, six digits.
+**What the figures show.** Two of them, and together they settle the format. Figure 1 on
+page 2 (Ticket Detail) prints `TKT-2025-001234`. The My Tickets illustration on page 11
+prints eight rows descending — `TKT-2025-001234`, `-001233`, `-001232`, `-001231`,
+`-001230`, `-001229`, `-001228`, `-001227` — against timestamps that descend with them.
 
-**A correction, recorded rather than deleted.** An earlier version of this entry claimed a
-My Tickets figure showed eight contiguous numbers, `TKT-2025-001227` through
-`TKT-2025-001234`, and rested the whole "the suffix is a sequence" argument on that run. No
-such figure exists. The labsheet carries exactly two screen images — Figure 1 (Ticket
-Detail, page 2) and an uncaptioned Development Requester Selection screen (page 9) — and
-neither is My Tickets. The run was invented. It is left on the record because the same
-mistake was made twice about this one decision, and because a review comment was sent to
-the peer reviewer on the strength of it (reviewer.md, PR #22).
+Eight contiguous values are not eight random ones. The trailing six digits are a sequence,
+and it runs in step with creation time. §8.8 requires the screens to be checked against
+these illustrations, which is what makes them binding rather than decorative.
 
-**What we chose, with nothing in the handout to settle it.** Two things, not one: whether
-the six digits are a sequence at all, and whether that sequence restarts each year. A
-single printed value is equally consistent with a counter and with a random six-digit
-suffix. So the random suffix the peer reviewer's own specification chose is **not**
-contradicted by the handout, and our disagreement with him is a design preference rather
-than a compliance finding.
+*Retraction.* Commit `19dfb1d` on this branch deleted the paragraph above, on the claim
+that no My Tickets figure existed. It does exist, on page 11, and the contiguous run is
+real. The denial came from listing the pages that carry images, then failing to open the
+one that mattered — the error was not reading the source, while claiming to have read it.
+This entry is now the third revision of the same decision and the only one written with the
+figure actually on screen.
 
-We chose a per-year counter on its merits. A sequence makes ticket numbers ordered and
+**What we chose, with nothing in the handout to settle it.** Whether the sequence restarts
+each year. Both figures are from 2025, so `TKT-2025-001234` fits a per-year counter and a
+single running counter with the year merely printed in front equally well.
+
+We restart it. A sequence makes ticket numbers ordered and
 makes a gap visible; a random suffix makes both impossible. And a number that carries a
 year and then ignores it is a label pretending to be information — by Lab 4 the leading
 digits would say nothing about when the ticket was raised.

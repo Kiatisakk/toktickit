@@ -558,10 +558,11 @@
   vertical-align: top;
 }
 
-/* Tinted so the header reads as a header without borrowing --tkt-green-pale,
-   which §7 reserves for selected and success. */
+/* The page 11 figure tints the header row pale green. An earlier revision used
+   --tkt-page on the reasoning that §7 reserves the pale green for selected and
+   success; the illustration overrules that, and §8.8 makes it binding. */
 .tkt-table thead th {
-  background-color: var(--tkt-page);
+  background-color: var(--tkt-green-pale);
   color: var(--tkt-text-muted);
   font-size: var(--tkt-font-label);
   font-weight: 600;
@@ -671,11 +672,51 @@
 
 /* -------------------------------------------------------- filters -- */
 
+/* A surface of its own, as the figure shows: the filter bar is one control
+   group, and left bare on the page background it reads as five loose fields. */
 .tkt-filters {
+  background-color: var(--tkt-surface);
+  border: 1px solid var(--tkt-border);
+  border-radius: var(--tkt-radius);
+  box-shadow: var(--tkt-shadow);
   display: grid;
   gap: var(--tkt-space-3);
   grid-template-columns: 2fr repeat(4, 1fr);
   margin-bottom: var(--tkt-space-4);
+  padding: var(--tkt-space-4);
+}
+
+/* An em dash for a value the workflow has not set yet. Lab 2 never assigns an
+   IT owner or an IT priority, so on this screen it is every row. */
+.tkt-unset {
+  color: var(--tkt-text-muted);
+}
+
+.tkt-page-btn {
+  background-color: var(--tkt-surface);
+  border: 1px solid var(--tkt-border);
+  border-radius: var(--tkt-radius-sm);
+  color: var(--tkt-text);
+  cursor: pointer;
+  font-size: var(--tkt-font-label);
+  min-width: 2.25rem;
+  padding: var(--tkt-space-2);
+}
+
+.tkt-page-btn:hover {
+  background-color: var(--tkt-green-pale);
+}
+
+.tkt-page-btn--current {
+  background-color: var(--tkt-green);
+  border-color: var(--tkt-green);
+  color: var(--tkt-text-inverse);
+  font-weight: 600;
+}
+
+.tkt-pagination__gap {
+  color: var(--tkt-text-muted);
+  padding: 0 var(--tkt-space-1);
 }
 
 .tkt-list-header {

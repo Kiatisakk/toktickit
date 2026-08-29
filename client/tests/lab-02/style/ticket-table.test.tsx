@@ -57,12 +57,40 @@ describe("the desktop table", () => {
       "Requested Priority",
       "IT Priority",
       "Current Status",
+      "Ticket Owner",
       "Last Updated",
     ]) {
       expect(
         screen.getByRole("columnheader", { name: new RegExp(heading, "u") })
       ).toBeInTheDocument();
     }
+  });
+
+  // Lab 2 never assigns an owner, so this is every row rather than an edge case.
+  it("says an unassigned owner is unassigned rather than leaving the cell blank", () => {
+    const { container } = renderTable();
+    const table = container.querySelector(".tkt-table") as HTMLElement;
+
+    expect(
+      within(table).getByText("Not yet assigned to an IT owner")
+    ).toBeInTheDocument();
+  });
+
+  it("shows the owner's name once there is one", () => {
+    render(
+      <MemoryRouter>
+        <TicketTable
+          onSort={() => undefined}
+          order="desc"
+          sort="createdAt"
+          tickets={[
+            { ...TICKET, ticketOwner: { id: 9, name: "Michael Brown" } },
+          ]}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getAllByText("Michael Brown").length).toBeGreaterThan(0);
   });
 
   it("announces the current sort rather than only drawing an arrow", () => {
@@ -114,6 +142,14 @@ describe("the mobile cards", () => {
     const { container } = renderTable();
 
     expect(within(card(container)).getByText(value)).toBeInTheDocument();
+  });
+
+  it("carries the ticket owner row too", () => {
+    const { container } = renderTable();
+
+    expect(
+      within(card(container)).getByText("Ticket Owner")
+    ).toBeInTheDocument();
   });
 
   it("says that IT priority is unset rather than omitting the row", () => {

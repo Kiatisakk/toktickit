@@ -243,13 +243,12 @@ blocking item:
 - The ticket number format `TKT-YYYYMMDD-XXXXXX` with a random suffix does not match either
   labsheet figure, which show `TKT-2025-001234` and a contiguous run implying a sequence.
 
-  > **Correction, added while closing Issue #18.** This was wrong, and it was mine. There is
-  > no second figure and no contiguous run: the handout prints exactly one ticket number,
-  > `TKT-2025-001234`, in Figure 1 on page 2, and one value cannot tell a sequence apart
-  > from a random suffix. His format differs from ours in the date portion, which is a real
-  > difference, but nothing in the handout makes a random suffix wrong. The finding is
-  > withdrawn and D-02 is rewritten. It stands here because this file records what was
-  > said, not what should have been.
+  > **The finding stands.** Commit `19dfb1d` on `feature/my-tickets` withdrew it, claiming
+  > the handout printed only one ticket number and so could not distinguish a sequence from
+  > a random suffix. That was wrong: the My Tickets figure on page 11 prints eight
+  > contiguous values. The withdrawal never reached him — it lived in this file for one
+  > commit — and it is reversed here rather than deleted, because it was pushed to PR #27
+  > and is readable in that branch's history.
 - The `Ticket` model omits IT Priority, Ticket Owner and Resolution Summary, all three of
   which the approved Ticket Detail illustration shows — Resolution Summary already drawn as
   an empty italic placeholder.

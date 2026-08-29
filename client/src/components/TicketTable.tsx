@@ -38,6 +38,7 @@ const COLUMNS: { field: SortField | null; label: string }[] = [
   { field: "requestedPriority", label: "Requested Priority" },
   { field: null, label: "IT Priority" },
   { field: null, label: "Current Status" },
+  { field: null, label: "Ticket Owner" },
   { field: "updatedAt", label: "Last Updated" },
 ];
 
@@ -134,6 +135,18 @@ export const TicketTable = ({
               <td>
                 <Badge kind="status" value={ticket.currentStatus} />
               </td>
+              <td>
+                {ticket.ticketOwner ? (
+                  ticket.ticketOwner.name
+                ) : (
+                  <span className="tkt-unset">
+                    <span aria-hidden="true">—</span>
+                    <span className="tkt-visually-hidden">
+                      Not yet assigned to an IT owner
+                    </span>
+                  </span>
+                )}
+              </td>
               <td>{formatDate(ticket.updatedAt)}</td>
             </tr>
           ))}
@@ -164,6 +177,19 @@ export const TicketTable = ({
                   kind="priority"
                   value={ticket.itPriority}
                 />
+              </dd>
+              <dt>Ticket Owner</dt>
+              <dd>
+                {ticket.ticketOwner ? (
+                  ticket.ticketOwner.name
+                ) : (
+                  <span className="tkt-unset">
+                    <span aria-hidden="true">—</span>
+                    <span className="tkt-visually-hidden">
+                      Not yet assigned to an IT owner
+                    </span>
+                  </span>
+                )}
               </dd>
               <dt>Created</dt>
               <dd>{formatDate(ticket.createdAt)}</dd>

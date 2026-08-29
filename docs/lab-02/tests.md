@@ -41,7 +41,7 @@ in the development database and is never touched by a test run.
 
 | ID | Requirement / AC | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
-| UNIT-01 | AC-09, BR-04 | Ticket number generator output shape | Matches `TKT-<4 digits>-<6 digits>`, including `TKT-2025-001234`, the only ticket number the handout prints; refuses a sequence past `999999` or below `1` rather than producing a value its own pattern rejects | `server/tests/lab-02/ticket-number.test.ts` | **Pass** |
+| UNIT-01 | AC-09, BR-04 | Ticket number generator output shape | Matches `TKT-<4 digits>-<6 digits>`, including the exact values both labsheet figures print; refuses a sequence past `999999` or below `1` rather than producing a value its own pattern rejects | `server/tests/lab-02/ticket-number.test.ts` | **Pass** |
 | UNIT-02 | BR-01, BR-04 | Sequence increments, restarts each year, and survives concurrency | Sequential claims advance; a new year restarts at `000001`; eight simultaneous claims yield eight distinct numbers | `server/tests/lab-02/ticket-number.test.ts` | **Pass** |
 | UNIT-03 | AC-10, BR-11, BR-13, BR-14 | Trim-then-validate helper | Whitespace-only fails; both boundaries pass and one character outside each fails; padding never counts toward the limit; a `requesterId` in the body is not read | `server/tests/lab-02/validation.test.ts` | **Pass** |
 | UNIT-04 | AC-15 | Query parser accepts every documented parameter | Returns the normalised query with defaults applied; search is trimmed; a blank filter is absent rather than a filter for nothing | `server/tests/lab-02/ticket-query.test.ts` | **Pass** |
@@ -105,7 +105,8 @@ in the development database and is never touched by a test run.
 | STYLE-05 | AC-25 | Accessible names | Navigation toggle carries a name, `aria-expanded` and `aria-controls`; decorative icons are `aria-hidden`; both landmarks are named | `client/tests/lab-02/style/shell.test.tsx` | **Pass** |
 | STYLE-06 | AC-25 | Labels and message wiring | Every control is reachable by its label; `aria-describedby` points at the message; `aria-invalid` set when invalid | `client/tests/lab-02/style/fields.test.tsx` | **Pass** |
 | STYLE-07 | AC-25, BR-35 | Shell and state blocks | Active nav marked by class **and** `aria-current`; breadcrumb marks the current page; empty and no-results carry different `data-state` values | `client/tests/lab-02/style/shell.test.tsx` | **Pass** |
-| STYLE-08 | AC-25 | Table and cards carry the same values | Every column ui-spec.md defines is present as a header and reachable from the mobile card; the current sort is announced with `aria-sort`; both link to the same detail screen | `client/tests/lab-02/style/ticket-table.test.tsx` | **Pass** |
+| STYLE-08 | AC-25 | Table and cards carry the same values | Every column the page 11 figure shows is present as a header and reachable from the mobile card; the current sort is announced with `aria-sort`; both link to the same detail screen | `client/tests/lab-02/style/ticket-table.test.tsx` | **Pass** |
+| STYLE-09 | AC-25 | Page controls match the page 11 figure | Numbered page buttons rather than a "Page 1 of 6" caption; the current page carries `aria-current="page"` so it is not marked by colour alone; a long run is windowed to first, last and the current page's neighbours, with a gap only where pages are genuinely skipped | `client/tests/lab-02/style/pagination.test.tsx` | **Pass** |
 
 ### Responsive and visual
 
