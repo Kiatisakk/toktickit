@@ -7,9 +7,31 @@ import {
 } from "../middleware/requesterContext.js";
 import { prisma } from "../prisma.js";
 import { claimTicketNumber } from "../tickets/ticketNumber.js";
+import { parseTicketQuery } from "../tickets/ticketQuery.js";
 import { validateTicketInput } from "../tickets/validation.js";
 
 export const ticketsRouter = Router();
+
+/**
+ * What a row in the list carries.
+ *
+ * Deliberately without `description`: the list shows a summary, and sending a
+ * five-thousand-character body for every row of every page to render one line
+ * of it is a cost with no reader.
+ */
+const LIST_SHAPE = {
+  id: true,
+  ticketNumber: true,
+  summary: true,
+  requestedPriority: true,
+  itPriority: true,
+  currentStatus: true,
+  createdAt: true,
+  updatedAt: true,
+  category: { select: { id: true, name: true } },
+  relatedSystem: { select: { id: true, name: true } },
+  ticketOwner: { select: { id: true, name: true } },
+} as const;
 
 /** Everything a client is given about one ticket. */
 const TICKET_SHAPE = {
@@ -143,5 +165,87 @@ ticketsRouter.post("/tickets", requireRequesterContext, async (req, res) => {
     }
 
     sendInternalError(res, "Failed to create ticket", error);
+  }
+});
+
+// oxlint-disable-next-line oxc/no-async-endpoint-handlers
+ticketsRouter.get("/tickets", requireRequesterContext, async (req, res) => {
+  const requester = requesterOf(res);
+  const parsed = parseTicketQuery(req.query as Record<string, unknown>);
+
+  if (!parsed.ok) {
+    sendError(
+      res,
+      400,
+      ErrorCode.invalidQueryParameter,
+      "One or more query parameters are not valid.",
+      parsed.details
+    );
+    return;
+  }
+
+  const query = parsed.value;
+
+  try {
+    // Ownership is a `where` clause, not a filter applied afterwards. Fetching
+    // and then discarding would page over other people's rows and report their
+    // count.
+    const where = {
+      requesterId: requester.id,
+      ...(query.categoryId === undefined
+        ? {}
+        : { categoryId: query.categoryId }),
+      ...(query.requestedPriority === undefined
+        ? {}
+        : { requestedPriority: query.requestedPriority }),
+      ...(query.itPriority === undefined
+        ? {}
+        : { itPriority: query.itPriority }),
+      ...(query.status === undefined ? {} : { currentStatus: query.status }),
+      ...(query.search === undefined
+        ? {}
+        : {
+            OR: [
+              {
+                ticketNumber: {
+                  contains: query.search,
+                  mode: "insensitive" as const,
+                },
+              },
+              {
+                summary: {
+                  contains: query.search,
+                  mode: "insensitive" as const,
+                },
+              },
+            ],
+          }),
+    };
+
+    const [totalItems, data] = await Promise.all([
+      prisma.ticket.count({ where }),
+      prisma.ticket.findMany({
+        where,
+        // The immutable id is always the last key. Without it two tickets
+        // sharing a createdAt have no defined order between them, so the same
+        // row can appear on two pages or on none (BR-32).
+        orderBy: [{ [query.sort]: query.order }, { id: "desc" }],
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+        select: LIST_SHAPE,
+      }),
+    ]);
+
+    res.status(200).json({
+      data,
+      meta: {
+        page: query.page,
+        pageSize: query.pageSize,
+        totalItems,
+        totalPages: Math.ceil(totalItems / query.pageSize),
+      },
+    });
+  } catch (error) {
+    sendInternalError(res, "Failed to list tickets", error);
   }
 });
