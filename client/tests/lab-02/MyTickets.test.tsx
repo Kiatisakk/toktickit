@@ -189,6 +189,97 @@ describe("an empty result", () => {
   });
 });
 
+/**
+ * The page controls, on the screen rather than in isolation.
+ *
+ * `pagination.test.tsx` exercised the component directly and passed throughout —
+ * but every mock in this file returned one or two tickets, so `totalPages` was
+ * always 1 and `Pagination` correctly rendered nothing. Nothing here had ever
+ * seen a page control. Raised by inspection of the running app, not by a test.
+ */
+describe("the page controls on the screen", () => {
+  const sixPages = () =>
+    listFetch([ticket(1), ticket(2)], {
+      page: 1,
+      pageSize: 10,
+      totalItems: 55,
+      totalPages: 6,
+    });
+
+  it("renders the windowed page numbers", async () => {
+    vi.stubGlobal("fetch", sixPages());
+
+    renderScreen();
+
+    await screen.findAllByText("TKT-2026-000001");
+
+    for (const label of ["Page 1", "Page 2", "Page 3", "Page 6"]) {
+      expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
+    }
+  });
+
+  it("leaves out the pages the window skips", async () => {
+    vi.stubGlobal("fetch", sixPages());
+
+    renderScreen();
+
+    await screen.findAllByText("TKT-2026-000001");
+    expect(screen.queryByRole("button", { name: "Page 5" })).toBeNull();
+  });
+
+  it("reports the real total rather than the length of the page", async () => {
+    vi.stubGlobal("fetch", sixPages());
+
+    renderScreen();
+
+    expect(
+      await screen.findByText("Showing 1 to 10 of 55 tickets")
+    ).toBeInTheDocument();
+  });
+
+  it("asks the API for the page that was clicked", async () => {
+    vi.stubGlobal("fetch", sixPages());
+
+    renderScreen();
+
+    await screen.findAllByText("TKT-2026-000001");
+    await userEvent.click(screen.getByRole("button", { name: "Page 3" }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("page=3"),
+        expect.anything()
+      );
+    });
+  });
+
+  // The illustration draws one object: rows and the controls that page through
+  // them share a surface. Two boxes read as a separate widget that happens to
+  // sit underneath the table.
+  it("shares a surface with the table rather than sitting below it", async () => {
+    vi.stubGlobal("fetch", sixPages());
+
+    const { container } = renderScreen();
+
+    await screen.findAllByText("TKT-2026-000001");
+
+    const list = container.querySelector(".tkt-list");
+
+    expect(list?.querySelector(".tkt-table")).not.toBeNull();
+    expect(list?.querySelector(".tkt-pagination")).not.toBeNull();
+  });
+
+  // The reason the whole screen exists at one page is not a bug.
+  it("renders no controls when everything fits on one page", async () => {
+    vi.stubGlobal("fetch", listFetch([ticket(1)]));
+
+    const { container } = renderScreen();
+
+    await screen.findAllByText("TKT-2026-000001");
+    expect(container.querySelector(".tkt-pagination")).toBeNull();
+  });
+});
+
 describe("filtering", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", listFetch([ticket(1)]));

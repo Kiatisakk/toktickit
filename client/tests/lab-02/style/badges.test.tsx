@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { Badge } from "../../../src/components/Badge";
+import { Icon } from "../../../src/components/Icon";
 
 /** STYLE-04 — badge meaning never depends on colour. */
 
@@ -66,6 +67,63 @@ describe("meaning without colour", () => {
   });
 });
 
+/**
+ * STYLE-14 — the two badge columns must not read as one.
+ *
+ * Requested Priority and Current Status sit two columns apart. Before this,
+ * Open, In Progress and Pending shared a single amber between them, and that
+ * amber was also priority Medium — so a reader scanning a row met the same chip
+ * twice and had to read both to learn they meant unrelated things.
+ *
+ * jsdom resolves no stylesheet, so the colours themselves are a Playwright
+ * question. What is assertable here is the hook each colour hangs on: a distinct
+ * modifier per status, and the kind on the element so the two families can be
+ * told apart in CSS.
+ */
+describe("telling the two badge columns apart", () => {
+  const classesFor = (kind: "priority" | "status", value: string) => {
+    const { container } = render(<Badge kind={kind} value={value} />);
+
+    return container.querySelector(".tkt-badge")?.className ?? "";
+  };
+
+  it("gives every status its own modifier", () => {
+    const modifiers = [
+      "NEW",
+      "OPEN",
+      "IN_PROGRESS",
+      "PENDING",
+      "RESOLVED",
+      "CLOSED",
+    ].map((value) => classesFor("status", value));
+
+    expect(new Set(modifiers).size).toBe(modifiers.length);
+  });
+
+  it("says which family a badge belongs to", () => {
+    render(<Badge kind="status" value="PENDING" />);
+
+    expect(screen.getByText("Pending")).toHaveAttribute("data-kind", "status");
+  });
+
+  // The one that would have caught the original problem: same word, different
+  // column, and the element has to be distinguishable.
+  it("distinguishes a priority from a status of the same name", () => {
+    const { container } = render(
+      <>
+        <Badge kind="priority" value="MEDIUM" />
+        <Badge kind="status" value="PENDING" />
+      </>
+    );
+
+    const kinds = [...container.querySelectorAll(".tkt-badge")].map((badge) =>
+      badge.getAttribute("data-kind")
+    );
+
+    expect(kinds).toStrictEqual(["priority", "status"]);
+  });
+});
+
 describe("an unset value", () => {
   // Lab 2 never sets IT Priority, so this is the common case rather than an
   // edge one. An empty cell says nothing about whether the value is missing or
@@ -90,5 +148,50 @@ describe("an unset value", () => {
     expect(container.querySelector('[aria-hidden="true"]')).toHaveTextContent(
       "—"
     );
+  });
+});
+
+/**
+ * STYLE-12 — icons support the label, never replace it.
+ *
+ * §8.3: "Buttons include visible text; icons may support but must not replace
+ * unclear text." So the test that matters is not that an icon renders — it is
+ * that removing every icon from the page would leave every control still
+ * saying what it does.
+ */
+describe("icons", () => {
+  const iconOf = (container: HTMLElement) => container.querySelector("i");
+
+  it("is hidden from assistive technology, being decoration", () => {
+    const { container } = render(<Icon name="search" />);
+
+    expect(iconOf(container)).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("carries no text of its own for a label to compete with", () => {
+    const { container } = render(<Icon name="ticket" />);
+
+    expect(container.textContent).toBe("");
+  });
+
+  // Our names, not Bootstrap's, so the whole set can be swapped in one file
+  // rather than at every call site.
+  it.each([
+    ["search", "bi-search"],
+    ["create", "bi-plus-circle"],
+    ["reload", "bi-arrow-counterclockwise"],
+    ["ticket", "bi-file-earmark-text"],
+    ["user", "bi-person-circle"],
+    ["brand", "bi-clock"],
+  ] as const)("maps %s to %s", (name, glyph) => {
+    const { container } = render(<Icon name={name} />);
+
+    expect(iconOf(container)).toHaveClass("bi", glyph);
+  });
+
+  it("keeps a hook of our own, so the set is not the styling contract", () => {
+    const { container } = render(<Icon name="user" />);
+
+    expect(iconOf(container)).toHaveClass("tkt-icon");
   });
 });
