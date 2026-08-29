@@ -1,0 +1,137 @@
+import { render, screen, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
+import { describe, expect, it } from "vitest";
+
+import {
+  type TicketRow,
+  TicketTable,
+} from "../../../src/components/TicketTable";
+
+/**
+ * STYLE-07 (extended) — the two presentations of the same list.
+ *
+ * §8.7 lets the desktop table and the mobile cards look different. It does not
+ * let the small one say less: a column dropped below 768px is information the
+ * reader cannot reach at all, because there is no wider view to switch to.
+ *
+ * jsdom applies no media query, so both are in the document here and CSS decides
+ * which is visible. That is what makes this assertable at all — whether the
+ * right one is *shown* at a given width is RESP-02's question, in Playwright.
+ */
+
+const TICKET: TicketRow = {
+  id: 42,
+  ticketNumber: "TKT-2026-000042",
+  summary: "Laptop battery drains quickly",
+  requestedPriority: "HIGH",
+  itPriority: null,
+  currentStatus: "NEW",
+  createdAt: "2026-08-01T09:14:00.000Z",
+  updatedAt: "2026-08-03T11:02:00.000Z",
+  category: { id: 2, name: "Hardware" },
+  relatedSystem: { id: 7, name: "Corporate Laptop" },
+  ticketOwner: null,
+};
+
+const renderTable = () =>
+  render(
+    <MemoryRouter>
+      <TicketTable
+        onSort={() => undefined}
+        order="desc"
+        sort="createdAt"
+        tickets={[TICKET]}
+      />
+    </MemoryRouter>
+  );
+
+describe("the desktop table", () => {
+  it("names every column the labsheet figure shows", () => {
+    renderTable();
+
+    for (const heading of [
+      "Ticket No.",
+      "Created Date",
+      "Summary",
+      "Category",
+      "Requested Priority",
+      "IT Priority",
+      "Current Status",
+      "Last Updated",
+    ]) {
+      expect(
+        screen.getByRole("columnheader", { name: new RegExp(heading, "u") })
+      ).toBeInTheDocument();
+    }
+  });
+
+  it("announces the current sort rather than only drawing an arrow", () => {
+    renderTable();
+
+    expect(
+      screen.getByRole("columnheader", { name: /Created Date/u })
+    ).toHaveAttribute("aria-sort", "descending");
+  });
+
+  it("leaves unsorted columns without a sort state", () => {
+    renderTable();
+
+    expect(
+      screen.getByRole("columnheader", { name: /Summary/u })
+    ).not.toHaveAttribute("aria-sort");
+  });
+
+  it("links the ticket number to its detail screen", () => {
+    const { container } = renderTable();
+    const table = container.querySelector(".tkt-table") as HTMLElement;
+
+    expect(
+      within(table).getByRole("link", { name: "TKT-2026-000042" })
+    ).toHaveAttribute("href", "/tickets/42");
+  });
+});
+
+describe("the mobile cards", () => {
+  const card = (container: HTMLElement) =>
+    container.querySelector(".tkt-ticket-card") as HTMLElement;
+
+  it("exists alongside the table", () => {
+    const { container } = renderTable();
+
+    expect(card(container)).not.toBeNull();
+  });
+
+  // The point of this file. Every value the table shows has to be reachable
+  // from the card too.
+  it.each([
+    ["ticket number", "TKT-2026-000042"],
+    ["summary", "Laptop battery drains quickly"],
+    ["category", "Hardware"],
+    ["related system", "Corporate Laptop"],
+    ["requested priority", "High"],
+    ["status", "New"],
+  ])("carries the %s", (_label, value) => {
+    const { container } = renderTable();
+
+    expect(within(card(container)).getByText(value)).toBeInTheDocument();
+  });
+
+  it("says that IT priority is unset rather than omitting the row", () => {
+    const { container } = renderTable();
+
+    expect(
+      within(card(container)).getByText("IT Priority")
+    ).toBeInTheDocument();
+    expect(
+      within(card(container)).getByText("IT priority not set")
+    ).toBeInTheDocument();
+  });
+
+  it("links to the same detail screen", () => {
+    const { container } = renderTable();
+
+    expect(
+      within(card(container)).getByRole("link", { name: "TKT-2026-000042" })
+    ).toHaveAttribute("href", "/tickets/42");
+  });
+});
