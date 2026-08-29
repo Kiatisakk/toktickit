@@ -195,9 +195,11 @@ controls read as a separate widget that happens to sit underneath.
 Rows alternate with `--tkt-page`, kept lighter than `--tkt-hover` so that pointing at a
 striped row still says something.
 
-The header row is `--tkt-green` on `--tkt-green-pale`, and carries more vertical padding
-than the rows beneath it. Muted grey made the header the quietest thing on a screen whose
-columns are what a reader navigates by.
+The header row is `--tkt-green` on `--tkt-green-pale`, at `--tkt-font-body` rather than the
+smaller label size, and carries more vertical padding than the rows beneath it. Muted grey
+at label size made the header the quietest thing on a screen whose columns are what a reader
+navigates by — set smaller than the data it introduces, which is backwards. Body size puts
+it level with the ticket numbers underneath.
 
 Ticket numbers are `--tkt-green-accent` and semibold, stated in our own rule rather than
 inherited from Bootstrap's link colour: a framework default is not a decision, and §7 fixes

@@ -711,13 +711,17 @@
 /* The page 11 figure tints the header row pale green. An earlier revision used
    --tkt-page on the reasoning that §7 reserves the pale green for selected and
    success; the illustration overrules that, and §8.8 makes it binding. */
-/* Green, and roomier than the rows beneath it, as the illustration draws it.
-   The muted grey it replaces made the header the quietest thing on a screen
-   whose columns are the thing you navigate by. */
+/* Green, full body size, and roomier than the rows beneath it, as the
+   illustration draws it.
+
+   The muted grey at label size it replaces made the header the quietest thing on
+   a screen whose columns are what a reader navigates by — smaller than the data
+   it introduces, which is backwards. Matching the body size puts it level with
+   the ticket numbers underneath. */
 .tkt-table thead th {
   background-color: var(--tkt-green-pale);
   color: var(--tkt-green);
-  font-size: var(--tkt-font-label);
+  font-size: var(--tkt-font-body);
   font-weight: 600;
   padding-bottom: var(--tkt-space-4);
   padding-top: var(--tkt-space-4);
