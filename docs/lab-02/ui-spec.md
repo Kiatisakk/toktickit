@@ -23,13 +23,22 @@ Defined once as CSS custom properties on `:root`. No component hard-codes a colo
 | `--tkt-text` | `#1F2A24` | Body text — charcoal-green, never pure black |
 | `--tkt-text-muted` | `#5B6B62` | Helper text, placeholders, metadata |
 | `--tkt-readonly` | `#EEF1EF` | Read-only and system-generated field backgrounds |
+| `--tkt-hover` | `#E8ECEA` | Hover fill for rows and list items |
 | `--tkt-error` | `#A4262C` | Validation text and invalid borders |
 | `--tkt-warning` | `#B4690E` | Warning callouts and badges — never decoration |
 | `--tkt-success` | `#0B7A46` | Success confirmation, paired with an icon and text |
+| `--tkt-info` | `#1B5E9E` | Open status — a state that is neither good, bad nor waiting |
+| `--tkt-info-pale` | `#EAF1F8` | Background for the above |
 
 Bootstrap's own variables are remapped onto these (`--bs-primary`, `--bs-body-bg`,
 `--bs-body-color`, `--bs-border-color`) so framework components inherit the palette
 without being restyled individually.
+
+`--tkt-hover` was added in review of PR #27. The palette had no hover fill, so the pale
+green was borrowed for one — and the pale green means *selected*. A row that looks selected
+whenever the pointer crosses it has spent that meaning on nothing. Controls that are
+themselves interactive, such as the page buttons, take `--tkt-green-accent` on hover as the
+table above says; the neutral fill is for rows and list items, which are not.
 
 **Contrast.** Body text on surface and on page background both exceed 7:1. Every state
 signalled by colour also carries an icon or a word, so nothing depends on colour alone.
@@ -95,6 +104,20 @@ icon-only control carries both an accessible name and a tooltip.
 
 ### Badges
 
+Pills carry a `1px` outline in `currentColor`, so each variant gets its own edge
+without a rule of its own to maintain. Two pale fills in adjacent columns read as one
+smear; an edge makes the row scannable.
+
+**Priority is filled, status is outlined**, and each status has its own colour: grey for
+untouched (New), blue for live (Open), green for being worked (In Progress) and for done
+(Resolved), amber for waiting on someone (Pending), flat grey for inert (Closed).
+
+The two treatments exist because the columns sit two apart and previously shared a palette.
+`Open`, `In Progress` and `Pending` were one amber between them — three quarters of the
+lifecycle looking identical — and that amber was also priority `Medium`. A reader scanning
+a row met the same chip twice and had to read both to learn they meant unrelated things.
+The word is still what carries the meaning; the colour never stands alone.
+
 `tkt-badge` plus a modifier. Every badge pairs its colour with the word, so meaning
 survives without colour.
 
@@ -107,10 +130,97 @@ survives without colour.
 An unset IT priority renders as `—` with the accessible text "not set", not as an empty
 cell.
 
+### Icons
+
+Bootstrap Icons, the set the illustrations were drawn from. A hand-cut path is recognisably
+not the same icon, which is worse than no icon.
+
+Sized at `0.85em`, not `1em`: an icon glyph fills its em box while a letter uses about seven
+tenths of one, so matching the numbers makes the icon visibly larger than the word beside
+it.
+
+§8.3 keeps them decorative — every one is `aria-hidden`, and the label beside it carries the
+meaning. The test that matters is not that an icon renders, but that deleting every icon on
+the page would leave every control still saying what it does.
+
+Our names map to Bootstrap's in one file, so the set can be replaced without touching a call
+site.
+
+A mark inside a control — the magnifier in the search box — is wrapped around the input
+itself (`.tkt-control-icon`), not floated over the field group. Against the group it has to
+be positioned from the bottom edge, and that guess is wrong the moment a hint or a validation
+message appears beneath, or the control height changes at the mobile breakpoint.
+
 ### State blocks
 
 One component, `tkt-state`, covers loading, empty, no-results and error. Each has an icon,
 a heading, one line of explanation, and — for empty and error — an action.
+
+### Ticket list
+
+`TicketTable` renders a table at 768px and above and a card per ticket below it. Both
+carry the same values: §8.7 allows the two presentations to look different, but a column
+dropped on a phone is information the reader cannot reach at all, since there is no wider
+view to switch to.
+
+Named for tickets rather than as a generic data table. It has exactly one caller, and a
+column-definition API written for one consumer is a guess about the second.
+
+Sortable headers are buttons carrying `aria-sort`, so the current sort is announced rather
+than only drawn as an arrow.
+
+Both presentations are surfaces — `--tkt-surface` on `--tkt-border`, rounded and carrying
+`--tkt-shadow`, the same treatment `.tkt-card` and the state blocks already use. A bare
+table inherits `--tkt-page` behind it and reads as loose text lying on the background
+rather than as one object with an edge, which is what every other block on the screen has.
+
+The header row is tinted `--tkt-page` rather than `--tkt-green-pale`: §7 reserves the pale
+green for selected and success, and a permanently green header would spend that meaning on
+a row that is neither.
+
+The corner radius is applied to the corner cells rather than by clipping the table with
+`overflow: hidden`. A table is not a reliable overflow container, and clipping it would cut
+the focus ring off the sort buttons in the top row.
+
+Header labels wrap rather than carrying `white-space: nowrap`. Eight unbreakable headings
+would push the table past `--tkt-content-max` and produce the horizontal scroll §8.7
+forbids.
+
+### The list surface
+
+The table and the page controls are one object, `.tkt-list`: a single surface with the
+controls as its footer above a divider, as the illustration draws them. As two boxes the
+controls read as a separate widget that happens to sit underneath.
+
+Rows alternate with `--tkt-page`, kept lighter than `--tkt-hover` so that pointing at a
+striped row still says something.
+
+The header row is `--tkt-green` on `--tkt-green-pale`, at `--tkt-font-body` rather than the
+smaller label size, and carries more vertical padding than the rows beneath it. Muted grey
+at label size made the header the quietest thing on a screen whose columns are what a reader
+navigates by — set smaller than the data it introduces, which is backwards. Body size puts
+it level with the ticket numbers underneath.
+
+Ticket numbers are `--tkt-green-accent` and semibold, stated in our own rule rather than
+inherited from Bootstrap's link colour: a framework default is not a decision, and §7 fixes
+this green. The mobile card carries the same link and the same treatment.
+
+Every cell is one line except Summary, which is capped at `24rem` and wraps: it is the only
+column carrying a sentence rather than a value, and left on one line a long summary drags
+the whole table sideways. Everything else stays on its line so the column can be scanned.
+
+Below 768 px the cards carry a surface each, so `.tkt-list` gives up its own — a box inside
+a box, with the inner one doing the work — and the page controls take the surface instead.
+
+### Pagination
+
+`Pagination` shows a range summary — "Showing 1 to 10 of 42 tickets" — alongside Previous,
+the current position, and Next. The summary is the only thing on the screen that tells a
+reader the list continues beyond what they can see, and the page 11 figure carries the
+same line — "Showing 1 to 8 of 42 tickets".
+
+It renders nothing when everything fits on one page. Controls that can only be pressed to
+arrive where you already are are noise.
 
 ---
 
@@ -151,23 +261,21 @@ tab with a visible focus ring.
 
 ### 5.2 Create Ticket
 
-Read-only context at the top (Ticket Number placeholder, Ticket Date, Requester), then
-classification side by side (Category, Related System, Requested Priority), then Summary
-at full width, then Description at full width and taller, then Attachments, then actions
-at the bottom right with Cancel to the left of Create Ticket.
+Ticket fields four across, as Figure 1 lays them out. §8.2 leaves the arrangement to us and
+offers that figure as the example, and §8.8 makes the illustrations binding.
 
-System-generated and read-only values use `tkt-field--readonly` so they are visibly
-distinct from anything the user can type into.
+Row one is system-generated and read-only: Ticket No. · Ticket Date · Requester · Current
+Status. Row two is classification: Category · Related System · Requested Priority · IT
+Priority, the last read-only. Then Summary and Description at full width, then attachments,
+then the actions — the order §8.2 gives as its example arrangement.
 
-| State | Presentation |
-| --- | --- |
-| Initial | Empty form, reference data loaded, Create Ticket enabled |
-| Loading reference data | Category and Related System show a loading placeholder |
-| Validation failure | Offending fields get `tkt-field--invalid` and a message; focus moves to the first one |
-| Submitting | Create Ticket busy and disabled; fields remain readable |
-| Success | Success panel with the generated Ticket Number and two actions — View Ticket, Create Another |
-| API failure | Error callout above the actions; **every entered value is preserved** |
-| Invalid attachment | The offending file is listed with its reason; valid selections survive |
+Current Status and IT Priority are present because the figure has them and because both are
+already answered: BR-02 fixes a new ticket at New, and §4.2 says nobody triages in Lab 2, so
+the fields read *New* and *Set by IT after triage*. Omitting them would hide settled answers
+rather than withhold undecided ones, which is D-04's reasoning applied to a screen.
+
+Read-only controls take `--tkt-readonly` and muted text, so a value the form supplies is
+never mistaken for one the requester is expected to type.
 
 ### 5.3 My Tickets
 
@@ -176,8 +284,15 @@ Priority, Current Status — with Clear Filters and Create Ticket to the right. 
 list. Then pagination with a range summary.
 
 Desktop columns: Ticket No. · Created Date · Summary · Category · Requested Priority · IT
-Priority · Current Status · Last Updated. Sortable headers carry a sort indicator and
+Priority · Current Status · Ticket Owner · Last Updated. Sortable headers carry a sort indicator and
 `aria-sort`.
+
+These nine are the nine the page 11 illustration shows, in its order. §8.4 leaves the
+arrangement to us and page 11 asks us to "decide and justify the final columns or card
+fields" from five examples that are "not a complete mandatory column list" — but the same
+page carries a picture of the finished table, and §8.8 makes the illustrations binding. The
+five named examples are a subset of the nine. D-14 in specification.md records the
+reasoning per column.
 
 Below 768 px the table becomes cards (`tkt-ticket-card`): ticket number and status on the
 first line, summary on the second, then category and priority, then the date. Every value
@@ -238,6 +353,17 @@ viewport, and an ellipsis in the middle of a filename is unreadable.
 | ≥ 992 px | Multi-column layout, content centred with a sensible maximum width |
 | 768–991 px | Two columns where practical; Summary and Description keep full width |
 | < 768 px | Everything stacks; touch targets at least 44 px; table becomes cards |
+
+The 44 px rule is enforced by raising `--tkt-control-height` to `--tkt-touch-target`
+(2.75 rem) inside the mobile breakpoint, so every control sized from the token grows at
+once. Each rule remembering separately is how the page buttons came to be 36 px while this
+table said 44.
+
+Between 768 px and 991 px the table is still the presentation, and nine columns of real
+data are wider than the viewport. The table scrolls inside `.tkt-table-scroll` rather than
+widening the page: §8.7 forbids the *page* scrolling sideways, not a table. That container
+is focusable and labelled, because a scrollable box that cannot be focused hides its far
+columns from anyone not using a pointer.
 | All sizes | No horizontal page scrolling, no clipped labels, no overlapping messages, no hidden buttons, no unreadable attachment names |
 
 Wide content that genuinely cannot shrink scrolls inside its own container. The page body
@@ -263,6 +389,53 @@ never does.
 
 Run at all three viewports, for each of Create Ticket, My Tickets, and Ticket Detail.
 Results are recorded in [`tests.md`](./tests.md).
+
+### Checked against the illustrations
+
+§8.8 asks for two things here, and only one of them is a list of tick boxes. The other is a
+"comparison against ui-spec.md and the approved illustrations for Create Ticket, My Tickets,
+and Ticket Detail **rather than personal memory**". This subsection is that comparison, and
+the phrase is in the handout for a reason — done from memory it failed twice on one screen,
+which is how My Tickets reached review without the Ticket Owner column the illustration
+shows.
+
+**Where the illustrations are.** Three images in a 22-page PDF: Ticket Detail (Figure 1,
+page 2), Development Requester Selection (page 9), My Tickets (page 11). Only the first is
+captioned, so searching the document for "Figure" returns a single hit and reads like a
+complete answer. The reliable question is which pages carry images.
+
+**The handout names three screens to compare and supplies pictures for two of them.** There
+is no Create Ticket illustration, and Requester Selection — the one screen that does have a
+picture — is not among the three §8.8 lists. §8.2 offers Figure 1 as "an example of the
+Ticket UI screen", which makes it the nearest reference Create Ticket has: usable for field
+grouping and control styling, not for layout, since one screen is read-only and the other is
+a form.
+
+**My Tickets** matches the page 11 illustration on every element — nine columns in its
+order, the filter bar and its four defaults, the pale-green header tint, green ticket-number
+links, the range-summary wording, and numbered page buttons. Four of those were wrong until
+they were checked against the picture. Three departures are deliberate:
+
+| Departure | Why |
+| --- | --- |
+| Page size 10, not the figure's 8 | §6.1 fixes the allowed sizes at 10/20/50, and 8 is not one of them — following the picture would break the written rule |
+| Summary and Requested Priority also sortable | The three the figure marks are all sortable; two more take nothing away |
+| A gap only where pages are skipped | The figure draws `1 2 3 4 5 … 6`, an ellipsis hiding nothing — a drawing artefact, and one that promises a page that is not there |
+
+One item is still open: the figure gives each status its own colour — Open blue, Pending
+amber, In Progress and Resolved green — and we render them alike. Nothing on screen is wrong
+today because §4.2 keeps every ticket at New, but it will be as soon as Lab 3 moves one.
+
+**Development Requester Selection** matches the page 9 illustration except for a decorative
+avatar icon above the title, and Cancel: the figure shows it unconditionally, and it appears
+here only when a requester is already selected. With none selected there is nowhere to
+cancel to — every other route is guarded, so `/` redirects to My Tickets, which redirects
+straight back — and §8.1's required elements do not include it.
+
+**Ticket Detail** is specified from Figure 1 in §5.4 above, before the screen exists rather
+than after. The figure also shows four tabs — Public Comments, Attachments, Service Actions,
+Event Log — and §4.2 excludes the features behind three of them. The exclusion wins, so §5.4
+specifies the attachment section alone and no tab strip at all.
 
 - [ ] Header, primary buttons and active navigation use the specified greens
 - [ ] Page background, surfaces and borders match their tokens

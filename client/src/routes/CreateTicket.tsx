@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 
 import { AppShell } from "../components/AppShell";
 import { Button } from "../components/Button";
+import { Icon } from "../components/Icon";
 import { Select } from "../components/Select";
 import { StateBlock } from "../components/StateBlock";
 import { TextArea } from "../components/TextArea";
@@ -273,6 +274,23 @@ export const CreateTicket = () => {
     );
   }
 
+  /**
+   * Why the control cannot be used, rather than a single word for three
+   * different situations. "Loading…" on a list that failed to load is a promise
+   * the screen is not keeping.
+   */
+  const choosePlaceholder = (noun: string) => {
+    if (usable) {
+      return `Choose a ${noun}`;
+    }
+
+    if (reference.kind === "loading") {
+      return "Loading…";
+    }
+
+    return "Unavailable";
+  };
+
   return (
     <AppShell breadcrumbs={BREADCRUMBS}>
       <h1 className="tkt-page-title">Create Ticket</h1>
@@ -286,20 +304,6 @@ export const CreateTicket = () => {
         onSubmit={(event) => void onSubmit(event)}
         ref={formRef}
       >
-        {/* System-generated values, shown read-only so it is obvious they are
-            not something to fill in (§8.2). Neither has a value yet: the number
-            is issued on creation, and the date is the server's `createdAt`
-            rather than whatever this browser's clock says right now. */}
-        <div className="tkt-grid tkt-grid--3">
-          <TextInput
-            label="Ticket No."
-            readOnly
-            value="Assigned when you submit"
-          />
-          <TextInput label="Ticket Date" readOnly value="Set when you submit" />
-          <TextInput label="Requester" readOnly value={requester?.name ?? ""} />
-        </div>
-
         {reference.kind === "failed" ? (
           <StateBlock
             action={
@@ -332,56 +336,86 @@ export const CreateTicket = () => {
           />
         ) : null}
 
-        {reference.kind === "loading" || usable ? (
-          <>
-            <div className="tkt-grid tkt-grid--3">
-              <Select
-                disabled={!usable}
-                error={errors["categoryId"]}
-                label="Category"
-                onChange={(event) => set("categoryId")(event.target.value)}
-                options={
-                  reference.kind === "loaded"
-                    ? reference.categories.map((item) => ({
-                        value: String(item.id),
-                        label: item.name,
-                      }))
-                    : []
-                }
-                placeholder={usable ? "Choose a category" : "Loading…"}
-                required
-                value={draft.categoryId}
-              />
-              <Select
-                disabled={!usable}
-                error={errors["relatedSystemId"]}
-                label="Related System"
-                onChange={(event) => set("relatedSystemId")(event.target.value)}
-                options={
-                  reference.kind === "loaded"
-                    ? reference.systems.map((item) => ({
-                        value: String(item.id),
-                        label: item.name,
-                      }))
-                    : []
-                }
-                placeholder={usable ? "Choose a related system" : "Loading…"}
-                required
-                value={draft.relatedSystemId}
-              />
-              <Select
-                disabled={!usable}
-                error={errors["requestedPriority"]}
-                label="Requested Priority"
-                onChange={(event) =>
-                  set("requestedPriority")(event.target.value)
-                }
-                options={PRIORITIES}
-                required
-                value={draft.requestedPriority}
-              />
-            </div>
+        {/*
+          One grid, in Figure 1's order: identification and classification
+          across the first two rows, then the owner beside a wide Summary, then
+          Description and Resolution Summary at full width.
 
+          It is rendered whatever the reference data is doing. An earlier
+          version hid the classification controls until they had loaded, which
+          made the form change shape twice on the way in and put Category on a
+          different row from the one it belongs on. The controls are disabled
+          instead, which says the same thing without moving anything.
+
+          Every read-only field here is one the act of creating settles:
+          the number and date are assigned on save, the requester is who is
+          signed in, and BR-02 fixes the status at New.
+
+          Figure 1 also carries IT Priority, Ticket Owner and Resolution
+          Summary. They are not here, because nothing on a create form can ever
+          fill them: all three are set by work §4.2 excludes from Lab 2, so on
+          this screen they would be three permanently empty boxes on a form
+          whose job is to collect input. They belong to Ticket Detail (§8.5),
+          which is where Figure 1 is a picture of, and to Issue #19.
+        */}
+        <div className="tkt-grid tkt-grid--4">
+          <TextInput
+            label="Ticket No."
+            readOnly
+            value="Assigned when you submit"
+          />
+          <TextInput label="Ticket Date" readOnly value="Set when you submit" />
+          <Select
+            disabled={!usable}
+            error={errors["categoryId"]}
+            label="Category"
+            onChange={(event) => set("categoryId")(event.target.value)}
+            options={
+              reference.kind === "loaded"
+                ? reference.categories.map((item) => ({
+                    value: String(item.id),
+                    label: item.name,
+                  }))
+                : []
+            }
+            placeholder={choosePlaceholder("category")}
+            required
+            value={draft.categoryId}
+          />
+          <Select
+            disabled={!usable}
+            error={errors["relatedSystemId"]}
+            label="Related System"
+            onChange={(event) => set("relatedSystemId")(event.target.value)}
+            options={
+              reference.kind === "loaded"
+                ? reference.systems.map((item) => ({
+                    value: String(item.id),
+                    label: item.name,
+                  }))
+                : []
+            }
+            placeholder={choosePlaceholder("related system")}
+            required
+            value={draft.relatedSystemId}
+          />
+
+          <TextInput label="Requester" readOnly value={requester?.name ?? ""} />
+          <Select
+            disabled={!usable}
+            error={errors["requestedPriority"]}
+            label="Requested Priority"
+            onChange={(event) => set("requestedPriority")(event.target.value)}
+            options={PRIORITIES}
+            required
+            value={draft.requestedPriority}
+          />
+          <TextInput label="Current Status" readOnly value="New" />
+
+          {/* Full width. A one-line summary of the problem is the field a
+              reader scans the list by, and giving it the width of a name would
+              encourage the wrong length. */}
+          <div className="tkt-span-4">
             <TextInput
               disabled={!usable}
               error={errors["summary"]}
@@ -391,7 +425,9 @@ export const CreateTicket = () => {
               required
               value={draft.summary}
             />
+          </div>
 
+          <div className="tkt-span-4">
             <TextArea
               disabled={!usable}
               error={errors["description"]}
@@ -401,8 +437,8 @@ export const CreateTicket = () => {
               required
               value={draft.description}
             />
-          </>
-        ) : null}
+          </div>
+        </div>
 
         {failure ? (
           <p className="tkt-callout tkt-callout--error" role="alert">
@@ -430,6 +466,7 @@ export const CreateTicket = () => {
             type="submit"
             variant="primary"
           >
+            <Icon name="create" />
             Create Ticket
           </Button>
         </div>

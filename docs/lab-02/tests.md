@@ -41,11 +41,11 @@ in the development database and is never touched by a test run.
 
 | ID | Requirement / AC | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
-| UNIT-01 | AC-09, BR-04 | Ticket number generator output shape | Matches `TKT-<4 digits>-<6 digits>`, including the exact values both labsheet figures show; refuses a sequence past `999999` or below `1` rather than producing a value its own pattern rejects | `server/tests/lab-02/ticket-number.test.ts` | **Pass** |
+| UNIT-01 | AC-09, BR-04 | Ticket number generator output shape | Matches `TKT-<4 digits>-<6 digits>`, including the exact values both labsheet figures print; refuses a sequence past `999999` or below `1` rather than producing a value its own pattern rejects | `server/tests/lab-02/ticket-number.test.ts` | **Pass** |
 | UNIT-02 | BR-01, BR-04 | Sequence increments, restarts each year, and survives concurrency | Sequential claims advance; a new year restarts at `000001`; eight simultaneous claims yield eight distinct numbers | `server/tests/lab-02/ticket-number.test.ts` | **Pass** |
 | UNIT-03 | AC-10, BR-11, BR-13, BR-14 | Trim-then-validate helper | Whitespace-only fails; both boundaries pass and one character outside each fails; padding never counts toward the limit; a `requesterId` in the body is not read | `server/tests/lab-02/validation.test.ts` | **Pass** |
-| UNIT-04 | AC-15 | Query parser accepts every documented parameter | Returns the normalised query object | `server/tests/lab-02/ticket-query.test.ts` | Planned |
-| UNIT-05 | AC-16, BR-34 | Query parser rejects the undocumented | Unknown key, bad enum, `pageSize=15`, `page=0` each throw naming the parameter | `server/tests/lab-02/ticket-query.test.ts` | Planned |
+| UNIT-04 | AC-15 | Query parser accepts every documented parameter | Returns the normalised query with defaults applied; search is trimmed; a blank filter is absent rather than a filter for nothing | `server/tests/lab-02/ticket-query.test.ts` | **Pass** |
+| UNIT-05 | AC-16, BR-34 | Query parser rejects the undocumented | Unknown key, unlisted sort column, bad enum, `pageSize=15`, `page=0` each rejected by name; every offending parameter reported at once; the message says which values are allowed | `server/tests/lab-02/ticket-query.test.ts` | **Pass** |
 | UNIT-06 | BR-24 | Filename sanitiser | Path separators, traversal segments and control characters removed; extension preserved | `server/tests/lab-02/filename.test.ts` | Planned |
 | UNIT-07 | AC-19, BR-21–23 | Attachment rule evaluation | Type, size and active-count rules each reject independently | `server/tests/lab-02/attachment-rules.test.ts` | Planned |
 
@@ -61,10 +61,10 @@ in the development database and is never touched by a test run.
 | API-05 | AC-10, BR-18 | Field validation | All fourteen rejection cases — both text fields missing, whitespace-only, below minimum and above maximum, both reference ids missing and non-positive, and priority missing or outside the enum — each return `400 VALIDATION_FAILED` naming the field and store nothing; both boundaries are accepted; missing and retired reference rows are rejected; no ticket number is burned | `server/tests/lab-02/create-ticket.api.test.ts` | **Pass** |
 | API-06 | AC-11, BR-11 | Body cannot override ownership | Ticket is owned by the header's requester, not the body's; a missing context creates nothing | `server/tests/lab-02/create-ticket.api.test.ts` | **Pass** |
 | API-07 | AC-09, BR-01 | Concurrent creation | Eight parallel creates all return `201` with eight distinct numbers | `server/tests/lab-02/create-ticket.api.test.ts` | **Pass** |
-| API-08 | AC-14, FR-10 | List ownership | Requester B's list contains none of Requester A's tickets | `server/tests/lab-02/my-tickets.api.test.ts` | Planned |
-| API-09 | AC-15 | Search, filters, sorting | Each documented parameter narrows or orders as specified | `server/tests/lab-02/my-tickets.api.test.ts` | Planned |
-| API-10 | AC-15, BR-32 | Pagination stability | With identical `createdAt` values, paging the whole set returns every row exactly once | `server/tests/lab-02/my-tickets.api.test.ts` | Planned |
-| API-11 | AC-16, BR-34 | Invalid query parameters | `400 INVALID_QUERY_PARAMETER` naming the parameter; never a silent default | `server/tests/lab-02/my-tickets.api.test.ts` | Planned |
+| API-08 | AC-14, FR-10 | List ownership | Requester B's list contains none of Requester A's tickets; ownership is a `where` clause so the count is the owner's too; the response omits `description` | `server/tests/lab-02/my-tickets.api.test.ts` | **Pass** |
+| API-09 | AC-15 | Search, filters, sorting | Search matches ticket number and summary case-insensitively; each filter narrows; filters combine rather than replace; sort and order both apply | `server/tests/lab-02/my-tickets.api.test.ts` | **Pass** |
+| API-10 | AC-15, BR-32 | Pagination stability | Every fixture shares a `createdAt` to the millisecond; paging the whole set returns each row exactly once and the same page twice returns the same rows | `server/tests/lab-02/my-tickets.api.test.ts` | **Pass** |
+| API-11 | AC-16, BR-34 | Invalid query parameters | `400 INVALID_QUERY_PARAMETER` naming the parameter for six cases including an unknown one; no `data` is returned, so nothing falls back | `server/tests/lab-02/my-tickets.api.test.ts` | **Pass** |
 | API-12 | AC-18, BR-12 | Detail ownership | Another requester's ticket and a nonexistent id return identical `404` bodies | `server/tests/lab-02/ticket-detail.api.test.ts` | Planned |
 | API-13 | AC-19 | Attachment upload | `201`; metadata stored; file present under a generated name | `server/tests/lab-02/attachments.api.test.ts` | Planned |
 | API-14 | AC-19, BR-21–23 | Upload rejections | Disallowed type `415`; oversized `413`; sixth active `409` | `server/tests/lab-02/attachments.api.test.ts` | Planned |
@@ -89,7 +89,7 @@ in the development database and is never touched by a test run.
 | UI-08 | AC-10, AC-25 | Field-level messages | Each message renders inside its own field group; whitespace-only counts as empty; focus moves to the first invalid control; the API is never called for an invalid form | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
 | UI-09 | AC-12, BR-17 | Busy submit | Button disabled and renamed while the request is in flight, leaving no enabled control to click again | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
 | UI-10 | AC-13, BR-19 | Failure preserves input | Every entered value survives a failed submission; the message is readable rather than the exception; the control re-enables; server-reported field messages reach their field | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
-| UI-11 | AC-17, BR-35 | Empty vs no-results | Different text and different actions | `client/tests/lab-02/MyTickets.test.tsx` | Planned |
+| UI-11 | AC-17, BR-35 | Empty vs no-results | Different text, different actions and different `data-state`; filters are sent to the API rather than applied in the browser; a query change returns to page one | `client/tests/lab-02/MyTickets.test.tsx` | **Pass** |
 | UI-12 | AC-18, FR-16 | Detail is read-only | No input, no status control, no comment box | `client/tests/lab-02/RequesterTicketDetail.test.tsx` | Planned |
 | UI-13 | AC-21, BR-27 | Attachment add and remove | Confirmation requires a reason; confirm stays disabled below 3 characters | `client/tests/lab-02/AttachmentSection.test.tsx` | Planned |
 | UI-14 | AC-22 | Removed attachment | Metadata shown with a Removed badge and no Download control | `client/tests/lab-02/AttachmentSection.test.tsx` | Planned |
@@ -101,10 +101,25 @@ in the development database and is never touched by a test run.
 | STYLE-01 | AC-25 | Required marker | Asterisk present and `aria-hidden`; control marked `required`; message appears as well as the asterisk | `client/tests/lab-02/style/fields.test.tsx` | **Pass** |
 | STYLE-02 | AC-25 | Read-only vs editable | Distinct classes; read-only controls are not editable; invalid and disabled each carry their own modifier | `client/tests/lab-02/style/fields.test.tsx` | **Pass** |
 | STYLE-03 | AC-25 | Button hierarchy | Primary, secondary, destructive, disabled and busy each carry their class; busy sets `aria-busy` and disables; neither busy nor disabled can be activated | `client/tests/lab-02/style/buttons.test.tsx` | **Pass** |
-| STYLE-04 | AC-25 | Badges | Every badge renders its word, so meaning does not depend on colour | `client/tests/lab-02/style/badges.test.tsx` | Planned |
+| STYLE-04 | AC-25 | Badges | Every badge renders its word and a distinct label; an underscored enum reads as words; an unset value renders a dash with an accessible explanation rather than an empty cell | `client/tests/lab-02/style/badges.test.tsx` | **Pass** |
 | STYLE-05 | AC-25 | Accessible names | Navigation toggle carries a name, `aria-expanded` and `aria-controls`; decorative icons are `aria-hidden`; both landmarks are named | `client/tests/lab-02/style/shell.test.tsx` | **Pass** |
 | STYLE-06 | AC-25 | Labels and message wiring | Every control is reachable by its label; `aria-describedby` points at the message; `aria-invalid` set when invalid | `client/tests/lab-02/style/fields.test.tsx` | **Pass** |
 | STYLE-07 | AC-25, BR-35 | Shell and state blocks | Active nav marked by class **and** `aria-current`; breadcrumb marks the current page; empty and no-results carry different `data-state` values | `client/tests/lab-02/style/shell.test.tsx` | **Pass** |
+| STYLE-08 | AC-25 | Table and cards carry the same values | Every column the page 11 figure shows is present as a header and reachable from the mobile card; the current sort is announced with `aria-sort`; both link to the same detail screen | `client/tests/lab-02/style/ticket-table.test.tsx` | **Pass** |
+| STYLE-09 | AC-25 | Page controls match the page 11 figure | Numbered page buttons rather than a "Page 1 of 6" caption; the current page carries `aria-current="page"` so it is not marked by colour alone; a long run is windowed to first, last and the current page's neighbours, with a gap only where pages are genuinely skipped | `client/tests/lab-02/style/pagination.test.tsx` | **Pass** |
+| STYLE-10 | AC-25 | Table overflow stays inside its own container | `.tkt-table-scroll` wraps the table, is focusable and labelled, so the 768–991px band scrolls the table rather than the page | `client/tests/lab-02/style/ticket-table.test.tsx` | **Pass** |
+| STYLE-12 | AC-25 | Icons support the label and never replace it | Every icon is `aria-hidden`, carries no text of its own, and maps our name to a Bootstrap glyph in one place | `client/tests/lab-02/style/badges.test.tsx` | **Pass** |
+| STYLE-13 | AC-25 | A mark inside a control belongs to the control | The icon wraps the input rather than the field group, so a hint added beneath cannot move it | `client/tests/lab-02/style/fields.test.tsx` | **Pass** |
+| STYLE-14 | AC-25 | The two badge columns cannot be confused | Every status has its own modifier; the element says which family it belongs to, so priority and status of the same hue stay distinguishable | `client/tests/lab-02/style/badges.test.tsx` | **Pass** |
+| UI-18 | AC-14 | The page controls appear on the screen itself | Windowed numbers, the real total rather than the page length, a click asking the API for that page, and the table and controls sharing one surface | `client/tests/lab-02/MyTickets.test.tsx` | **Pass** |
+| STYLE-11 | AC-25 | Create Ticket carries the fields Figure 1 shows | Ticket No., Ticket Date, Requester, Current Status and IT Priority are all read-only; status reads New per BR-02; the ticket fields are laid out four across | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
+| UI-14 | AC-13, BR-34 | The ticket list response is validated in full | Every field the screen renders is checked, including `itPriority` and `ticketOwner`; one malformed row rejects the whole page as `UNEXPECTED_RESPONSE` | `client/tests/lab-02/api-contract.test.ts` | **Pass** |
+| UI-15 | AC-13 | Loading shows skeleton rows with the filter bar live | Skeleton keeps the list's shape so nothing jumps on a refetch; one status line rather than eight; Search stays enabled | `client/tests/lab-02/MyTickets.test.tsx` | **Pass** |
+| UI-16 | AC-16 | A failed category load is stated, not silent | The filter is disabled and says why; the ticket list, which does not depend on it, still renders | `client/tests/lab-02/MyTickets.test.tsx` | **Pass** |
+| UI-17 | AC-13 | Retry runs through the effect that owns the abort | Try again re-enters the same effect, so a filter change during a slow retry cannot be overwritten by the stale response | `client/tests/lab-02/MyTickets.test.tsx` | **Pass** |
+| API-22 | BR-34 | Repeated or nested query parameters are rejected | `?status=NEW&status=OPEN` and `?categoryId[gt]=1` are named as errors rather than read as absent and silently dropped | `server/tests/lab-02/ticket-query.test.ts` | **Pass** |
+| API-23 | BR-33 | Page size is matched as text | `10.0`, `1e1`, `+10`, `0x0A` are refused; only the three spellings the contract names are accepted | `server/tests/lab-02/ticket-query.test.ts` | **Pass** |
+| API-24 | AC-16 | The IT priority filter narrows the list | A fixture triaged directly in the database is the only row returned; the untriaged rows are excluded | `server/tests/lab-02/my-tickets.api.test.ts` | **Pass** |
 
 ### Responsive and visual
 
@@ -153,7 +168,7 @@ in the development database and is never touched by a test run.
 | AC-22 | API-17, UI-14, E2E-01 |
 | AC-23 | API-18 |
 | AC-24 | API-19 |
-| AC-25 | STYLE-01…07, RESP-01…04 |
+| AC-25 | STYLE-01, STYLE-02, STYLE-03, STYLE-04, STYLE-05, STYLE-06, STYLE-07, STYLE-08, RESP-01, RESP-02, RESP-03, RESP-04 |
 
 No acceptance criterion is unmapped, and no planned test exists without a criterion to
 justify it.
@@ -195,8 +210,8 @@ Filled in as each Issue merges; completed before the release Pull Request.
 
 | Suite | Files | Tests | Passing | Recorded on |
 | --- | --- | --- | --- | --- |
-| Server (unit + API) | 9 | 123 | 123 | 2026-08-30 (Issue #17, after review) |
-| Client (component + style) | 10 | 107 | 107 | 2026-08-30 (Issue #17, after review) |
+| Server (unit + API) | 11 | 213 | 213 | 2026-08-30 (Issue #18) |
+| Client (component + style) | 13 | 153 | 153 | 2026-08-30 (Issue #18) |
 | End-to-end | — | — | — | — |
 
 ---

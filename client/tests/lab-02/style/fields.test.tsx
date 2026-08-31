@@ -183,3 +183,45 @@ describe("select", () => {
     ).toBeDisabled();
   });
 });
+
+/**
+ * STYLE-13 — a mark inside a control belongs to the control.
+ *
+ * The first attempt floated the icon over the whole field group and positioned
+ * it from the bottom edge, which only lines up while the group happens to be
+ * label-plus-input and nothing else. These assert the structure that makes the
+ * alignment true by construction rather than by measurement.
+ */
+describe("an icon inside a control", () => {
+  it("wraps the input, so the icon is positioned against it", () => {
+    const { container } = render(<TextInput icon="search" label="Search" />);
+    const wrapper = container.querySelector(".tkt-control-icon");
+
+    expect(wrapper?.querySelector("input")).not.toBeNull();
+    expect(wrapper?.querySelector("i")).not.toBeNull();
+  });
+
+  // A hint pushes the bottom of the field group down. Anchored to the group,
+  // that moved the icon; anchored to the input, it cannot.
+  it("keeps the icon inside the control when a hint is added below", () => {
+    const { container } = render(
+      <TextInput hint="Try a ticket number." icon="search" label="Search" />
+    );
+    const wrapper = container.querySelector(".tkt-control-icon");
+
+    expect(wrapper?.querySelector("input")).not.toBeNull();
+    expect(wrapper?.querySelector(".tkt-field-hint")).toBeNull();
+  });
+
+  it("adds no wrapper when there is no icon", () => {
+    const { container } = render(<TextInput label="Summary" />);
+
+    expect(container.querySelector(".tkt-control-icon")).toBeNull();
+  });
+
+  it("leaves the label pointing at the input", () => {
+    render(<TextInput icon="search" label="Search" />);
+
+    expect(screen.getByLabelText("Search").tagName).toBe("INPUT");
+  });
+});

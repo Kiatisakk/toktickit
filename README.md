@@ -47,6 +47,9 @@ npm run db:seed
 
 # 6. Prepare the separate database the tests use
 npm run db:test:setup
+
+# 7. Optional — demonstration tickets, for the screenshots
+npm run db:seed:demo
 ```
 
 The seed is idempotent — running it again does not create duplicates. It writes
@@ -56,6 +59,11 @@ Requesters, one of which is deliberately inactive.
 Tests run against their own database, `toktickit_test`, in the same container.
 Sharing one database would mean every test run wiped the demonstration data the
 screenshots depend on.
+
+Step 7 fills the development database with tickets spread deliberately across the
+seeded requesters — twenty-five for the first so pagination spans several pages,
+six for the second, none for the third so the empty state can be seen, and three
+for the fourth. Re-running it replaces them rather than adding more.
 
 ## Running the app
 
@@ -116,6 +124,16 @@ The test plans are in [docs/lab-01/tests.md](./docs/lab-01/tests.md) and
 ### `GET /api/related-systems`
 
 Active related systems in display order — `{ "id": 1, "name": "Email" }` and so on.
+
+### `GET /api/tickets`
+
+The current requester's tickets, one page at a time. Supports `search`, `categoryId`,
+`requestedPriority`, `itPriority`, `status`, `sort`, `order`, `page` and `pageSize`.
+An unrecognised or out-of-range value is an error rather than a silent default.
+
+### `POST /api/tickets`
+
+Creates one ticket for the current requester and issues its official number.
 
 ### `GET /api/requesters`
 

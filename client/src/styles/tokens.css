@@ -22,6 +22,14 @@
   --tkt-border: #dde3e0;
   --tkt-readonly: #eef1ef;
 
+  /* Hover fill for rows and list items.
+
+     The palette had no such token, so the pale green was borrowed for it — and
+     the pale green means "selected". A row that looks selected whenever the
+     pointer crosses it has spent the word on nothing. Neutral, one step off the
+     surface, and distinct from both selection and the page behind. */
+  --tkt-hover: #e8ecea;
+
   /* Text — charcoal-green, never pure black */
   --tkt-text: #1f2a24;
   --tkt-text-muted: #5b6b62;
@@ -33,6 +41,12 @@
   --tkt-warning: #b4690e;
   --tkt-warning-pale: #fdf6ec;
   --tkt-success: #0b7a46;
+
+  /* Blue for a live, neutral state. §7 fixes the greens and says nothing about
+     this; the page 11 illustration draws Open in blue, and the status column
+     needs a colour that is neither "good", "bad" nor "waiting". */
+  --tkt-info: #1b5e9e;
+  --tkt-info-pale: #eaf1f8;
 
   /* Spacing — a 4px scale */
   --tkt-space-1: 0.25rem;
@@ -54,10 +68,14 @@
   --tkt-radius: 0.5rem;
   --tkt-radius-sm: 0.375rem;
   --tkt-control-height: 2.5rem;
+  --tkt-touch-target: 2.75rem;
   --tkt-shadow: 0 1px 2px rgb(31 42 36 / 6%), 0 1px 3px rgb(31 42 36 / 4%);
 
   /* Layout */
-  --tkt-content-max: 75rem;
+  /* Nine columns on one line each need the room. §8.7 asks for "a sensible
+     maximum width", not a narrow one — below this the table scrolls on displays
+     that could have shown it whole. */
+  --tkt-content-max: 90rem;
 }
 
 /* Bootstrap inherits the palette rather than being overridden per component. */
