@@ -45,3 +45,6 @@ coverage/
 .DS_Store
 Thumbs.db
 *.sw?
+
+# Uploaded attachments. Generated names, real user content — never in git.
+server/uploads/

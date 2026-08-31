@@ -52,6 +52,11 @@ model User {
   /// Tickets this user raised.
   tickets Ticket[] @relation("TicketRequester")
 
+  /// Two named relations because a user can be on both ends of one attachment:
+  /// the person who uploaded it and, later, the person who removed it.
+  uploadedAttachments Attachment[] @relation("AttachmentUploader")
+  removedAttachments  Attachment[] @relation("AttachmentRemover")
+
   /// Tickets this user is responsible for. Empty throughout Lab 2 — nothing can
   /// set an owner until IT Staff exist.
   ownedTickets Ticket[] @relation("TicketOwner")
@@ -179,6 +184,8 @@ model Ticket {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  attachments Attachment[]
+
   // Every My Tickets query filters on owner and orders by creation time. This
   // is the one index the sprint cannot do without.
   @@index([requesterId, createdAt(sort: Desc)])
@@ -195,4 +202,44 @@ model Ticket {
 model TicketCounter {
   year       Int @id
   lastNumber Int @default(0)
+}
+
+/// A file attached to a Ticket.
+///
+/// `removedAt` is the single source of truth for soft removal: null means
+/// active, a timestamp means removed. There is deliberately no `isActive`
+/// boolean beside it — two columns describing one fact admit a state where they
+/// contradict each other, and "at most five active" becomes a count of rows
+/// where this column is null (BR-23, BR-29, decision D-05).
+///
+/// `storedFilename` never leaves the server. The name a person uploaded is
+/// metadata; the name on disk is generated, so an uploaded filename can never
+/// become a path and can never drive an authorization decision (BR-24).
+model Attachment {
+  id Int @id @default(autoincrement())
+
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  /// What the person called it. Displayed, never used as a path.
+  originalFilename String
+  /// What it is called on disk. A generated name, never exposed by the API.
+  storedFilename String @unique
+  mimeType       String
+  sizeBytes      Int
+
+  uploadedById Int
+  uploadedBy   User @relation("AttachmentUploader", fields: [uploadedById], references: [id])
+  uploadedAt   DateTime @default(now())
+
+  /// Null while active. Set once, on removal, and never cleared: BR-26 keeps the
+  /// record of what was removed and why, which is the point of soft removal.
+  removedAt     DateTime?
+  removedReason String?
+  removedById   Int?
+  removedBy     User? @relation("AttachmentRemover", fields: [removedById], references: [id])
+
+  /// The active count in BR-23 is a filtered count per ticket, which is exactly
+  /// what this index serves.
+  @@index([ticketId, removedAt])
 }
