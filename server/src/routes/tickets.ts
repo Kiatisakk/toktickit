@@ -314,7 +314,12 @@ ticketsRouter.get("/tickets/:id", requireRequesterContext, async (req, res) => {
         ...TICKET_SHAPE,
         attachments: {
           select: ATTACHMENT_SHAPE,
-          orderBy: { uploadedAt: "desc" },
+          // The immutable id is the last key, exactly as it is on the ticket
+          // list (BR-32). Two attachments uploaded in the same millisecond
+          // otherwise have no defined order, and this endpoint was returning
+          // them in the opposite order to `/tickets/:id/attachments` — the
+          // same rows, described twice, disagreeing.
+          orderBy: [{ uploadedAt: "desc" }, { id: "desc" }],
         },
       },
     });

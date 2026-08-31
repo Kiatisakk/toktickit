@@ -1,10 +1,10 @@
-import { readdir } from "node:fs/promises";
+import { readdir, unlink } from "node:fs/promises";
 
 import request from "supertest";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { app } from "../../src/app.js";
-import { UPLOAD_DIR } from "../../src/attachments/storage.js";
+import { pathFor, UPLOAD_DIR } from "../../src/attachments/storage.js";
 import { REQUESTER_HEADER } from "../../src/middleware/requesterContext.js";
 import { prisma } from "../../src/prisma.js";
 
@@ -323,6 +323,125 @@ describe("downloading", () => {
 
     expect(response.status).toBe(404);
     expect(response.body.error.code).toBe("ATTACHMENT_NOT_FOUND");
+  });
+});
+
+/**
+ * Regressions from the bug hunt on this branch. Both were found by probes
+ * written to go red on a suspicion, and both were real.
+ */
+describe("a row whose file has gone", () => {
+  /*
+   * The download used to pipe a read stream straight at the response with no
+   * error handler. When the bytes were missing the stream failed after the
+   * response had been committed, nothing answered, and the request hung — the
+   * probe sat there for the full fifteen-second timeout. An unhandled `error`
+   * event also takes the process down.
+   */
+  it("answers rather than hanging", async () => {
+    const created = await attach(ticketOfA, ownerA);
+    const row = await prisma.attachment.findFirstOrThrow({
+      where: { id: created.body.id },
+      select: { storedFilename: true },
+    });
+
+    await unlink(pathFor(row.storedFilename));
+
+    const response = await as(ownerA)(
+      request(app).get(`/api/attachments/${created.body.id}/download`)
+    );
+
+    expect(response.status).toBe(500);
+  }, 15_000);
+
+  // The row promised something the disk does not have. That is our fault, not
+  // the caller's, so it must not be dressed up as "not found".
+  it("calls it a server fault rather than a missing attachment", async () => {
+    const created = await attach(ticketOfA, ownerA);
+    const row = await prisma.attachment.findFirstOrThrow({
+      where: { id: created.body.id },
+      select: { storedFilename: true },
+    });
+
+    await unlink(pathFor(row.storedFilename));
+
+    const response = await as(ownerA)(
+      request(app).get(`/api/attachments/${created.body.id}/download`)
+    );
+
+    expect(response.body.error.code).toBe("INTERNAL_ERROR");
+  }, 15_000);
+
+  // BR-20: no path, no stack, nothing about the filesystem.
+  it("says nothing about where the file was meant to be", async () => {
+    const created = await attach(ticketOfA, ownerA);
+    const row = await prisma.attachment.findFirstOrThrow({
+      where: { id: created.body.id },
+      select: { storedFilename: true },
+    });
+
+    await unlink(pathFor(row.storedFilename));
+
+    const response = await as(ownerA)(
+      request(app).get(`/api/attachments/${created.body.id}/download`)
+    );
+
+    expect(JSON.stringify(response.body)).not.toContain(row.storedFilename);
+    expect(JSON.stringify(response.body)).not.toContain("uploads");
+  }, 15_000);
+});
+
+describe("attachments sharing an upload timestamp", () => {
+  // The same defect BR-32 names for tickets. The detail endpoint ordered by
+  // `uploadedAt` alone and returned rows in the opposite order to the listing
+  // endpoint — the same data, described twice, disagreeing.
+  const eight = async (marker: string) => {
+    const when = new Date();
+
+    await prisma.attachment.createMany({
+      data: Array.from({ length: 8 }, (_unused, index) => ({
+        ticketId: ticketOfA,
+        originalFilename: `same-${index}.pdf`,
+        storedFilename: `${marker}-${index}-${Date.now()}.pdf`,
+        mimeType: "application/pdf",
+        sizeBytes: 10,
+        uploadedById: ownerA,
+        uploadedAt: when,
+      })),
+    });
+  };
+
+  it("are ordered identically by the detail and the listing endpoints", async () => {
+    await eight("agree");
+
+    const detail = await as(ownerA)(
+      request(app).get(`/api/tickets/${ticketOfA}`)
+    );
+    const listing = await as(ownerA)(
+      request(app).get(`/api/tickets/${ticketOfA}/attachments`)
+    );
+
+    expect(
+      detail.body.attachments.map((one: { id: number }) => one.id)
+    ).toStrictEqual(listing.body.data.map((one: { id: number }) => one.id));
+  });
+
+  it("come back in the same order every time", async () => {
+    await eight("stable");
+
+    const read = async () => {
+      const response = await as(ownerA)(
+        request(app).get(`/api/tickets/${ticketOfA}`)
+      );
+
+      return response.body.attachments.map((one: { id: number }) => one.id);
+    };
+
+    const runs = await Promise.all([read(), read(), read(), read()]);
+
+    for (const run of runs) {
+      expect(run).toStrictEqual(runs[0]);
+    }
   });
 });
 

@@ -1,4 +1,5 @@
 import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
 
 import { Router } from "express";
 import type { RequestHandler } from "express";
@@ -327,6 +328,29 @@ attachmentsRouter.get(
         return;
       }
 
+      /*
+       * The file is confirmed present before a single header is written.
+       *
+       * Piping first and hoping meant a row whose bytes had gone left the
+       * request hanging for ever: the stream emits `error` after the response
+       * has already been committed, nothing answers, and on an unhandled
+       * `error` event Node takes the process down. A probe reproduced the hang
+       * in fifteen seconds.
+       *
+       * A missing file is our fault, not the caller's — the row promised
+       * something the disk does not have — so it is a 500, not a 404.
+       */
+      try {
+        await stat(pathFor(attachment.storedFilename));
+      } catch {
+        sendInternalError(
+          res,
+          "Attachment file missing from storage",
+          new Error(`Attachment ${attachment.id} has no file on disk.`)
+        );
+        return;
+      }
+
       res.status(200);
       res.setHeader("Content-Type", attachment.mimeType);
       res.setHeader(
@@ -338,7 +362,17 @@ attachmentsRouter.get(
       // be allowed to guess a type of its own from the bytes.
       res.setHeader("X-Content-Type-Options", "nosniff");
 
-      createReadStream(pathFor(attachment.storedFilename)).pipe(res);
+      const stream = createReadStream(pathFor(attachment.storedFilename));
+
+      // The check above closes the window that matters, but a read can still
+      // fail mid-flight. Headers are already out by then, so there is no
+      // status left to send — ending the response is the only honest move,
+      // and it is still better than an unhandled `error` event.
+      stream.on("error", () => {
+        res.destroy();
+      });
+
+      stream.pipe(res);
     } catch (error) {
       sendInternalError(res, "Failed to download attachment", error);
     }
