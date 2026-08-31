@@ -296,6 +296,9 @@ describe("attachments", () => {
     // rather than on a string a text matcher would have to reassemble.
     const meta = container.querySelector(".tkt-attachment__meta");
 
+    // §6 lists filename, *type*, size, upload time. The type was the one
+    // missing, raised in review of PR #29.
+    expect(meta?.textContent).toContain("PDF");
     expect(meta?.textContent).toContain("277 KB");
     expect(meta?.textContent).toContain("Jennifer Anderson");
   });
@@ -404,6 +407,247 @@ describe("attachments", () => {
     expect(
       await screen.findByText(/Remove one before adding another\./u)
     ).toBeInTheDocument();
+  });
+});
+
+/**
+ * The three row states `ui-spec.md` §6 defines that this component shipped
+ * without, plus the field the active row was missing.
+ *
+ * All four came from the peer review of PR #29, and all four are our own
+ * specification going unimplemented — the same pattern as PR #27. Worth noting
+ * why these three were the ones skipped: none of them is represented in the API
+ * response, so nothing in the data model reminds you they exist.
+ */
+describe("the row states the API cannot describe", () => {
+  const held = () => {
+    let release: ((value: Response) => void) | undefined;
+
+    const fetchMock = vi.fn((_url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        return new Promise<Response>((resolve) => {
+          release = resolve;
+        });
+      }
+
+      return Promise.resolve(jsonResponse(TICKET));
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    return () => release;
+  };
+
+  const choose = async () =>
+    await userEvent.upload(
+      screen.getByLabelText(/Add Attachment/u),
+      new File(["%PDF"], "battery-report.pdf", { type: "application/pdf" })
+    );
+
+  it("shows an uploading row carrying the file's own name", async () => {
+    held();
+
+    renderAt();
+
+    await screen.findByText("No files have been attached to this ticket.");
+    await choose();
+
+    expect(await screen.findByText("battery-report.pdf")).toBeInTheDocument();
+  });
+
+  it("marks that row uploading rather than active", async () => {
+    held();
+
+    const { container } = renderAt();
+
+    await screen.findByText("No files have been attached to this ticket.");
+    await choose();
+
+    await waitFor(() => {
+      expect(
+        container.querySelector(".tkt-attachment--uploading")
+      ).not.toBeNull();
+    });
+  });
+
+  // §6: Remove is hidden while a row is uploading. There is nothing on the
+  // server yet to remove.
+  it("offers no Remove on a row that does not exist yet", async () => {
+    held();
+
+    renderAt();
+
+    await screen.findByText("No files have been attached to this ticket.");
+    await choose();
+
+    await screen.findByText("battery-report.pdf");
+    expect(screen.queryByRole("button", { name: "Remove" })).toBeNull();
+  });
+
+  it("shows progress rather than a silent pause", async () => {
+    held();
+
+    renderAt();
+
+    await screen.findByText("No files have been attached to this ticket.");
+    await choose();
+
+    expect(
+      await screen.findByRole("progressbar", {
+        name: /Uploading battery-report\.pdf/u,
+      })
+    ).toBeInTheDocument();
+  });
+
+  // Queried by id rather than by label: while an upload is in flight the label
+  // reads "Uploading…" and so does the progress bar's own name, so a text match
+  // finds two elements.
+  it("disables the add control while one is in flight", async () => {
+    held();
+
+    const { container } = renderAt();
+
+    await screen.findByText("No files have been attached to this ticket.");
+    await choose();
+
+    await waitFor(() => {
+      expect(container.querySelector("#tkt-attachment-file")).toBeDisabled();
+    });
+  });
+});
+
+describe("a file the server refused", () => {
+  const refuse = () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: string, init?: RequestInit) => {
+        if (init?.method === "POST") {
+          return Promise.resolve(
+            jsonResponse(
+              {
+                error: {
+                  code: "FILE_TOO_LARGE",
+                  message:
+                    "That file is larger than 5 MB. Attach a smaller file.",
+                },
+              },
+              413
+            )
+          );
+        }
+
+        return Promise.resolve(jsonResponse(TICKET));
+      })
+    );
+  };
+
+  const upload = async () => {
+    renderAt();
+
+    await screen.findByText("No files have been attached to this ticket.");
+    await userEvent.upload(
+      screen.getByLabelText(/Add Attachment/u),
+      new File(["%PDF"], "huge.pdf", { type: "application/pdf" })
+    );
+  };
+
+  // A generic alert above the list does not say *which* file was refused, which
+  // is the only question a person has after choosing one.
+  it("names the file that was refused", async () => {
+    refuse();
+
+    await upload();
+
+    expect(await screen.findByText("huge.pdf")).toBeInTheDocument();
+  });
+
+  it("puts the reason on the row rather than above the list", async () => {
+    refuse();
+
+    const { container } = renderAt();
+
+    await screen.findByText("No files have been attached to this ticket.");
+    await userEvent.upload(
+      screen.getByLabelText(/Add Attachment/u),
+      new File(["%PDF"], "huge.pdf", { type: "application/pdf" })
+    );
+
+    const row = await waitFor(() => {
+      const found = container.querySelector(".tkt-attachment--invalid");
+
+      expect(found).not.toBeNull();
+
+      return found as HTMLElement;
+    });
+
+    expect(within(row).getByText(/larger than 5 MB/u)).toBeInTheDocument();
+  });
+
+  it("can be dismissed, so the list is not stuck with it", async () => {
+    refuse();
+
+    await upload();
+
+    await screen.findByText("huge.pdf");
+    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+
+    expect(screen.queryByText("huge.pdf")).toBeNull();
+  });
+});
+
+describe("a download that fails", () => {
+  const failDownload = () =>
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => {
+        if (url.includes("/download")) {
+          return Promise.reject(new TypeError("Failed to fetch"));
+        }
+
+        return Promise.resolve(
+          jsonResponse({ ...TICKET, attachments: [ATTACHMENT] })
+        );
+      })
+    );
+
+  it("marks the row unavailable rather than failing silently", async () => {
+    failDownload();
+
+    const { container } = renderAt();
+
+    await screen.findByText("battery-report.pdf");
+    await userEvent.click(screen.getByRole("button", { name: "Download" }));
+
+    await waitFor(() => {
+      expect(container.querySelector(".tkt-attachment--error")).not.toBeNull();
+    });
+  });
+
+  it("offers a retry on the row itself", async () => {
+    failDownload();
+
+    renderAt();
+
+    await screen.findByText("battery-report.pdf");
+    await userEvent.click(screen.getByRole("button", { name: "Download" }));
+
+    expect(
+      await screen.findByRole("button", { name: "Retry download" })
+    ).toBeInTheDocument();
+  });
+
+  // The metadata is still true — it is the download that failed — so the row
+  // keeps it.
+  it("keeps the attachment's metadata visible", async () => {
+    failDownload();
+
+    renderAt();
+
+    await screen.findByText("battery-report.pdf");
+    await userEvent.click(screen.getByRole("button", { name: "Download" }));
+
+    await screen.findByRole("button", { name: "Retry download" });
+    expect(screen.getByText("battery-report.pdf")).toBeInTheDocument();
   });
 });
 

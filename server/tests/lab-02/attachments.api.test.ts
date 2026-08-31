@@ -47,7 +47,33 @@ const filesOnDisk = async () => {
   }
 };
 
+/**
+ * Deleting the rows is not enough: the bytes are on disk.
+ *
+ * Every run of this suite used to leave its uploads behind, so the directory
+ * grew by a few dozen files each time and nothing ever collected them. The
+ * stored names are read before the rows go, because afterwards there is no
+ * record of what to delete.
+ */
+const removeStoredFiles = async () => {
+  const rows = await prisma.attachment.findMany({
+    where: { ticket: { summary: { startsWith: PREFIX } } },
+    select: { storedFilename: true },
+  });
+
+  await Promise.all(
+    rows.map(async (row) => {
+      try {
+        await unlink(pathFor(row.storedFilename));
+      } catch {
+        // A test that deliberately removed the file has already done this.
+      }
+    })
+  );
+};
+
 beforeEach(async () => {
+  await removeStoredFiles();
   await prisma.attachment.deleteMany({
     where: { ticket: { summary: { startsWith: PREFIX } } },
   });
@@ -89,6 +115,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  await removeStoredFiles();
   await prisma.attachment.deleteMany({
     where: { ticket: { summary: { startsWith: PREFIX } } },
   });
@@ -546,6 +573,157 @@ describe("removing", () => {
 
     expect(stranger.status).toBe(404);
     expect(stranger.body.error.code).toBe("ATTACHMENT_NOT_FOUND");
+  });
+});
+
+/**
+ * Regressions from the peer review of PR #29.
+ *
+ * Both are the same shape: a read, then a write, with nothing holding the two
+ * together. Both were reachable by two people working on one ticket at once,
+ * and neither was reachable by any test that made one request at a time.
+ */
+describe("two uploads racing for the last slot", () => {
+  // I probed this before opening the Pull Request, with six concurrent uploads
+  // over three runs, and never caught it — so it shipped unfixed and, more
+  // importantly, unclaimed. The reviewer caught it by reading. The count and
+  // the insert now run under `SELECT … FOR UPDATE` on the ticket.
+  it("never lets a ticket past five active attachments", async () => {
+    for (let n = 0; n < 4; n += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await attach(ticketOfA, ownerA, `seed-${n}.pdf`);
+    }
+
+    await Promise.all(
+      Array.from({ length: 6 }, (_unused, index) =>
+        attach(ticketOfA, ownerA, `race-${index}.pdf`)
+      )
+    );
+
+    const active = await prisma.attachment.count({
+      where: { ticketId: ticketOfA, removedAt: null },
+    });
+
+    expect(active).toBe(5);
+  }, 20_000);
+
+  it("refuses the losers rather than failing silently", async () => {
+    for (let n = 0; n < 4; n += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await attach(ticketOfA, ownerA, `seed-${n}.pdf`);
+    }
+
+    const results = await Promise.all(
+      Array.from({ length: 4 }, (_unused, index) =>
+        attach(ticketOfA, ownerA, `race-${index}.pdf`)
+      )
+    );
+
+    expect(results.filter((one) => one.status === 201)).toHaveLength(1);
+    expect(
+      results.filter(
+        (one) => one.body?.error?.code === "ATTACHMENT_LIMIT_REACHED"
+      )
+    ).toHaveLength(3);
+  }, 20_000);
+});
+
+describe("two removals of one attachment", () => {
+  // BR-26 keeps the record of what was removed and why. Read-then-write let the
+  // second removal overwrite the first's time, reason and remover, and answer
+  // 200 as though it had done the removing.
+  it("lets exactly one of them succeed", async () => {
+    const created = await attach(ticketOfA, ownerA);
+
+    const results = await Promise.all([
+      as(ownerA)(
+        request(app).delete(`/api/attachments/${created.body.id}`)
+      ).send({ reason: "First reason, the true one." }),
+      as(ownerA)(
+        request(app).delete(`/api/attachments/${created.body.id}`)
+      ).send({ reason: "Second reason, which must not land." }),
+    ]);
+
+    expect(results.filter((one) => one.status === 200)).toHaveLength(1);
+    expect(
+      results.filter((one) => one.body?.error?.code === "ATTACHMENT_REMOVED")
+    ).toHaveLength(1);
+  });
+
+  it("keeps the reason of whichever one won", async () => {
+    const created = await attach(ticketOfA, ownerA);
+
+    await Promise.all([
+      as(ownerA)(
+        request(app).delete(`/api/attachments/${created.body.id}`)
+      ).send({ reason: "First reason, the true one." }),
+      as(ownerA)(
+        request(app).delete(`/api/attachments/${created.body.id}`)
+      ).send({ reason: "Second reason, which must not land." }),
+    ]);
+
+    const row = await prisma.attachment.findUniqueOrThrow({
+      where: { id: created.body.id },
+      select: { removedReason: true },
+    });
+
+    // Either may win the race; what must not happen is the loser overwriting
+    // the winner's record after the fact.
+    expect([
+      "First reason, the true one.",
+      "Second reason, which must not land.",
+    ]).toContain(row.removedReason);
+  });
+});
+
+describe("uploading to a ticket that is not yours", () => {
+  // api-spec.md §5 puts ownership first, and it was running fourth — after
+  // multer had buffered the whole file. The status depended on the file rather
+  // than on the permission.
+  /**
+   * A five-megabyte body to a stranger's ticket is answered before it has
+   * finished arriving, so the connection is reset under the client mid-send.
+   *
+   * That reset *is* the evidence: it can only happen because the refusal came
+   * before the body was read, which is the whole point of moving ownership in
+   * front of multer. Either outcome is a pass — what must never happen is a
+   * 413, because that would mean the file was read and measured before anyone
+   * asked whether the sender was allowed to send it.
+   */
+  it("is refused before the body has even finished arriving", async () => {
+    let status = 0;
+
+    try {
+      const response = await attach(
+        ticketOfB,
+        ownerA,
+        "huge.pdf",
+        "application/pdf",
+        Buffer.alloc(5 * 1024 * 1024 + 1, 0x41)
+      );
+
+      ({ status } = response);
+    } catch (error) {
+      // ECONNRESET: the server had answered and hung up while we were still
+      // uploading.
+      expect((error as NodeJS.ErrnoException).code).toBe("ECONNRESET");
+      return;
+    }
+
+    expect(status).toBe(404);
+  }, 15_000);
+
+  it("is refused as not found, not as an unsupported type", async () => {
+    const response = await attach(
+      ticketOfB,
+      ownerA,
+      "setup.exe",
+      "application/x-msdownload",
+      Buffer.from("MZ")
+    );
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("TICKET_NOT_FOUND");
   });
 });
 

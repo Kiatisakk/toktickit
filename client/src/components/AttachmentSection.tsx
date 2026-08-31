@@ -21,14 +21,26 @@ import { TextArea } from "./TextArea";
  * they had no way to satisfy. The server still enforces all of it: this is the
  * courtesy, not the control (BR-21 to BR-23).
  *
- * Removed attachments keep their metadata and lose their Download. That is the
- * visible half of soft removal, and the thing Part 8 asks to see: the record of
- * what was attached survives, the bytes do not.
+ * §6 defines five row states and this component shipped two of them. The three
+ * that were missing — uploading, invalid, unavailable — all describe a row with
+ * no server-side identity, or one that has lost the use of it, which is exactly
+ * why they were easy to skip: nothing in the API response represents them, so
+ * they have to be held here. `PendingRow` is that holding.
  */
 
 const LIMIT = 5;
 const MIN_REASON = 3;
 const MAX_REASON = 500;
+
+/** How the four permitted types are named on screen. */
+const TYPE_LABELS: Record<string, string> = {
+  "application/pdf": "PDF",
+  "image/jpeg": "JPG",
+  "image/png": "PNG",
+  "image/webp": "WEBP",
+};
+
+const typeLabel = (mimeType: string) => TYPE_LABELS[mimeType] ?? mimeType;
 
 const formatSize = (bytes: number) => {
   if (bytes < 1024) {
@@ -41,6 +53,19 @@ const formatSize = (bytes: number) => {
 
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
+
+/**
+ * A row with no server-side identity: one being sent, or one the server
+ * refused.
+ *
+ * The API has nothing to say about either — an upload in flight has no id, and
+ * a rejected file has no row at all — so they live beside the real list rather
+ * than inside it, and they carry the filename the person actually chose, which
+ * is the one thing they want to see.
+ */
+type PendingRow =
+  | { kind: "uploading"; filename: string; sizeBytes: number }
+  | { kind: "invalid"; filename: string; reason: string };
 
 interface AttachmentSectionProps {
   ticketId: number;
@@ -57,33 +82,46 @@ export const AttachmentSection = ({
 }: AttachmentSectionProps) => {
   const fileInput = useRef<HTMLInputElement>(null);
 
-  const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState<string | null>(null);
+  const [pending, setPending] = useState<PendingRow | null>(null);
   const [removing, setRemoving] = useState<AttachmentMetadata | null>(null);
+  const [removalFailure, setRemovalFailure] = useState<string | null>(null);
   const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  /** Which attachment failed to download, and why. §6, the unavailable state. */
+  const [downloadFailure, setDownloadFailure] = useState<{
+    id: number;
+    message: string;
+  } | null>(null);
 
   const active = attachments.filter((one) => one.status === "ACTIVE");
+  const uploading = pending?.kind === "uploading";
   const full = active.length >= LIMIT;
 
   const onFile = async (file: File) => {
-    setBusy(true);
-    setFailure(null);
+    setPending({
+      kind: "uploading",
+      filename: file.name,
+      sizeBytes: file.size,
+    });
 
     try {
       const created = await uploadAttachment(ticketId, file, requesterId);
 
       onChange([created, ...attachments]);
+      setPending(null);
     } catch (error) {
       // The server's message names the rule that was broken — which type, which
-      // limit — so it is shown rather than replaced with one of our own.
-      setFailure(
-        error instanceof ApiError
-          ? error.message
-          : "The file could not be attached."
-      );
+      // limit — so it is shown against the file it concerns rather than
+      // replaced by a message of our own floating above the list.
+      setPending({
+        kind: "invalid",
+        filename: file.name,
+        reason:
+          error instanceof ApiError
+            ? error.message
+            : "The file could not be attached.",
+      });
     } finally {
-      setBusy(false);
-
       if (fileInput.current) {
         // Without this, choosing the same file twice fires no change event and
         // a retry after a failure looks like nothing happened.
@@ -98,7 +136,7 @@ export const AttachmentSection = ({
     }
 
     setBusy(true);
-    setFailure(null);
+    setRemovalFailure(null);
 
     try {
       const removed = await removeAttachment(
@@ -113,7 +151,7 @@ export const AttachmentSection = ({
       setRemoving(null);
       setReason("");
     } catch (error) {
-      setFailure(
+      setRemovalFailure(
         error instanceof ApiError
           ? error.message
           : "The attachment could not be removed."
@@ -124,16 +162,18 @@ export const AttachmentSection = ({
   };
 
   const onDownload = async (attachment: AttachmentMetadata) => {
-    setFailure(null);
+    setDownloadFailure(null);
 
     try {
       await downloadAttachment(attachment, requesterId);
     } catch (error) {
-      setFailure(
-        error instanceof ApiError
-          ? error.message
-          : "The file could not be downloaded."
-      );
+      setDownloadFailure({
+        id: attachment.id,
+        message:
+          error instanceof ApiError
+            ? error.message
+            : "The file could not be downloaded.",
+      });
     }
   };
 
@@ -156,15 +196,15 @@ export const AttachmentSection = ({
         </div>
 
         <div className="tkt-actions">
-          {/* The input holds the disabled state and the label sits next to
-              it, so the styling follows the real state rather than a second
-              copy of it. A label rather than a button firing a click at a
-              hidden input: the label already is the control, and it stays
-              keyboard reachable without any script. */}
+          {/* The input holds the disabled state and the label sits next to it,
+              so the styling follows the real state rather than a second copy of
+              it. A label rather than a button firing a click at a hidden input:
+              the label already is the control, and it stays keyboard reachable
+              without any script. */}
           <input
             accept="image/jpeg,image/png,image/webp,application/pdf"
             className="tkt-file-input"
-            disabled={full || busy}
+            disabled={full || uploading}
             id="tkt-attachment-file"
             onChange={(event) => {
               const [file] = event.target.files ?? [];
@@ -181,33 +221,72 @@ export const AttachmentSection = ({
             htmlFor="tkt-attachment-file"
           >
             <Icon name="create" />
-            {busy ? "Working…" : "Add Attachment"}
+            {uploading ? "Uploading…" : "Add Attachment"}
           </label>
         </div>
       </div>
 
-      {failure ? (
-        <p className="tkt-callout tkt-callout--error" role="alert">
-          {failure}
-        </p>
-      ) : null}
-
-      {attachments.length === 0 ? (
+      {attachments.length === 0 && pending === null ? (
         <p className="tkt-field-hint" data-state="empty">
           No files have been attached to this ticket.
         </p>
       ) : (
         <ul className="tkt-attachments">
+          {/* A pending row sits where the file it describes will appear. */}
+          {pending?.kind === "uploading" ? (
+            <li
+              className="tkt-attachment tkt-attachment--uploading"
+              data-state="uploading"
+            >
+              <div className="tkt-attachment__body">
+                <p className="tkt-attachment__name">{pending.filename}</p>
+                <p className="tkt-attachment__meta">
+                  {formatSize(pending.sizeBytes)} · Uploading…
+                </p>
+                {/* Indeterminate: the request reports no progress, and a bar
+                    that invents a percentage is a bar that lies. */}
+                <progress aria-label={`Uploading ${pending.filename}`} />
+              </div>
+              {/* §6: Remove is hidden while a row is uploading — there is
+                  nothing on the server yet to remove. */}
+            </li>
+          ) : null}
+
+          {pending?.kind === "invalid" ? (
+            <li
+              className="tkt-attachment tkt-attachment--invalid"
+              data-state="invalid"
+            >
+              <div className="tkt-attachment__body">
+                <p className="tkt-attachment__name">{pending.filename}</p>
+                <p className="tkt-attachment__meta" role="alert">
+                  {pending.reason}
+                </p>
+              </div>
+              <div className="tkt-attachment__actions">
+                <Button onClick={() => setPending(null)} variant="secondary">
+                  Dismiss
+                </Button>
+              </div>
+            </li>
+          ) : null}
+
           {attachments.map((attachment) => {
             const removed = attachment.status === "REMOVED";
+            const failed = downloadFailure?.id === attachment.id;
+
+            const className = [
+              "tkt-attachment",
+              removed ? "tkt-attachment--removed" : "tkt-attachment--active",
+              failed ? "tkt-attachment--error" : null,
+            ]
+              .filter(Boolean)
+              .join(" ");
 
             return (
               <li
-                className={
-                  removed
-                    ? "tkt-attachment tkt-attachment--removed"
-                    : "tkt-attachment tkt-attachment--active"
-                }
+                className={className}
+                data-state={removed ? "removed" : "active"}
                 key={attachment.id}
               >
                 <div className="tkt-attachment__body">
@@ -218,6 +297,7 @@ export const AttachmentSection = ({
                     {attachment.originalFilename}
                   </p>
                   <p className="tkt-attachment__meta">
+                    {typeLabel(attachment.mimeType)} ·{" "}
                     {formatSize(attachment.sizeBytes)} ·{" "}
                     {formatWhen(attachment.uploadedAt)} ·{" "}
                     {attachment.uploadedBy.name}
@@ -231,6 +311,11 @@ export const AttachmentSection = ({
                       {attachment.removedReason
                         ? ` — ${attachment.removedReason}`
                         : ""}
+                    </p>
+                  ) : null}
+                  {failed ? (
+                    <p className="tkt-attachment__error" role="alert">
+                      {downloadFailure.message}
                     </p>
                   ) : null}
                 </div>
@@ -249,13 +334,13 @@ export const AttachmentSection = ({
                         onClick={() => void onDownload(attachment)}
                         variant="secondary"
                       >
-                        Download
+                        {failed ? "Retry download" : "Download"}
                       </Button>
                       <Button
                         onClick={() => {
                           setRemoving(attachment);
                           setReason("");
-                          setFailure(null);
+                          setRemovalFailure(null);
                         }}
                         variant="secondary"
                       >
@@ -271,7 +356,7 @@ export const AttachmentSection = ({
       )}
 
       {removing ? (
-        <div className="tkt-confirm" role="group" aria-label="Confirm removal">
+        <div aria-label="Confirm removal" className="tkt-confirm" role="group">
           <p className="tkt-confirm__title">
             Remove <strong>{removing.originalFilename}</strong>?
           </p>
@@ -287,6 +372,12 @@ export const AttachmentSection = ({
             required
             value={reason}
           />
+
+          {removalFailure ? (
+            <p className="tkt-callout tkt-callout--error" role="alert">
+              {removalFailure}
+            </p>
+          ) : null}
 
           <div className="tkt-actions">
             <Button

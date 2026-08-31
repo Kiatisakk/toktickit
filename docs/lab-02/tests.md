@@ -77,6 +77,9 @@ in the development database and is never touched by a test run.
 | API-25 | BR-25, BR-30 | A row whose file has gone | Answers `500 INTERNAL_ERROR` rather than hanging; names neither the stored filename nor the upload directory | `server/tests/lab-02/attachments.api.test.ts` | **Pass** |
 | API-26 | BR-32 | Attachment ordering | The detail and listing endpoints return rows sharing an upload timestamp in the same order, and that order is stable across reads | `server/tests/lab-02/attachments.api.test.ts` | **Pass** |
 | API-27 | AC-18 | Detail identifier handling | `abc`, `1.5`, `-1`, `0`, `1e3` and a padded `1` are refused with the same `404` as a missing ticket | `server/tests/lab-02/ticket-detail.api.test.ts` | **Pass** |
+| API-28 | BR-23 | The active limit under concurrency | Six simultaneous uploads onto a ticket holding four leave exactly five active; the losers are refused with `ATTACHMENT_LIMIT_REACHED` rather than failing silently | `server/tests/lab-02/attachments.api.test.ts` | **Pass** |
+| API-29 | BR-26 | Two removals of one attachment | Exactly one succeeds and the other is `ATTACHMENT_REMOVED`; whichever won keeps its reason, time and remover | `server/tests/lab-02/attachments.api.test.ts` | **Pass** |
+| API-30 | AC-18 | Ownership precedes the body | An oversized or disallowed upload to another requester's ticket is refused as not found, never as too large or unsupported — the refusal arrives before the body has finished sending | `server/tests/lab-02/attachments.api.test.ts` | **Pass** |
 
 ### UI component
 
@@ -99,6 +102,9 @@ in the development database and is never touched by a test run.
 | UI-19 | AC-18 | A ticket that is not yours | One wording for "missing" and "someone else's", so the screen does not undo what the endpoint is careful about; a non-numeric path never calls the API | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
 | UI-20 | AC-19, BR-21 | The file picker | `accept` limited to the four permitted types, which is why the unsupported-type rejection is unreachable through the control and the failure test uses a size refusal | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
 | UI-21 | AC-19, BR-23 | The add control at the limit | Disabled at five active attachments, and says why | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
+| UI-22 | AC-19 | The uploading row | Carries the chosen file's own name, is marked `tkt-attachment--uploading`, shows indeterminate progress, hides Remove, and disables the add control | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
+| UI-23 | AC-19 | The invalid row | Names the refused file and puts the server's reason on the row rather than in an alert above the list; can be dismissed | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
+| UI-24 | AC-20 | The unavailable row | A failed download marks that row `tkt-attachment--error`, offers Retry download on the row itself, and keeps the metadata, which is still true | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
 
 ### UI style
 

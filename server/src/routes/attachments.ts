@@ -56,6 +56,19 @@ const upload = multer({
  * from §4.5, and reading "which status does an oversized file get?" off a table
  * is the point of having one.
  */
+/**
+ * Thrown inside the upload transaction when the ticket is already full.
+ *
+ * Throwing is what rolls the transaction back; the handler translates it into
+ * the documented 409 rather than letting it surface as a 500.
+ */
+class AttachmentLimitError extends Error {
+  constructor() {
+    super("Attachment limit reached");
+    this.name = "AttachmentLimitError";
+  }
+}
+
 const UPLOAD_FAILURES = {
   FILE_TOO_LARGE: { status: 413, code: ErrorCode.fileTooLarge },
   UNSUPPORTED_FILE_TYPE: { status: 415, code: ErrorCode.unsupportedFileType },
@@ -144,6 +157,53 @@ const ownedAttachment = async (attachmentId: number, requesterId: number) =>
     },
   });
 
+/**
+ * Resolves the ticket's ownership before the body is read.
+ *
+ * api-spec.md §5 puts ownership first and it was running fourth, after multer
+ * had already buffered the whole file. A stranger's upload was answered by the
+ * size limit or by the multipart parser rather than by the ownership rule, so
+ * the status depended on the file rather than on the permission — and we read
+ * five megabytes from somebody with no business sending them.
+ */
+const resolveOwnedTicket = async (
+  req: Parameters<RequestHandler>[0],
+  res: Parameters<RequestHandler>[1],
+  next: Parameters<RequestHandler>[2]
+): Promise<void> => {
+  const requester = requesterOf(res);
+  const ticketId = identifier(req.params["id"]);
+
+  if (ticketId === null) {
+    notFound(res, "ticket");
+    return;
+  }
+
+  try {
+    const ticket = await ownedTicket(ticketId, requester.id);
+
+    if (!ticket) {
+      notFound(res, "ticket");
+      return;
+    }
+
+    // Returned rather than merely called, so the transfer of control is
+    // visible at the call site.
+    return next();
+  } catch (error) {
+    sendInternalError(res, "Failed to resolve ticket ownership", error);
+  }
+};
+
+/**
+ * A synchronous wrapper, which is what the async-handler rule asks for: the
+ * work is async, the middleware Express sees is not, and every rejection is
+ * already handled inside rather than escaping as an unhandled promise.
+ */
+const requireOwnedTicket: RequestHandler = (req, res, next) => {
+  void resolveOwnedTicket(req, res, next);
+};
+
 /** Metadata for one owned ticket, active and removed, newest first. */
 attachmentsRouter.get(
   "/tickets/:id/attachments",
@@ -191,6 +251,7 @@ attachmentsRouter.get(
 attachmentsRouter.post(
   "/tickets/:id/attachments",
   requireRequesterContext,
+  requireOwnedTicket,
   acceptFile,
   // oxlint-disable-next-line oxc/no-async-endpoint-handlers
   async (req, res) => {
@@ -216,29 +277,6 @@ attachmentsRouter.post(
     }
 
     try {
-      const ticket = await ownedTicket(ticketId, requester.id);
-
-      if (!ticket) {
-        notFound(res, "ticket");
-        return;
-      }
-
-      // BR-29: removed rows do not count, which is what makes removal a way to
-      // make room rather than a permanent loss of a slot.
-      const active = await prisma.attachment.count({
-        where: { ticketId, removedAt: null },
-      });
-
-      if (active >= ACTIVE_LIMIT) {
-        sendError(
-          res,
-          409,
-          ErrorCode.attachmentLimitReached,
-          `A ticket may have at most ${ACTIVE_LIMIT} active attachments. Remove one before adding another.`
-        );
-        return;
-      }
-
       const checked = validateUpload(file);
 
       if (!checked.ok) {
@@ -250,26 +288,71 @@ attachmentsRouter.post(
 
       const storedFilename = storedNameFor(file.originalname);
 
-      await writeAttachment(storedFilename, file.buffer);
-
       try {
-        const created = await prisma.attachment.create({
-          data: {
-            ticketId,
-            originalFilename: file.originalname,
-            storedFilename,
-            mimeType: file.mimetype,
-            sizeBytes: file.size,
-            uploadedById: requester.id,
-          },
-          select: ATTACHMENT_SHAPE,
+        /*
+         * The count and the insert now happen under a lock on the ticket row.
+         *
+         * As a read followed by a write they were two statements with nothing
+         * holding them together: two uploads that both saw four were both
+         * allowed through, and BR-23's "at most five" became "usually five".
+         * A probe with six concurrent uploads never caught it, which is why it
+         * shipped unfixed and unclaimed — the peer review caught it by reading.
+         *
+         * `FOR UPDATE` on the ticket serialises uploads per ticket and nothing
+         * wider: two people attaching to two different tickets never wait for
+         * each other.
+         */
+        const created = await prisma.$transaction(async (tx) => {
+          await tx.$queryRaw`SELECT "id" FROM "Ticket" WHERE "id" = ${ticketId} FOR UPDATE`;
+
+          // BR-29: removed rows do not count, which is what makes removal a way
+          // to make room rather than a permanent loss of a slot.
+          const active = await tx.attachment.count({
+            where: { ticketId, removedAt: null },
+          });
+
+          if (active >= ACTIVE_LIMIT) {
+            throw new AttachmentLimitError();
+          }
+
+          // The bytes are written inside the transaction so that a rollback and
+          // the compensating delete are reached by the same path. Written
+          // before it, a limit rejection would leave the file behind.
+          await writeAttachment(storedFilename, file.buffer);
+
+          return await tx.attachment.create({
+            data: {
+              ticketId,
+              originalFilename: file.originalname,
+              storedFilename,
+              mimeType: file.mimetype,
+              sizeBytes: file.size,
+              uploadedById: requester.id,
+            },
+            select: ATTACHMENT_SHAPE,
+          });
         });
 
         res.status(201).json(toAttachmentResponse(created));
       } catch (error) {
-        // BR-30. The bytes are on disk and nothing refers to them, so they are
-        // unreachable and would stay that way for ever.
+        /*
+         * BR-30, widened. Cleanup used to cover only a failed metadata insert;
+         * a write that failed part-way through left the bytes it had managed
+         * behind, and nothing referred to them. Every failure after the name is
+         * generated now runs the same compensation.
+         */
         await deleteAttachment(storedFilename);
+
+        if (error instanceof AttachmentLimitError) {
+          sendError(
+            res,
+            409,
+            ErrorCode.attachmentLimitReached,
+            `A ticket may have at most ${ACTIVE_LIMIT} active attachments. Remove one before adding another.`
+          );
+          return;
+        }
+
         throw error;
       }
     } catch (error) {
@@ -421,13 +504,39 @@ attachmentsRouter.delete(
         return;
       }
 
-      const removed = await prisma.attachment.update({
-        where: { id },
+      /*
+       * The write carries the same condition the read above checked.
+       *
+       * Read then write, as two statements, let two removals of one attachment
+       * both pass the check and both succeed: the second overwrote the first's
+       * time, reason and remover, and answered 200 as though it had done the
+       * removing. BR-26 exists to keep the record of what was removed and why,
+       * and that is precisely what was being overwritten.
+       *
+       * `updateMany` with `removedAt: null` makes the database settle it. A
+       * count of zero means somebody else got there first.
+       */
+      const { count } = await prisma.attachment.updateMany({
+        where: { id, removedAt: null },
         data: {
           removedAt: new Date(),
           removedReason: reason.value,
           removedById: requester.id,
         },
+      });
+
+      if (count === 0) {
+        sendError(
+          res,
+          404,
+          ErrorCode.attachmentRemoved,
+          "That attachment has already been removed."
+        );
+        return;
+      }
+
+      const removed = await prisma.attachment.findUniqueOrThrow({
+        where: { id },
         select: ATTACHMENT_SHAPE,
       });
 

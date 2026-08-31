@@ -48,8 +48,17 @@ export const TicketDetail = () => {
   const [state, setState] = useState<Load>({ kind: "loading" });
   const [reloadToken, setReloadToken] = useState(0);
 
+  /*
+   * `current` is what makes a stale answer harmless.
+   *
+   * Aborting on cleanup is not quite enough on its own: a response that has
+   * already arrived when the effect re-runs still resolves, and its `.then`
+   * still sets state — so a slow read of ticket 5 could land after a fast read
+   * of ticket 6 and put the wrong ticket on screen under the right URL. The
+   * flag is closed over per run, so only the newest run can write.
+   */
   const load = useCallback(
-    (signal: AbortSignal) => {
+    (signal: AbortSignal, current: { active: boolean }) => {
       const id = Number(ticketId);
 
       if (!requester) {
@@ -66,9 +75,16 @@ export const TicketDetail = () => {
       setState({ kind: "loading" });
 
       fetchTicket(id, requester.id, signal)
-        .then((ticket) => setState({ kind: "loaded", ticket }))
+        .then((ticket) => {
+          if (current.active) {
+            setState({ kind: "loaded", ticket });
+          }
+        })
         .catch((error: unknown) => {
-          if (error instanceof DOMException && error.name === "AbortError") {
+          if (
+            !current.active ||
+            (error instanceof DOMException && error.name === "AbortError")
+          ) {
             return;
           }
 
@@ -96,11 +112,13 @@ export const TicketDetail = () => {
   // the screen where that matters most, because the URL survives the switch.
   useEffect(() => {
     const controller = new AbortController();
+    const current = { active: true };
 
     // oxlint-disable-next-line react/set-state-in-effect
-    load(controller.signal);
+    load(controller.signal, current);
 
     return () => {
+      current.active = false;
       controller.abort();
     };
   }, [load, generation, reloadToken]);

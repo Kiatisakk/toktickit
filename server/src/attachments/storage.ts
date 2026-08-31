@@ -63,7 +63,16 @@ export const deleteAttachment = async (
 ): Promise<void> => {
   try {
     await unlink(pathFor(storedFilename));
-  } catch {
-    // Already absent, or never written. Either way there is nothing to undo.
+  } catch (error) {
+    // A file that was never written needs no undoing, so ENOENT is the one
+    // outcome that means the job is done. Anything else — a permission
+    // failure, a busy handle, a full disk — means the file is still there and
+    // now nothing refers to it. Swallowing that hides the orphan it creates,
+    // so it is logged and rethrown for the caller to report.
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return;
+    }
+
+    throw error;
   }
 };

@@ -1128,3 +1128,35 @@
     width: 100%;
   }
 }
+
+/* The three attachment states §6 defines that the section shipped without. */
+
+.tkt-attachment--uploading {
+  background-color: var(--tkt-page);
+}
+
+.tkt-attachment--uploading progress {
+  display: block;
+  margin-top: var(--tkt-space-2);
+  width: 100%;
+}
+
+.tkt-attachment--invalid {
+  background-color: var(--tkt-error-pale);
+}
+
+.tkt-attachment--invalid .tkt-attachment__meta {
+  color: var(--tkt-error);
+}
+
+/* A row whose file could not be fetched. The metadata is still true — it is the
+   download that failed — so the row keeps it and adds the reason. */
+.tkt-attachment--error {
+  background-color: var(--tkt-warning-pale);
+}
+
+.tkt-attachment__error {
+  color: var(--tkt-error);
+  font-size: var(--tkt-font-small);
+  margin: var(--tkt-space-1) 0 0;
+}
