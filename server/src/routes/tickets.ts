@@ -1,5 +1,9 @@
 import { Router } from "express";
 
+import {
+  ATTACHMENT_SHAPE,
+  toAttachmentResponse,
+} from "../attachments/shape.js";
 import { ErrorCode, sendError, sendInternalError } from "../http/errors.js";
 import {
   requesterOf,
@@ -256,5 +260,80 @@ ticketsRouter.get("/tickets", requireRequesterContext, async (req, res) => {
     });
   } catch (error) {
     sendInternalError(res, "Failed to list tickets", error);
+  }
+});
+
+/**
+ * Parses an `:id` path parameter.
+ *
+ * Digits only, then a safe-integer check. `Number("1e400")` is `Infinity` and
+ * `Number(" 1 ")` is one; neither is an identifier anybody typed, and passing
+ * either to Prisma turns a bad request into a database error.
+ */
+const identifier = (raw: string): number | null => {
+  if (!/^\d+$/u.test(raw)) {
+    return null;
+  }
+
+  const value = Number(raw);
+
+  return Number.isSafeInteger(value) && value > 0 ? value : null;
+};
+
+/**
+ * One owned ticket, with its attachment metadata.
+ *
+ * Ownership is part of the query, not a check on the result. Fetching first and
+ * comparing afterwards means the row is in memory before the decision is made,
+ * and every later edit to this handler has to remember not to leak it.
+ *
+ * A ticket belonging to someone else answers exactly as a ticket that does not
+ * exist: same status, same code, same body. `403` would confirm the ticket is
+ * real, which is precisely what someone walking the identifiers wants to learn
+ * (BR-12, D-07). This is the property Part 8 asks to see demonstrated.
+ */
+// oxlint-disable-next-line oxc/no-async-endpoint-handlers
+ticketsRouter.get("/tickets/:id", requireRequesterContext, async (req, res) => {
+  const requester = requesterOf(res);
+  const id = identifier(String(req.params.id));
+
+  if (id === null) {
+    sendError(
+      res,
+      404,
+      ErrorCode.ticketNotFound,
+      "That ticket could not be found."
+    );
+    return;
+  }
+
+  try {
+    const ticket = await prisma.ticket.findFirst({
+      where: { id, requesterId: requester.id },
+      select: {
+        ...TICKET_SHAPE,
+        attachments: {
+          select: ATTACHMENT_SHAPE,
+          orderBy: { uploadedAt: "desc" },
+        },
+      },
+    });
+
+    if (!ticket) {
+      sendError(
+        res,
+        404,
+        ErrorCode.ticketNotFound,
+        "That ticket could not be found."
+      );
+      return;
+    }
+
+    res.status(200).json({
+      ...ticket,
+      attachments: ticket.attachments.map(toAttachmentResponse),
+    });
+  } catch (error) {
+    sendInternalError(res, "Failed to read ticket", error);
   }
 });
