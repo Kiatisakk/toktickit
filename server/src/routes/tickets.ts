@@ -5,6 +5,7 @@ import {
   toAttachmentResponse,
 } from "../attachments/shape.js";
 import { ErrorCode, sendError, sendInternalError } from "../http/errors.js";
+import { identifier } from "../http/identifier.js";
 import {
   requesterOf,
   requireRequesterContext,
@@ -262,23 +263,6 @@ ticketsRouter.get("/tickets", requireRequesterContext, async (req, res) => {
     sendInternalError(res, "Failed to list tickets", error);
   }
 });
-
-/**
- * Parses an `:id` path parameter.
- *
- * Digits only, then a safe-integer check. `Number("1e400")` is `Infinity` and
- * `Number(" 1 ")` is one; neither is an identifier anybody typed, and passing
- * either to Prisma turns a bad request into a database error.
- */
-const identifier = (raw: string): number | null => {
-  if (!/^\d+$/u.test(raw)) {
-    return null;
-  }
-
-  const value = Number(raw);
-
-  return Number.isSafeInteger(value) && value > 0 ? value : null;
-};
 
 /**
  * One owned ticket, with its attachment metadata.

@@ -123,7 +123,7 @@ export const storedNameFor = (originalFilename: string): string => {
  * and this is a header — left alone, an uploader writes their own.
  */
 export const contentDispositionFor = (originalFilename: string): string => {
-  const safe = originalFilename
+  const stripped = originalFilename
     // The character that closes the quoted string early, and the one that
     // escapes it.
     .replaceAll(/["\\]/gu, "")
@@ -132,7 +132,23 @@ export const contentDispositionFor = (originalFilename: string): string => {
     .replaceAll(/\p{Cc}/gu, "")
     .trim();
 
-  return `attachment; filename="${safe || "attachment"}"`;
+  const safe = stripped || "attachment";
+
+  /*
+   * Two parameters, per RFC 6266.
+   *
+   * A header is Latin-1. "รายงานแบตเตอรี่.pdf" written into `filename=`
+   * alone reaches the browser mangled and saves under a corrupted name, which
+   * matters here rather more than usually: this is a Thai university, and a
+   * requester attaching evidence is likely to name it in Thai.
+   *
+   * `filename` keeps an ASCII fallback for anything that reads only that;
+   * `filename*` carries the real name, percent-encoded, and every current
+   * browser prefers it.
+   */
+  const ascii = safe.replaceAll(/[^\u0020-\u007E]/gu, "_");
+
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(safe)}`;
 };
 
 /** BR-27. Required, 3–500 characters once trimmed. */

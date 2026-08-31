@@ -23,6 +23,7 @@ import {
   writeAttachment,
 } from "../attachments/storage.js";
 import { ErrorCode, sendError, sendInternalError } from "../http/errors.js";
+import { identifier } from "../http/identifier.js";
 import {
   requesterOf,
   requireRequesterContext,
@@ -98,16 +99,6 @@ const acceptFile: RequestHandler = (req, res, next) => {
 
     next(error);
   });
-};
-
-const identifier = (raw: unknown): number | null => {
-  if (typeof raw !== "string" || !/^\d+$/u.test(raw)) {
-    return null;
-  }
-
-  const value = Number(raw);
-
-  return Number.isSafeInteger(value) && value > 0 ? value : null;
 };
 
 const notFound = (

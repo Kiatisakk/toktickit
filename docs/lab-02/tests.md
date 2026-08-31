@@ -46,8 +46,8 @@ in the development database and is never touched by a test run.
 | UNIT-03 | AC-10, BR-11, BR-13, BR-14 | Trim-then-validate helper | Whitespace-only fails; both boundaries pass and one character outside each fails; padding never counts toward the limit; a `requesterId` in the body is not read | `server/tests/lab-02/validation.test.ts` | **Pass** |
 | UNIT-04 | AC-15 | Query parser accepts every documented parameter | Returns the normalised query with defaults applied; search is trimmed; a blank filter is absent rather than a filter for nothing | `server/tests/lab-02/ticket-query.test.ts` | **Pass** |
 | UNIT-05 | AC-16, BR-34 | Query parser rejects the undocumented | Unknown key, unlisted sort column, bad enum, `pageSize=15`, `page=0` each rejected by name; every offending parameter reported at once; the message says which values are allowed | `server/tests/lab-02/ticket-query.test.ts` | **Pass** |
-| UNIT-06 | BR-24 | Filename sanitiser | Path separators, traversal segments and control characters removed; extension preserved | `server/tests/lab-02/filename.test.ts` | Planned |
-| UNIT-07 | AC-19, BR-21–23 | Attachment rule evaluation | Type, size and active-count rules each reject independently | `server/tests/lab-02/attachment-rules.test.ts` | Planned |
+| UNIT-06 | BR-24 | Stored filename generation | Nothing of the uploaded name survives but its extension; traversal segments and separators cannot reach it; fifty generations collide never | `server/tests/lab-02/attachment-rules.test.ts` | **Pass** |
+| UNIT-07 | AC-19, BR-21–23 | Attachment rule evaluation | Each of the four permitted types accepted and four disallowed ones refused; a permitted type carrying a foreign extension refused; the limit exact at 5 MB; the removal reason bounded at 3 and 500 | `server/tests/lab-02/attachment-rules.test.ts` | **Pass** |
 
 ### API / integration
 
@@ -65,15 +65,18 @@ in the development database and is never touched by a test run.
 | API-09 | AC-15 | Search, filters, sorting | Search matches ticket number and summary case-insensitively; each filter narrows; filters combine rather than replace; sort and order both apply | `server/tests/lab-02/my-tickets.api.test.ts` | **Pass** |
 | API-10 | AC-15, BR-32 | Pagination stability | Every fixture shares a `createdAt` to the millisecond; paging the whole set returns each row exactly once and the same page twice returns the same rows | `server/tests/lab-02/my-tickets.api.test.ts` | **Pass** |
 | API-11 | AC-16, BR-34 | Invalid query parameters | `400 INVALID_QUERY_PARAMETER` naming the parameter for six cases including an unknown one; no `data` is returned, so nothing falls back | `server/tests/lab-02/my-tickets.api.test.ts` | **Pass** |
-| API-12 | AC-18, BR-12 | Detail ownership | Another requester's ticket and a nonexistent id return identical `404` bodies | `server/tests/lab-02/ticket-detail.api.test.ts` | Planned |
-| API-13 | AC-19 | Attachment upload | `201`; metadata stored; file present under a generated name | `server/tests/lab-02/attachments.api.test.ts` | Planned |
-| API-14 | AC-19, BR-21–23 | Upload rejections | Disallowed type `415`; oversized `413`; sixth active `409` | `server/tests/lab-02/attachments.api.test.ts` | Planned |
-| API-15 | AC-20, BR-25 | Download | `200` with `Content-Disposition: attachment` for every permitted type, images included | `server/tests/lab-02/attachments.api.test.ts` | Planned |
-| API-16 | AC-21, BR-26, BR-27 | Soft removal | Row survives with removal time, reason and remover; reason outside 3–500 rejected | `server/tests/lab-02/attachments.api.test.ts` | Planned |
-| API-17 | AC-22, BR-28, BR-29 | After removal | Download returns `404`; a new upload is accepted because the slot is free | `server/tests/lab-02/attachments.api.test.ts` | Planned |
+| API-12 | AC-18, BR-12 | Detail ownership | Another requester's ticket and a nonexistent id return byte-identical `404` bodies, asserted by comparing the two responses rather than by asserting `404` twice | `server/tests/lab-02/ticket-detail.api.test.ts` | **Pass** |
+| API-13 | AC-19 | Attachment upload | `201` with the metadata shape; `storedFilename` never present in the response | `server/tests/lab-02/attachments.api.test.ts` | **Pass** |
+| API-14 | AC-19, BR-21–23 | Upload rejections | Disallowed type `415`; oversized `413` and exactly-at-the-limit `201`; sixth active `409` | `server/tests/lab-02/attachments.api.test.ts` | **Pass** |
+| API-15 | AC-20, BR-25 | Download | `200` with `Content-Disposition: attachment` and `nosniff` for PDF, JPEG and PNG alike | `server/tests/lab-02/attachments.api.test.ts` | **Pass** |
+| API-16 | AC-21, BR-26, BR-27 | Soft removal | Row survives with removal time, reason and remover; a missing reason is `400`; a second removal is `404` | `server/tests/lab-02/attachments.api.test.ts` | **Pass** |
+| API-17 | AC-22, BR-28, BR-29 | After removal | The download URL that worked a moment ago returns `404 ATTACHMENT_REMOVED`; a new upload is accepted because the slot is free | `server/tests/lab-02/attachments.api.test.ts` | **Pass** |
 | API-18 | AC-23, BR-30 | Compensation | Forced metadata failure leaves no file on disk and no row | `server/tests/lab-02/attachments.api.test.ts` | Planned |
 | API-19 | AC-24, BR-20 | Safe errors | An unmatched `/api` path and a malformed JSON body both leave through the documented envelope, not Express's HTML default; neither echoes the rejected body nor a stack trace | `server/tests/lab-02/error-envelope.api.test.ts` | **Pass** |
-| API-20 | AC-18 | Cross-requester attachment access | Metadata, download and removal each return `404` for another requester's attachment | `server/tests/lab-02/attachments.api.test.ts` | Planned |
+| API-20 | AC-18 | Cross-requester attachment access | Upload, listing, download and removal each `404` for another requester; a stranger sending an invalid reason is told the attachment does not exist rather than that their reason is short | `server/tests/lab-02/attachments.api.test.ts` | **Pass** |
+| API-25 | BR-25, BR-30 | A row whose file has gone | Answers `500 INTERNAL_ERROR` rather than hanging; names neither the stored filename nor the upload directory | `server/tests/lab-02/attachments.api.test.ts` | **Pass** |
+| API-26 | BR-32 | Attachment ordering | The detail and listing endpoints return rows sharing an upload timestamp in the same order, and that order is stable across reads | `server/tests/lab-02/attachments.api.test.ts` | **Pass** |
+| API-27 | AC-18 | Detail identifier handling | `abc`, `1.5`, `-1`, `0`, `1e3` and a padded `1` are refused with the same `404` as a missing ticket | `server/tests/lab-02/ticket-detail.api.test.ts` | **Pass** |
 
 ### UI component
 
@@ -90,9 +93,12 @@ in the development database and is never touched by a test run.
 | UI-09 | AC-12, BR-17 | Busy submit | Button disabled and renamed while the request is in flight, leaving no enabled control to click again | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
 | UI-10 | AC-13, BR-19 | Failure preserves input | Every entered value survives a failed submission; the message is readable rather than the exception; the control re-enables; server-reported field messages reach their field | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
 | UI-11 | AC-17, BR-35 | Empty vs no-results | Different text, different actions and different `data-state`; filters are sent to the API rather than applied in the browser; a query change returns to page one | `client/tests/lab-02/MyTickets.test.tsx` | **Pass** |
-| UI-12 | AC-18, FR-16 | Detail is read-only | No input, no status control, no comment box | `client/tests/lab-02/RequesterTicketDetail.test.tsx` | Planned |
-| UI-13 | AC-21, BR-27 | Attachment add and remove | Confirmation requires a reason; confirm stays disabled below 3 characters | `client/tests/lab-02/AttachmentSection.test.tsx` | Planned |
-| UI-14 | AC-22 | Removed attachment | Metadata shown with a Removed badge and no Download control | `client/tests/lab-02/AttachmentSection.test.tsx` | Planned |
+| UI-12 | AC-18, FR-16 | Detail is read-only | Every input carries `readonly` except the file picker; no comment box, no status control, and none of the three tab labels §4.2 excludes | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
+| UI-13 | AC-21, BR-27 | Attachment add and remove | Removal asks for confirmation rather than acting on the first click; confirm stays disabled below three characters | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
+| UI-14 | AC-22 | Removed attachment | Metadata and the removal reason stay visible; neither Download nor Remove is offered | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
+| UI-19 | AC-18 | A ticket that is not yours | One wording for "missing" and "someone else's", so the screen does not undo what the endpoint is careful about; a non-numeric path never calls the API | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
+| UI-20 | AC-19, BR-21 | The file picker | `accept` limited to the four permitted types, which is why the unsupported-type rejection is unreachable through the control and the failure test uses a size refusal | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
+| UI-21 | AC-19, BR-23 | The add control at the limit | Disabled at five active attachments, and says why | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
 
 ### UI style
 

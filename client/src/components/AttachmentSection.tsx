@@ -7,6 +7,7 @@ import {
   removeAttachment,
   uploadAttachment,
 } from "../lib/api";
+import { formatWhen } from "../lib/formatWhen";
 import { Badge } from "./Badge";
 import { Button } from "./Button";
 import { Icon } from "./Icon";
@@ -39,19 +40,6 @@ const formatSize = (bytes: number) => {
   }
 
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
-
-const formatWhen = (iso: string) => {
-  const value = new Date(iso);
-
-  return `${value.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  })} ${value.toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-  })}`;
 };
 
 interface AttachmentSectionProps {

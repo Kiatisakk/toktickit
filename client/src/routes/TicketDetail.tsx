@@ -14,6 +14,7 @@ import {
   fetchTicket,
   type TicketDetail as Detail,
 } from "../lib/api";
+import { formatWhen } from "../lib/formatWhen";
 
 /**
  * The Requester Ticket Detail screen (§8.5).
@@ -32,19 +33,6 @@ import {
  * Service Actions, Event Log — and §4.2 excludes the features behind three of
  * them. Drawing them disabled would advertise a screen this lab must not build.
  */
-
-const formatWhen = (iso: string) => {
-  const value = new Date(iso);
-
-  return `${value.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  })} ${value.toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-  })}`;
-};
 
 type Load =
   | { kind: "loading" }

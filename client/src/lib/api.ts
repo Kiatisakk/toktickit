@@ -121,7 +121,13 @@ const sendForBlob = async (
   let response: Response;
 
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, { headers });
+    const init: RequestInit = { headers };
+
+    if (options.signal) {
+      init.signal = options.signal;
+    }
+
+    response = await fetch(`${API_BASE_URL}${path}`, init);
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw error;
