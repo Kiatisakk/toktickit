@@ -744,3 +744,31 @@ asks for, we chose the evidence.
 
 `CLOSED` is left unused so that one status filter still finds nothing, which is
 what demonstrates BR-35's no-results state now that the others all match.
+
+### D-16 The ownership evidence proves a check, not an identity
+
+Part 8 asks for evidence that one Requester cannot reach another's Ticket, and
+the evidence is real: `GET /api/tickets/:id`, the attachment listing, the
+download and the removal all resolve ownership in the `where` clause, and a
+Ticket belonging to someone else answers byte-identically to one that does not
+exist. Tests compare the two responses rather than asserting `404` twice.
+
+What that evidence does **not** show is an authenticated identity. The acting
+Requester comes from `X-Development-Requester-Id`, a header the client sets, so
+anyone can present themselves as anyone. §4.2 excludes authentication, BR-03
+records the selector as a testing mechanism, and the selection screen says twice
+on the page that it is not a login — the design is deliberate. This entry exists
+because "deliberate" and "stated in the submission" are different things.
+
+Issue #19 makes the consequence larger rather than different. Before it, the
+header governed which list of Tickets came back. Now it also governs
+`GET /api/attachments/:id/download`, and attachments are the most sensitive
+content the system holds: evidence a person chose to attach to a support
+request. A reviewer should read the ownership evidence as "the check is
+correct", not as "the data is protected".
+
+Nothing here needs fixing in Lab 2, and fixing it would implement the scope §4.2
+excludes. It is written down so that no reader has to infer it, and so that Lab 3
+inherits a stated starting point. The checks themselves survive that change
+untouched: they read the requester from `res.locals`, never from the URL, so only
+the middleware that populates it is replaced.
