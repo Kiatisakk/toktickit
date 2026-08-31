@@ -85,15 +85,51 @@ afterEach(() => {
 });
 
 describe("a ticket you own", () => {
-  it("shows the ticket number and summary", async () => {
+  /*
+   * The screen has no heading of its own, as Figure 1 has none.
+   *
+   * It used to open with an h1 of the ticket number over a subtitle of the
+   * summary — both of which are fields in the card immediately beneath, so a
+   * reader met the same two values twice and the card started further down for
+   * no reason.
+   */
+  it("shows the ticket number and summary as fields, not as a heading", async () => {
     vi.stubGlobal("fetch", respond(TICKET));
 
     renderAt();
 
-    expect(await screen.findByText("TKT-2026-000042")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Ticket No.")).toHaveValue(
+      "TKT-2026-000042"
+    );
+    expect(screen.getByLabelText("Summary")).toHaveValue(
+      "Laptop battery drains quickly"
+    );
+  });
+
+  it("gives the screen no heading of its own", async () => {
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    const { container } = renderAt();
+
+    await screen.findByLabelText("Ticket No.");
+    expect(container.querySelector(".tkt-page-title")).toBeNull();
+  });
+
+  // Figure 1 puts it on the breadcrumb row rather than above the card.
+  it("puts Back to My Tickets on the breadcrumb row", async () => {
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    const { container } = renderAt();
+
+    await screen.findByLabelText("Ticket No.");
+
+    const crumbs = container.querySelector(".tkt-breadcrumb");
+
     expect(
-      screen.getAllByText("Laptop battery drains quickly").length
-    ).toBeGreaterThan(0);
+      within(crumbs as HTMLElement).getByRole("button", {
+        name: "Back to My Tickets",
+      })
+    ).toBeInTheDocument();
   });
 
   it("shows the description, which the list never carries", async () => {
@@ -201,8 +237,51 @@ describe("a ticket you own", () => {
 
     renderAt();
 
-    await screen.findByText("TKT-2026-000042");
+    await screen.findByLabelText("Ticket No.");
     expect(screen.queryByText(excluded)).toBeNull();
+  });
+});
+
+/**
+ * Reported from the running screen.
+ *
+ * Three of the eight fields render a badge rather than an input, and they had
+ * the height of a field and none of the box — so Requested Priority, IT
+ * Priority and Current Status looked like they had lost their frames while the
+ * five around them kept theirs. Figure 1 draws the pill inside the grey
+ * read-only box.
+ */
+describe("the badge fields", () => {
+  it("gives each of the three a box, as the fields beside them have", async () => {
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    const { container } = renderAt();
+
+    await screen.findByLabelText("Ticket No.");
+    expect(container.querySelectorAll(".tkt-readonly-badge")).toHaveLength(3);
+  });
+
+  it("puts the badge inside the box rather than beside it", async () => {
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    const { container } = renderAt();
+
+    await screen.findByLabelText("Ticket No.");
+
+    for (const box of container.querySelectorAll(".tkt-readonly-badge")) {
+      expect(box.querySelector(".tkt-badge")).not.toBeNull();
+    }
+  });
+
+  // Two cards stacked with nothing between them read as one, and the detail
+  // screen is the first place two of them meet.
+  it("keeps the attachment section a separate card", async () => {
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    const { container } = renderAt();
+
+    await screen.findByLabelText("Ticket No.");
+    expect(container.querySelectorAll(".tkt-card")).toHaveLength(2);
   });
 });
 

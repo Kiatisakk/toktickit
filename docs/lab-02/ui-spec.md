@@ -240,6 +240,17 @@ thing this shell exists to communicate.
 
 ---
 
+### Breadcrumb
+
+Crumbs on the left, an optional control on the right, on one baseline. Figure 1 puts *Back
+to My Tickets* there rather than above the card, and the row is otherwise nearly empty.
+
+A crumb may be an icon instead of a word — the Requester Selection illustration draws its
+first crumb as a house and no text at all. The label is kept as the accessible name, because
+§8.3 does not let an icon replace text; it only lets it stand in front of one.
+
+---
+
 ## 5. Screens
 
 ### 5.1 Development Requester Selection
@@ -311,10 +322,22 @@ different actions (BR-35).
 
 ### 5.4 Requester Ticket Detail
 
+No heading of its own, because Figure 1 has none. The breadcrumb carries *Back to My
+Tickets* on its own row, right-aligned, and the card follows directly. An earlier version
+opened with the ticket number as an `h1` over the summary as a subtitle — both of which are
+fields in the card immediately beneath, so a reader met the same two values twice and the
+card began further down the page for no reason.
+
 Header block of read-only fields laid out as the approved illustration does: Ticket No.,
 Ticket Date, Category, Related System on the first row; Requester, Requested Priority, IT
 Priority, Current Status on the second; Ticket Owner and Summary on the third; then
 Description; then Resolution Summary.
+
+Requested Priority, IT Priority and Current Status render a badge inside a read-only box
+rather than as bare pills. They had the height of a field and none of its frame, so three
+cells in a row of eight appeared to have lost their boxes; the illustration draws the pill
+inside the grey field. `.tkt-readonly-badge` restates `.tkt-field--readonly`'s surface
+because a badge is not an input and cannot inherit it.
 
 IT Priority, Ticket Owner and Resolution Summary are unset in Lab 2 and render as
 placeholders — Resolution Summary as italic muted text reading *No resolution summary

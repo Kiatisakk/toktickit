@@ -94,11 +94,25 @@
   padding: var(--tkt-space-1) var(--tkt-space-2);
 }
 
+/* The crumbs on the left, an optional control on the right, on one baseline —
+   as Figure 1 draws it. */
 .tkt-breadcrumb {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tkt-space-3);
+  justify-content: space-between;
   margin: 0 auto;
   max-width: var(--tkt-content-max);
-  padding: var(--tkt-space-3) var(--tkt-space-4);
+  /* Roomier than the 0.75rem it was. The row now carries a control as well as
+     the crumbs, and at the old padding the button sat hard against the green
+     header above it. */
+  padding: var(--tkt-space-4);
   width: 100%;
+}
+
+.tkt-breadcrumb__action {
+  margin-left: auto;
 }
 
 .tkt-breadcrumb__list {
@@ -111,8 +125,17 @@
 }
 
 .tkt-breadcrumb__item {
+  align-items: center;
   color: var(--tkt-text-muted);
+  display: flex;
   font-size: var(--tkt-font-small);
+}
+
+/* A crumb that is an icon still needs a target worth aiming at. */
+.tkt-breadcrumb__item a {
+  align-items: center;
+  display: inline-flex;
+  gap: var(--tkt-space-1);
 }
 
 .tkt-breadcrumb__item + .tkt-breadcrumb__item::before {
@@ -303,6 +326,12 @@
   border-radius: var(--tkt-radius);
   box-shadow: var(--tkt-shadow);
   padding: var(--tkt-space-6);
+}
+
+/* Two cards in a row are two objects, and they were touching. The detail screen
+   is the first place two of them stack, which is why this went unnoticed. */
+.tkt-card + .tkt-card {
+  margin-top: var(--tkt-space-6);
 }
 
 .tkt-page-title {
@@ -1032,10 +1061,22 @@
 
 /* A badge standing where a read-only control would, so the row keeps its
    rhythm rather than the badge floating at a different height. */
+/* A badge standing where a read-only control would.
+   
+   It had the height of a field and none of the box, so Requested Priority, IT
+   Priority and Current Status appeared to have lost their frames while the four
+   fields beside them kept theirs. Figure 1 draws the pill *inside* the grey
+   read-only box, and the row only reads as a row when every cell has the same
+   edge. Same properties as `.tkt-field--readonly`, stated here because the
+   badge is not an input and cannot inherit them. */
 .tkt-readonly-badge {
   align-items: center;
+  background-color: var(--tkt-readonly);
+  border: 1px solid var(--tkt-border);
+  border-radius: var(--tkt-radius-sm);
   display: flex;
   min-height: var(--tkt-control-height);
+  padding: var(--tkt-space-2) var(--tkt-space-3);
 }
 
 /* ---------------------------------------------------------- attachments -- */

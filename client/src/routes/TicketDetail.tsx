@@ -5,6 +5,7 @@ import { AppShell } from "../components/AppShell";
 import { AttachmentSection } from "../components/AttachmentSection";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
+import { Icon } from "../components/Icon";
 import { StateBlock } from "../components/StateBlock";
 import { TextInput } from "../components/TextInput";
 import { useRequester } from "../context/useRequester";
@@ -136,6 +137,22 @@ export const TicketDetail = () => {
     { label: "Ticket Details" },
   ];
 
+  /*
+   * Figure 1 puts this on the breadcrumb row and gives the screen no heading of
+   * its own.
+   *
+   * The heading it replaces repeated the ticket number and the summary, both of
+   * which are fields in the card immediately underneath — so the first thing a
+   * reader met was the same two values twice, and the card began below the fold
+   * for no reason.
+   */
+  const back = (
+    <Button onClick={() => void navigate("/my-tickets")} variant="secondary">
+      <Icon name="back" />
+      Back to My Tickets
+    </Button>
+  );
+
   if (state.kind === "loading") {
     return (
       <AppShell breadcrumbs={crumbs}>
@@ -191,22 +208,7 @@ export const TicketDetail = () => {
   const { ticket } = state;
 
   return (
-    <AppShell breadcrumbs={crumbs}>
-      <div className="tkt-list-header">
-        <div>
-          <h1 className="tkt-page-title">{ticket.ticketNumber}</h1>
-          <p className="tkt-page-subtitle">{ticket.summary}</p>
-        </div>
-        <div className="tkt-actions">
-          <Button
-            onClick={() => void navigate("/my-tickets")}
-            variant="secondary"
-          >
-            Back to My Tickets
-          </Button>
-        </div>
-      </div>
-
+    <AppShell breadcrumbAction={back} breadcrumbs={crumbs}>
       <div className="tkt-card">
         <div className="tkt-grid tkt-grid--4">
           <TextInput label="Ticket No." readOnly value={ticket.ticketNumber} />
