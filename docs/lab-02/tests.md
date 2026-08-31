@@ -105,8 +105,8 @@ in the development database and is never touched by a test run.
 | UI-22 | AC-19 | The uploading row | Carries the chosen file's own name, is marked `tkt-attachment--uploading`, shows indeterminate progress, hides Remove, and disables the add control | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
 | UI-23 | AC-19 | The invalid row | Names the refused file and puts the server's reason on the row rather than in an alert above the list; can be dismissed | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
 | UI-24 | AC-20 | The unavailable row | A failed download marks that row `tkt-attachment--error`, offers Retry download on the row itself, and keeps the metadata, which is still true | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
-| UI-25 | AC-25 | The detail screen has no heading of its own | The ticket number and summary appear as field values, not as an `h1` over a subtitle repeating what the card says beneath | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
-| UI-26 | AC-25 | Back sits on the breadcrumb row | Found inside `.tkt-breadcrumb`, as Figure 1 places it | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
+| UI-25 | AC-25 | The detail screen names its ticket | An `h1` of the ticket number over the summary, above the card — a deliberate departure from Figure 1, which has no heading | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
+| UI-26 | AC-25 | Back sits beside the heading | Found inside `.tkt-list-header`, where a full-height control belongs next to a page title | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
 | UI-27 | AC-25 | The badge fields keep their box | All three render `.tkt-readonly-badge` with the pill inside it, so the row of eight has one edge throughout; the attachment section stays a second card | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
 
 ### UI style

@@ -249,6 +249,10 @@ A crumb may be an icon instead of a word — the Requester Selection illustratio
 first crumb as a house and no text at all. The label is kept as the accessible name, because
 §8.3 does not let an icon replace text; it only lets it stand in front of one.
 
+The right-hand slot is unused on every screen at present: Ticket Detail keeps its back
+control beside its heading instead (§5.4). The slot stays because it is where Figure 1 puts
+that control, and the next screen that wants one should not have to invent the row again.
+
 ---
 
 ## 5. Screens
@@ -322,11 +326,16 @@ different actions (BR-35).
 
 ### 5.4 Requester Ticket Detail
 
-No heading of its own, because Figure 1 has none. The breadcrumb carries *Back to My
-Tickets* on its own row, right-aligned, and the card follows directly. An earlier version
-opened with the ticket number as an `h1` over the summary as a subtitle — both of which are
-fields in the card immediately beneath, so a reader met the same two values twice and the
-card began further down the page for no reason.
+The ticket number as an `h1` over the summary, with *Back to My Tickets* beside it.
+
+**This is a departure from Figure 1**, which gives the screen no heading at all and puts the
+back control on the breadcrumb row. Both arrangements were built; this one was kept. The
+figure's version is tidier and the repetition is real — the number and the summary are both
+fields in the card immediately beneath — but a page whose first line names what you are
+looking at is easier to arrive at than one that opens straight into a grid of labels, and
+the cost is one line. §8.5 leaves the arrangement to us in as many words: "students must
+determine the exact field grouping, responsive arrangement, attachment presentation, and
+navigation".
 
 Header block of read-only fields laid out as the approved illustration does: Ticket No.,
 Ticket Date, Category, Related System on the first row; Requester, Requested Priority, IT

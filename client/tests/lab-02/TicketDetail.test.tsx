@@ -106,27 +106,33 @@ describe("a ticket you own", () => {
     );
   });
 
-  it("gives the screen no heading of its own", async () => {
+  // A departure from Figure 1, which has no heading here: a page whose first
+  // line names what you are looking at is easier to arrive at than one opening
+  // straight into a grid of labels.
+  it("names the ticket in a heading above the card", async () => {
     vi.stubGlobal("fetch", respond(TICKET));
 
-    const { container } = renderAt();
-
-    await screen.findByLabelText("Ticket No.");
-    expect(container.querySelector(".tkt-page-title")).toBeNull();
-  });
-
-  // Figure 1 puts it on the breadcrumb row rather than above the card.
-  it("puts Back to My Tickets on the breadcrumb row", async () => {
-    vi.stubGlobal("fetch", respond(TICKET));
-
-    const { container } = renderAt();
-
-    await screen.findByLabelText("Ticket No.");
-
-    const crumbs = container.querySelector(".tkt-breadcrumb");
+    renderAt();
 
     expect(
-      within(crumbs as HTMLElement).getByRole("button", {
+      await screen.findByRole("heading", { name: "TKT-2026-000042" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Laptop battery drains quickly").length
+    ).toBeGreaterThan(0);
+  });
+
+  it("puts Back to My Tickets beside that heading", async () => {
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    const { container } = renderAt();
+
+    await screen.findByLabelText("Ticket No.");
+
+    const header = container.querySelector(".tkt-list-header");
+
+    expect(
+      within(header as HTMLElement).getByRole("button", {
         name: "Back to My Tickets",
       })
     ).toBeInTheDocument();

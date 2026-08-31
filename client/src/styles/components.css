@@ -115,6 +115,15 @@
   margin-left: auto;
 }
 
+/* Compact, because it sits beside crumb-sized text rather than at the foot of a
+   form. A full-height control next to 0.8125rem text is the tallest thing on the
+   row and reads as the row's subject, which it is not. */
+.tkt-breadcrumb__action .tkt-btn {
+  font-size: var(--tkt-font-label);
+  min-height: 2rem;
+  padding: var(--tkt-space-1) var(--tkt-space-3);
+}
+
 .tkt-breadcrumb__list {
   display: flex;
   flex-wrap: wrap;
@@ -992,6 +1001,13 @@
      responsive contract said 44. */
   :root {
     --tkt-control-height: var(--tkt-touch-target);
+  }
+
+  /* The one rule above that states a height of its own has to give it back
+     here, or the compact breadcrumb button would be the single control on the
+     page below the touch target. */
+  .tkt-breadcrumb__action .tkt-btn {
+    min-height: var(--tkt-touch-target);
   }
 
   /* Below 768px the table is replaced by cards rather than being scrolled
