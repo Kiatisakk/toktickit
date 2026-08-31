@@ -49,7 +49,7 @@ interface RequestOptions {
  */
 const send = async (
   path: string,
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "DELETE",
   options: RequestOptions & { body?: unknown } = {}
 ): Promise<unknown> => {
   const headers: Record<string, string> = {};
@@ -58,7 +58,12 @@ const send = async (
     headers[REQUESTER_HEADER] = String(options.requesterId);
   }
 
-  if (options.body !== undefined) {
+  // FormData sets its own Content-Type, and it has to: the boundary is chosen
+  // when the body is built, and a hand-written header would name a boundary the
+  // body does not use.
+  const multipart = options.body instanceof FormData;
+
+  if (options.body !== undefined && !multipart) {
     headers["Content-Type"] = "application/json";
   }
 
@@ -72,7 +77,9 @@ const send = async (
     }
 
     if (options.body !== undefined) {
-      init.body = JSON.stringify(options.body);
+      init.body = multipart
+        ? (options.body as FormData)
+        : JSON.stringify(options.body);
     }
 
     response = await fetch(`${API_BASE_URL}${path}`, init);
@@ -93,6 +100,43 @@ const send = async (
   return await response.json();
 };
 
+/**
+ * The same request, answered as bytes rather than as JSON.
+ *
+ * Downloads need the blob and the filename the server chose, and neither
+ * survives `response.json()`. Kept beside `send` so the requester header and
+ * the failure handling stay in one place — a second fetch wrapper is how one of
+ * them ends up not sending the header.
+ */
+const sendForBlob = async (
+  path: string,
+  options: RequestOptions = {}
+): Promise<Blob> => {
+  const headers: Record<string, string> = {};
+
+  if (options.requesterId !== undefined) {
+    headers[REQUESTER_HEADER] = String(options.requesterId);
+  }
+
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, { headers });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error;
+    }
+
+    throw new ApiError("NETWORK_UNREACHABLE", UNREACHABLE, 0);
+  }
+
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+
+  return await response.blob();
+};
+
 export const apiGet = (path: string, options: RequestOptions = {}) =>
   send(path, "GET", options);
 
@@ -101,6 +145,12 @@ export const apiPost = (
   body: unknown,
   options: RequestOptions = {}
 ) => send(path, "POST", { ...options, body });
+
+export const apiDelete = (
+  path: string,
+  body: unknown,
+  options: RequestOptions = {}
+) => send(path, "DELETE", { ...options, body });
 
 /**
  * Turns a failed response into an ApiError.
@@ -360,4 +410,141 @@ export const fetchTickets = async (
   // No cast. Every element has been through `isTicketRow`, so the type is
   // earned rather than asserted.
   return { data: body["data"], meta: body["meta"] };
+};
+
+/* ------------------------------------------------------------ attachments -- */
+
+export interface AttachmentMetadata {
+  id: number;
+  originalFilename: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedAt: string;
+  uploadedBy: ReferenceItem;
+  status: "ACTIVE" | "REMOVED";
+  removedAt: string | null;
+  removedReason: string | null;
+  removedBy: ReferenceItem | null;
+}
+
+export interface TicketDetail extends TicketListRow {
+  description: string;
+  resolutionSummary: string | null;
+  requester: ReferenceItem;
+  attachments: AttachmentMetadata[];
+}
+
+const isAttachment = (value: unknown): value is AttachmentMetadata =>
+  isRecord(value) &&
+  typeof value["id"] === "number" &&
+  typeof value["originalFilename"] === "string" &&
+  typeof value["mimeType"] === "string" &&
+  typeof value["sizeBytes"] === "number" &&
+  typeof value["uploadedAt"] === "string" &&
+  isReferenceItem(value["uploadedBy"]) &&
+  (value["status"] === "ACTIVE" || value["status"] === "REMOVED") &&
+  (value["removedAt"] === null || typeof value["removedAt"] === "string") &&
+  (value["removedReason"] === null ||
+    typeof value["removedReason"] === "string") &&
+  (value["removedBy"] === null || isReferenceItem(value["removedBy"]));
+
+const isTicketDetail = (value: unknown): value is TicketDetail =>
+  isTicketRow(value) &&
+  isRecord(value) &&
+  typeof value["description"] === "string" &&
+  (value["resolutionSummary"] === null ||
+    typeof value["resolutionSummary"] === "string") &&
+  isReferenceItem(value["requester"]) &&
+  Array.isArray(value["attachments"]) &&
+  value["attachments"].every(isAttachment);
+
+const unexpected = (what: string) =>
+  new ApiError(
+    "UNEXPECTED_RESPONSE",
+    `The TokTickIT API returned ${what} in an unexpected format.`,
+    0
+  );
+
+/** One owned ticket. A ticket owned by anyone else fails as a missing one. */
+export const fetchTicket = async (
+  ticketId: number,
+  requesterId: number,
+  signal?: AbortSignal
+): Promise<TicketDetail> => {
+  const body = await apiGet(`/api/tickets/${ticketId}`, {
+    requesterId,
+    ...(signal ? { signal } : {}),
+  });
+
+  if (!isTicketDetail(body)) {
+    throw unexpected("the ticket");
+  }
+
+  return body;
+};
+
+export const uploadAttachment = async (
+  ticketId: number,
+  file: File,
+  requesterId: number
+): Promise<AttachmentMetadata> => {
+  const form = new FormData();
+  form.append("file", file);
+
+  const body = await send(`/api/tickets/${ticketId}/attachments`, "POST", {
+    requesterId,
+    body: form,
+  });
+
+  if (!isAttachment(body)) {
+    throw unexpected("the attachment");
+  }
+
+  return body;
+};
+
+export const removeAttachment = async (
+  attachmentId: number,
+  reason: string,
+  requesterId: number
+): Promise<AttachmentMetadata> => {
+  const body = await apiDelete(
+    `/api/attachments/${attachmentId}`,
+    { reason },
+    { requesterId }
+  );
+
+  if (!isAttachment(body)) {
+    throw unexpected("the attachment");
+  }
+
+  return body;
+};
+
+/**
+ * Fetches the bytes rather than pointing the browser at the URL.
+ *
+ * A plain link would send the request without the requester header, and the
+ * server would refuse it — the header is the whole identity mechanism in Lab 2.
+ * So the file is fetched, turned into an object URL, saved, and the URL
+ * revoked; leaving it alive holds the whole file in memory for the life of the
+ * page.
+ */
+export const downloadAttachment = async (
+  attachment: AttachmentMetadata,
+  requesterId: number
+): Promise<void> => {
+  const blob = await sendForBlob(`/api/attachments/${attachment.id}/download`, {
+    requesterId,
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = attachment.originalFilename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 };

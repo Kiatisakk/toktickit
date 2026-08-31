@@ -4,9 +4,9 @@ import App from "../App";
 import { CreateTicket } from "./CreateTicket";
 import { MyTickets } from "./MyTickets";
 import { NotFound } from "./NotFound";
-import { Placeholder } from "./Placeholder";
 import { RequesterGuard } from "./RequesterGuard";
 import { RequesterSelection } from "./RequesterSelection";
+import { TicketDetail } from "./TicketDetail";
 
 /**
  * The Lab 2 route table.
@@ -47,17 +47,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/tickets/:ticketId",
-    element: guarded(
-      <Placeholder
-        breadcrumbs={[
-          { label: "My Tickets", to: "/my-tickets" },
-          { label: "Ticket Details" },
-        ]}
-        description="Reading one owned ticket and managing its attachments."
-        issue={19}
-        title="Ticket Details"
-      />
-    ),
+    element: guarded(<TicketDetail />),
   },
   {
     path: "/system-status",
