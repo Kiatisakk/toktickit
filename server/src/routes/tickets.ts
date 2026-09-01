@@ -1,6 +1,11 @@
 import { Router } from "express";
 
+import {
+  ATTACHMENT_SHAPE,
+  toAttachmentResponse,
+} from "../attachments/shape.js";
 import { ErrorCode, sendError, sendInternalError } from "../http/errors.js";
+import { identifier } from "../http/identifier.js";
 import {
   requesterOf,
   requireRequesterContext,
@@ -256,5 +261,68 @@ ticketsRouter.get("/tickets", requireRequesterContext, async (req, res) => {
     });
   } catch (error) {
     sendInternalError(res, "Failed to list tickets", error);
+  }
+});
+
+/**
+ * One owned ticket, with its attachment metadata.
+ *
+ * Ownership is part of the query, not a check on the result. Fetching first and
+ * comparing afterwards means the row is in memory before the decision is made,
+ * and every later edit to this handler has to remember not to leak it.
+ *
+ * A ticket belonging to someone else answers exactly as a ticket that does not
+ * exist: same status, same code, same body. `403` would confirm the ticket is
+ * real, which is precisely what someone walking the identifiers wants to learn
+ * (BR-12, D-07). This is the property Part 8 asks to see demonstrated.
+ */
+// oxlint-disable-next-line oxc/no-async-endpoint-handlers
+ticketsRouter.get("/tickets/:id", requireRequesterContext, async (req, res) => {
+  const requester = requesterOf(res);
+  const id = identifier(String(req.params.id));
+
+  if (id === null) {
+    sendError(
+      res,
+      404,
+      ErrorCode.ticketNotFound,
+      "That ticket could not be found."
+    );
+    return;
+  }
+
+  try {
+    const ticket = await prisma.ticket.findFirst({
+      where: { id, requesterId: requester.id },
+      select: {
+        ...TICKET_SHAPE,
+        attachments: {
+          select: ATTACHMENT_SHAPE,
+          // The immutable id is the last key, exactly as it is on the ticket
+          // list (BR-32). Two attachments uploaded in the same millisecond
+          // otherwise have no defined order, and this endpoint was returning
+          // them in the opposite order to `/tickets/:id/attachments` — the
+          // same rows, described twice, disagreeing.
+          orderBy: [{ uploadedAt: "desc" }, { id: "desc" }],
+        },
+      },
+    });
+
+    if (!ticket) {
+      sendError(
+        res,
+        404,
+        ErrorCode.ticketNotFound,
+        "That ticket could not be found."
+      );
+      return;
+    }
+
+    res.status(200).json({
+      ...ticket,
+      attachments: ticket.attachments.map(toAttachmentResponse),
+    });
+  } catch (error) {
+    sendInternalError(res, "Failed to read ticket", error);
   }
 });

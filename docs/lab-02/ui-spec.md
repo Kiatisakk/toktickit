@@ -240,6 +240,21 @@ thing this shell exists to communicate.
 
 ---
 
+### Breadcrumb
+
+Crumbs on the left, an optional control on the right, on one baseline. Figure 1 puts *Back
+to My Tickets* there rather than above the card, and the row is otherwise nearly empty.
+
+A crumb may be an icon instead of a word — the Requester Selection illustration draws its
+first crumb as a house and no text at all. The label is kept as the accessible name, because
+§8.3 does not let an icon replace text; it only lets it stand in front of one.
+
+The right-hand slot is unused on every screen at present: Ticket Detail keeps its back
+control beside its heading instead (§5.4). The slot stays because it is where Figure 1 puts
+that control, and the next screen that wants one should not have to invent the row again.
+
+---
+
 ## 5. Screens
 
 ### 5.1 Development Requester Selection
@@ -311,10 +326,27 @@ different actions (BR-35).
 
 ### 5.4 Requester Ticket Detail
 
+The ticket number as an `h1` over the summary, with *Back to My Tickets* beside it.
+
+**This is a departure from Figure 1**, which gives the screen no heading at all and puts the
+back control on the breadcrumb row. Both arrangements were built; this one was kept. The
+figure's version is tidier and the repetition is real — the number and the summary are both
+fields in the card immediately beneath — but a page whose first line names what you are
+looking at is easier to arrive at than one that opens straight into a grid of labels, and
+the cost is one line. §8.5 leaves the arrangement to us in as many words: "students must
+determine the exact field grouping, responsive arrangement, attachment presentation, and
+navigation".
+
 Header block of read-only fields laid out as the approved illustration does: Ticket No.,
 Ticket Date, Category, Related System on the first row; Requester, Requested Priority, IT
 Priority, Current Status on the second; Ticket Owner and Summary on the third; then
 Description; then Resolution Summary.
+
+Requested Priority, IT Priority and Current Status render a badge inside a read-only box
+rather than as bare pills. They had the height of a field and none of its frame, so three
+cells in a row of eight appeared to have lost their boxes; the illustration draws the pill
+inside the grey field. `.tkt-readonly-badge` restates `.tkt-field--readonly`'s surface
+because a badge is not an input and cannot inherit it.
 
 IT Priority, Ticket Owner and Resolution Summary are unset in Lab 2 and render as
 placeholders — Resolution Summary as italic muted text reading *No resolution summary

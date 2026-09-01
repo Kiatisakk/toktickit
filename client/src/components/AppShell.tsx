@@ -7,6 +7,8 @@ import { Icon, type IconName } from "./Icon";
 
 interface AppShellProps {
   breadcrumbs?: Crumb[];
+  /** Right-aligned on the breadcrumb row, as Figure 1 places it. */
+  breadcrumbAction?: ReactNode;
   children: ReactNode;
 }
 
@@ -29,7 +31,11 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
  * The context is optional rather than required: the selection screen renders
  * inside this shell before any requester exists.
  */
-export const AppShell = ({ breadcrumbs, children }: AppShellProps) => {
+export const AppShell = ({
+  breadcrumbs,
+  breadcrumbAction,
+  children,
+}: AppShellProps) => {
   const [navOpen, setNavOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -101,7 +107,7 @@ export const AppShell = ({ breadcrumbs, children }: AppShellProps) => {
       </header>
 
       {breadcrumbs && breadcrumbs.length > 0 ? (
-        <Breadcrumb items={breadcrumbs} />
+        <Breadcrumb action={breadcrumbAction} items={breadcrumbs} />
       ) : null}
 
       <main className="tkt-main">{children}</main>

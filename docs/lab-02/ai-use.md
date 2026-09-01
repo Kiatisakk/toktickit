@@ -46,6 +46,13 @@ minor are often the ones that stopped something going wrong.
 | 13 | *"แยก PR ได้ใช่มั้ยมันไม่ผิดกฏในแลปใช่มะต้องให้บีม Review ด้วยมั้ย"*<br>"A separate PR is allowed, it does not break the lab rules, and does Beam still need to review it?" | Three rule questions at once, answered from the handout rather than from habit: §10 scopes Issues to sprint work so none was needed, Part 7 covers Issue-less PRs explicitly, and Part 9 has no small-change exemption, so the reviewer still merges. |
 | 14 | *"ก็ใส่ไปทุกอย่างเลยก็ได้"*<br>"Just put everything in, that is fine." | Settled how this document is structured. §14 Part 4 asks for six to ten selected prompts and the log had already outgrown that, so the answer was both: a selected table that meets the requirement, and this log underneath it that discards nothing. |
 
+| 15 | *"ทำต่อเรื่อย ๆ จนเสด Issue 18 เลย"*<br>"Keep going until Issue 18 is finished." | Handed over a whole Issue rather than a step. What it changed was the ending: with no checkpoint to stop at, the §11.2 Completion Review had to be run before opening the Pull Request, and it found four gaps that would otherwise have shipped. |
+| 16 | *"ทำไมหน้า My Ticket ไม่มี Table"*<br>"Why is there no table on the My Tickets page?" | Opened the running application, which no test in the repository can do. The table had no background at all and was invisible against the page. The first of three defects found this way in one session. |
+| 17 | *"มีหน้า 11 ไงแล้วทำไม col Ticket Owner หายไปด้วย"*<br>"There *is* a page 11 — so why is the Ticket Owner column missing?" | Caught the AI asserting that a labsheet figure did not exist. It had listed the pages carrying images, then opened three of them and not the fourth. The figure was on page 11, the Ticket Owner column was real, and a review finding given to the peer reviewer had already been withdrawn on the strength of the mistake. It was reinstated. |
+| 18 | *"งงแล้วเทสผ่านได้ไงแอบโกงหรือป่าว"*<br>"I'm confused — how did the tests pass? Are you cheating?" | Refused a green suite as an answer. The tests were honest, but every mock in `MyTickets.test.tsx` returned two tickets, so `totalPages` was always 1 and the page controls were never rendered by a single test on the screen itself — the component could have been deleted from the page without failing anything. Five tests now cover it. |
+| 19 | *"มันอยู่ใน Scope ที่แลปให้ทำไหมนะ"*<br>"Is that even in the scope the lab asks for?" | Asked mid-implementation, after three fields had already been added to Create Ticket from Figure 1. Three of the five did not belong: IT Priority, Ticket Owner and Resolution Summary are set by work §4.2 excludes, so on a form whose job is to collect input they were permanently empty boxes. They were removed, with tests asserting their absence. |
+| 20 | *"ก่อน code-review อยากให้ /diagnosing-bugs แล้วก็ implement แก้ต่อเลย"*<br>"Before the code review, run /diagnosing-bugs and fix what it finds." | Ordered a pipeline instead of accepting "the tests pass". The discipline it imposes — no hypothesis without a loop that goes red — turned three suspicions into two confirmed defects and one that was left unfixed *and unclaimed*, because six concurrent uploads across three runs never reproduced it. |
+
 <!-- Prompts from later Issues are appended to §2b by the Pull Request that used them. -->
 
 ## 3. My reflection
@@ -61,6 +68,11 @@ minor are often the ones that stopped something going wrong.
 >   that the results were better each time.
 > - What it means that the AI drafted a review of a classmate's work but I decided what to
 >   send.
-> - That the peer reviewer found things the AI's own tests did not — twenty-three findings
->   across four Pull Requests, several of them the AI's own specification going
+> - That the peer reviewer found things the AI's own tests did not — thirty-nine findings
+>   across five Pull Requests, several of them the AI's own specification going
 >   unimplemented.
+> - That opening the application found three defects in one session that six hundred tests
+>   could not, and what that says about what a passing suite is evidence of.
+> - That the AI twice stated a labsheet figure did not exist, having listed the pages that
+>   carried images and then not opened the one that mattered — and that a review comment to
+>   a classmate was withdrawn on the strength of it before being reinstated.

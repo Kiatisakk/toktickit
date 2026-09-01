@@ -22,6 +22,8 @@ const GLYPHS = {
   ticket: "file-earmark-text",
   user: "person-circle",
   brand: "clock",
+  home: "house",
+  back: "arrow-left",
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

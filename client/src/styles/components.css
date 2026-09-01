@@ -94,11 +94,34 @@
   padding: var(--tkt-space-1) var(--tkt-space-2);
 }
 
+/* The crumbs on the left, an optional control on the right, on one baseline —
+   as Figure 1 draws it. */
 .tkt-breadcrumb {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tkt-space-3);
+  justify-content: space-between;
   margin: 0 auto;
   max-width: var(--tkt-content-max);
-  padding: var(--tkt-space-3) var(--tkt-space-4);
+  /* Roomier than the 0.75rem it was. The row now carries a control as well as
+     the crumbs, and at the old padding the button sat hard against the green
+     header above it. */
+  padding: var(--tkt-space-4);
   width: 100%;
+}
+
+.tkt-breadcrumb__action {
+  margin-left: auto;
+}
+
+/* Compact, because it sits beside crumb-sized text rather than at the foot of a
+   form. A full-height control next to 0.8125rem text is the tallest thing on the
+   row and reads as the row's subject, which it is not. */
+.tkt-breadcrumb__action .tkt-btn {
+  font-size: var(--tkt-font-label);
+  min-height: 2rem;
+  padding: var(--tkt-space-1) var(--tkt-space-3);
 }
 
 .tkt-breadcrumb__list {
@@ -111,8 +134,17 @@
 }
 
 .tkt-breadcrumb__item {
+  align-items: center;
   color: var(--tkt-text-muted);
+  display: flex;
   font-size: var(--tkt-font-small);
+}
+
+/* A crumb that is an icon still needs a target worth aiming at. */
+.tkt-breadcrumb__item a {
+  align-items: center;
+  display: inline-flex;
+  gap: var(--tkt-space-1);
 }
 
 .tkt-breadcrumb__item + .tkt-breadcrumb__item::before {
@@ -303,6 +335,12 @@
   border-radius: var(--tkt-radius);
   box-shadow: var(--tkt-shadow);
   padding: var(--tkt-space-6);
+}
+
+/* Two cards in a row are two objects, and they were touching. The detail screen
+   is the first place two of them stack, which is why this went unnoticed. */
+.tkt-card + .tkt-card {
+  margin-top: var(--tkt-space-6);
 }
 
 .tkt-page-title {
@@ -965,6 +1003,13 @@
     --tkt-control-height: var(--tkt-touch-target);
   }
 
+  /* The one rule above that states a height of its own has to give it back
+     here, or the compact breadcrumb button would be the single control on the
+     page below the touch target. */
+  .tkt-breadcrumb__action .tkt-btn {
+    min-height: var(--tkt-touch-target);
+  }
+
   /* Below 768px the table is replaced by cards rather than being scrolled
      sideways, which §8.7 forbids at the page level. */
   .tkt-table {
@@ -1004,4 +1049,171 @@
   .tkt-pagination__controls {
     justify-content: space-between;
   }
+}
+
+/* ------------------------------------------------------- ticket detail -- */
+
+.tkt-section-title {
+  font-size: var(--tkt-font-section);
+  margin: 0 0 var(--tkt-space-1);
+}
+
+/* Prose to read, not a control to click. A read-only textarea invites a click
+   that does nothing and scrolls text that should simply be there. */
+.tkt-readonly-block {
+  background-color: var(--tkt-readonly);
+  border: 1px solid var(--tkt-border);
+  border-radius: var(--tkt-radius-sm);
+  margin: 0;
+  min-height: var(--tkt-control-height);
+  padding: var(--tkt-space-2) var(--tkt-space-3);
+  white-space: pre-wrap;
+}
+
+.tkt-readonly-block--empty {
+  color: var(--tkt-text-muted);
+  font-style: italic;
+}
+
+/* A badge standing where a read-only control would, so the row keeps its
+   rhythm rather than the badge floating at a different height. */
+/* A badge standing where a read-only control would.
+   
+   It had the height of a field and none of the box, so Requested Priority, IT
+   Priority and Current Status appeared to have lost their frames while the four
+   fields beside them kept theirs. Figure 1 draws the pill *inside* the grey
+   read-only box, and the row only reads as a row when every cell has the same
+   edge. Same properties as `.tkt-field--readonly`, stated here because the
+   badge is not an input and cannot inherit them. */
+.tkt-readonly-badge {
+  align-items: center;
+  background-color: var(--tkt-readonly);
+  border: 1px solid var(--tkt-border);
+  border-radius: var(--tkt-radius-sm);
+  display: flex;
+  min-height: var(--tkt-control-height);
+  padding: var(--tkt-space-2) var(--tkt-space-3);
+}
+
+/* ---------------------------------------------------------- attachments -- */
+
+/* Off-screen rather than `display: none`: a hidden input is still the control
+   the label points at, and `display: none` takes it out of the tab order. */
+.tkt-file-input {
+  height: 1px;
+  opacity: 0;
+  position: absolute;
+  width: 1px;
+}
+
+.tkt-file-input:disabled + .tkt-btn {
+  cursor: not-allowed;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.tkt-file-input:focus-visible + .tkt-btn {
+  outline: 2px solid var(--tkt-green-accent);
+  outline-offset: 2px;
+}
+
+.tkt-attachments {
+  list-style: none;
+  margin: var(--tkt-space-4) 0 0;
+  padding: 0;
+}
+
+.tkt-attachment {
+  align-items: center;
+  border-bottom: 1px solid var(--tkt-border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tkt-space-3);
+  justify-content: space-between;
+  padding: var(--tkt-space-3) 0;
+}
+
+.tkt-attachment:last-child {
+  border-bottom: none;
+}
+
+.tkt-attachment--removed .tkt-attachment__name,
+.tkt-attachment--removed .tkt-attachment__meta {
+  color: var(--tkt-text-muted);
+}
+
+.tkt-attachment__body {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+/* Wraps rather than truncates. §8.7 forbids unreadable attachment names at any
+   viewport, and an ellipsis in the middle of a filename is unreadable. */
+.tkt-attachment__name {
+  font-weight: 600;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.tkt-attachment__meta {
+  color: var(--tkt-text-muted);
+  font-size: var(--tkt-font-small);
+  margin: var(--tkt-space-1) 0 0;
+}
+
+.tkt-attachment__actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tkt-space-2);
+}
+
+.tkt-confirm {
+  background-color: var(--tkt-error-pale);
+  border: 1px solid var(--tkt-error);
+  border-radius: var(--tkt-radius);
+  margin-top: var(--tkt-space-4);
+  padding: var(--tkt-space-4);
+}
+
+.tkt-confirm__title {
+  margin: 0 0 var(--tkt-space-1);
+}
+
+@media (width <= 767px) {
+  .tkt-attachment__actions {
+    width: 100%;
+  }
+}
+
+/* The three attachment states §6 defines that the section shipped without. */
+
+.tkt-attachment--uploading {
+  background-color: var(--tkt-page);
+}
+
+.tkt-attachment--uploading progress {
+  display: block;
+  margin-top: var(--tkt-space-2);
+  width: 100%;
+}
+
+.tkt-attachment--invalid {
+  background-color: var(--tkt-error-pale);
+}
+
+.tkt-attachment--invalid .tkt-attachment__meta {
+  color: var(--tkt-error);
+}
+
+/* A row whose file could not be fetched. The metadata is still true — it is the
+   download that failed — so the row keeps it and adds the reason. */
+.tkt-attachment--error {
+  background-color: var(--tkt-warning-pale);
+}
+
+.tkt-attachment__error {
+  color: var(--tkt-error);
+  font-size: var(--tkt-font-small);
+  margin: var(--tkt-space-1) 0 0;
 }

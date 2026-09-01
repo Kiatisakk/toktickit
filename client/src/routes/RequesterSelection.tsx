@@ -80,7 +80,7 @@ export const RequesterSelection = () => {
   return (
     <AppShell
       breadcrumbs={[
-        { label: "Home", to: "/" },
+        { label: "Home", to: "/", icon: "home" },
         { label: "Development Requester Selection" },
       ]}
     >

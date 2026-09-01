@@ -1,0 +1,857 @@
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter, Route, Routes } from "react-router";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import {
+  RequesterContext,
+  type RequesterContextValue,
+} from "../../src/context/requesterContextValue";
+import type { AttachmentMetadata } from "../../src/lib/api";
+import { TicketDetail } from "../../src/routes/TicketDetail";
+
+/**
+ * The Requester Ticket Detail screen.
+ *
+ * Two things carry the weight here. A ticket that is not yours must look exactly
+ * like a ticket that does not exist — the API refuses to tell them apart, and
+ * this screen must not undo that by wording the two differently. And a removed
+ * attachment must keep its metadata while losing its Download, which is the
+ * visible half of soft removal.
+ */
+
+const CONTEXT: RequesterContextValue = {
+  status: "selected",
+  requester: {
+    id: 1,
+    name: "Jennifer Anderson",
+    email: "jennifer.anderson@example.ac.th",
+  },
+  generation: 0,
+  select: () => undefined,
+  clear: () => undefined,
+};
+
+const ATTACHMENT: AttachmentMetadata = {
+  id: 11,
+  originalFilename: "battery-report.pdf",
+  mimeType: "application/pdf",
+  sizeBytes: 284_119,
+  uploadedAt: "2026-08-19T09:15:02.117Z",
+  uploadedBy: { id: 1, name: "Jennifer Anderson" },
+  status: "ACTIVE",
+  removedAt: null,
+  removedReason: null,
+  removedBy: null,
+};
+
+const TICKET = {
+  id: 42,
+  ticketNumber: "TKT-2026-000042",
+  summary: "Laptop battery drains quickly",
+  description: "It started after last week's update.",
+  requestedPriority: "HIGH",
+  itPriority: null,
+  currentStatus: "NEW",
+  resolutionSummary: null,
+  createdAt: "2026-08-01T09:14:00.000Z",
+  updatedAt: "2026-08-03T11:02:00.000Z",
+  category: { id: 2, name: "Hardware" },
+  relatedSystem: { id: 7, name: "Corporate Laptop" },
+  requester: { id: 1, name: "Jennifer Anderson" },
+  ticketOwner: null,
+  attachments: [] as AttachmentMetadata[],
+};
+
+const jsonResponse = (body: unknown, status = 200) =>
+  ({ ok: status < 400, status, json: () => Promise.resolve(body) }) as Response;
+
+const respond = (body: unknown, status = 200) =>
+  vi.fn(() => Promise.resolve(jsonResponse(body, status)));
+
+const renderAt = (path = "/tickets/42") =>
+  render(
+    <MemoryRouter initialEntries={[path]}>
+      <RequesterContext.Provider value={CONTEXT}>
+        <Routes>
+          <Route element={<TicketDetail />} path="/tickets/:ticketId" />
+        </Routes>
+      </RequesterContext.Provider>
+    </MemoryRouter>
+  );
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("a ticket you own", () => {
+  /*
+   * The screen has no heading of its own, as Figure 1 has none.
+   *
+   * It used to open with an h1 of the ticket number over a subtitle of the
+   * summary — both of which are fields in the card immediately beneath, so a
+   * reader met the same two values twice and the card started further down for
+   * no reason.
+   */
+  it("shows the ticket number and summary as fields, not as a heading", async () => {
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    renderAt();
+
+    expect(await screen.findByLabelText("Ticket No.")).toHaveValue(
+      "TKT-2026-000042"
+    );
+    expect(screen.getByLabelText("Summary")).toHaveValue(
+      "Laptop battery drains quickly"
+    );
+  });
+
+  // A departure from Figure 1, which has no heading here: a page whose first
+  // line names what you are looking at is easier to arrive at than one opening
+  // straight into a grid of labels.
+  it("names the ticket in a heading above the card", async () => {
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    renderAt();
+
+    expect(
+      await screen.findByRole("heading", { name: "TKT-2026-000042" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Laptop battery drains quickly").length
+    ).toBeGreaterThan(0);
+  });
+
+  it("puts Back to My Tickets beside that heading", async () => {
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    const { container } = renderAt();
+
+    await screen.findByLabelText("Ticket No.");
+
+    const header = container.querySelector(".tkt-list-header");
+
+    expect(
+      within(header as HTMLElement).getByRole("button", {
+        name: "Back to My Tickets",
+      })
+    ).toBeInTheDocument();
+  });
+
+  it("shows the description, which the list never carries", async () => {
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    renderAt();
+
+    expect(
+      await screen.findByText("It started after last week's update.")
+    ).toBeInTheDocument();
+  });
+
+  it("scopes the request to the current requester", async () => {
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    renderAt();
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/tickets/42"),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            "X-Development-Requester-Id": "1",
+          }),
+        })
+      );
+    });
+  });
+
+  // §8.5: read-only, with no control that could change a system-managed value.
+  it.each(["Ticket No.", "Ticket Date", "Requester", "Summary"])(
+    "renders %s read-only",
+    async (label) => {
+      vi.stubGlobal("fetch", respond(TICKET));
+
+      renderAt();
+
+      expect(await screen.findByLabelText(label)).toHaveAttribute("readonly");
+    }
+  );
+
+  it("offers no control that could change the ticket", async () => {
+    const { container } = renderAt();
+
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    await waitFor(() => {
+      for (const input of container.querySelectorAll("input")) {
+        // The file input is the one writable control, and it adds rather than
+        // edits.
+        expect(input.hasAttribute("readonly") || input.type === "file").toBe(
+          true
+        );
+      }
+    });
+  });
+
+  /**
+   * The three fields Lab 2 never populates are present and say why.
+   *
+   * §4.2 excludes the work that fills them, not the fact that they exist. A
+   * missing field tells a requester nothing; an empty one tells them nobody has
+   * triaged this yet (D-04).
+   */
+  it("says an unset IT Priority is unset", async () => {
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    renderAt();
+
+    expect(
+      await screen.findByText("Not set until IT triages this ticket")
+    ).toBeInTheDocument();
+  });
+
+  it("says the ticket has no owner yet", async () => {
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    renderAt();
+
+    expect(await screen.findByLabelText("Ticket Owner")).toHaveValue(
+      "Not yet assigned"
+    );
+  });
+
+  it("shows the resolution placeholder the figure draws", async () => {
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    renderAt();
+
+    expect(
+      await screen.findByText("No resolution summary available yet.")
+    ).toBeInTheDocument();
+  });
+
+  // Figure 1 draws four tabs and §4.2 excludes the features behind three of
+  // them. Drawing them disabled would advertise a screen this lab must not
+  // build.
+  it.each([
+    "Public Comments",
+    "Internal Notes",
+    "Service Actions",
+    "Event Log",
+  ])("does not offer %s", async (excluded) => {
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    renderAt();
+
+    await screen.findByLabelText("Ticket No.");
+    expect(screen.queryByText(excluded)).toBeNull();
+  });
+});
+
+/**
+ * Reported from the running screen.
+ *
+ * Three of the eight fields render a badge rather than an input, and they had
+ * the height of a field and none of the box — so Requested Priority, IT
+ * Priority and Current Status looked like they had lost their frames while the
+ * five around them kept theirs. Figure 1 draws the pill inside the grey
+ * read-only box.
+ */
+describe("the badge fields", () => {
+  it("gives each of the three a box, as the fields beside them have", async () => {
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    const { container } = renderAt();
+
+    await screen.findByLabelText("Ticket No.");
+    expect(container.querySelectorAll(".tkt-readonly-badge")).toHaveLength(3);
+  });
+
+  it("puts the badge inside the box rather than beside it", async () => {
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    const { container } = renderAt();
+
+    await screen.findByLabelText("Ticket No.");
+
+    for (const box of container.querySelectorAll(".tkt-readonly-badge")) {
+      expect(box.querySelector(".tkt-badge")).not.toBeNull();
+    }
+  });
+
+  // Two cards stacked with nothing between them read as one, and the detail
+  // screen is the first place two of them meet.
+  it("keeps the attachment section a separate card", async () => {
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    const { container } = renderAt();
+
+    await screen.findByLabelText("Ticket No.");
+    expect(container.querySelectorAll(".tkt-card")).toHaveLength(2);
+  });
+});
+
+describe("a ticket that is not yours", () => {
+  const refused = () =>
+    respond(
+      { error: { code: "TICKET_NOT_FOUND", message: "Not found." } },
+      404
+    );
+
+  it("says it cannot be found", async () => {
+    vi.stubGlobal("fetch", refused());
+
+    renderAt();
+
+    expect(await screen.findByText("Ticket not found")).toBeInTheDocument();
+  });
+
+  // The screen must not undo at the last moment what the API is careful about:
+  // "yours but missing" and "someone else's" are one answer.
+  it("does not distinguish it from a ticket that does not exist", async () => {
+    vi.stubGlobal("fetch", refused());
+
+    renderAt();
+
+    const description = await screen.findByText(
+      "This ticket does not exist, or it belongs to another requester."
+    );
+
+    expect(description).toBeInTheDocument();
+  });
+
+  it("offers a way back rather than a dead end", async () => {
+    vi.stubGlobal("fetch", refused());
+
+    renderAt();
+
+    await screen.findByText("Ticket not found");
+    expect(
+      screen.getByRole("button", { name: "Back to My Tickets" })
+    ).toBeInTheDocument();
+  });
+
+  // A path that cannot be an identifier is answered without asking.
+  it.each(["/tickets/abc", "/tickets/1.5", "/tickets/-1"])(
+    "refuses %s without calling the API",
+    async (path) => {
+      const fetchMock = respond(TICKET);
+      vi.stubGlobal("fetch", fetchMock);
+
+      renderAt(path);
+
+      await screen.findByText("Ticket not found");
+      expect(fetchMock).not.toHaveBeenCalled();
+    }
+  );
+});
+
+describe("attachments", () => {
+  const withAttachments = (...list: AttachmentMetadata[]) =>
+    respond({ ...TICKET, attachments: list });
+
+  it("says so when there are none", async () => {
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    renderAt();
+
+    expect(
+      await screen.findByText("No files have been attached to this ticket.")
+    ).toBeInTheDocument();
+  });
+
+  it("states the rules before a file is chosen", async () => {
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    renderAt();
+
+    expect(
+      await screen.findByText(/JPG, PNG, WEBP or PDF · up to 5 MB/u)
+    ).toBeInTheDocument();
+  });
+
+  it("lists an active attachment with its size and uploader", async () => {
+    vi.stubGlobal("fetch", withAttachments(ATTACHMENT));
+
+    const { container } = renderAt();
+
+    expect(await screen.findByText("battery-report.pdf")).toBeInTheDocument();
+
+    // One paragraph, several text nodes, so the assertion is on the element
+    // rather than on a string a text matcher would have to reassemble.
+    const meta = container.querySelector(".tkt-attachment__meta");
+
+    // §6 lists filename, *type*, size, upload time. The type was the one
+    // missing, raised in review of PR #29.
+    expect(meta?.textContent).toContain("PDF");
+    expect(meta?.textContent).toContain("277 KB");
+    expect(meta?.textContent).toContain("Jennifer Anderson");
+  });
+
+  // The client half of BR-21. The server enforces the rule; this stops the
+  // picker offering files it is going to refuse — which is also why the
+  // rejection test below uses a size failure rather than a type one: a
+  // disallowed type cannot be chosen through the control at all.
+  it("limits the file picker to the permitted types", async () => {
+    vi.stubGlobal("fetch", respond(TICKET));
+
+    renderAt();
+
+    expect(await screen.findByLabelText(/Add Attachment/u)).toHaveAttribute(
+      "accept",
+      "image/jpeg,image/png,image/webp,application/pdf"
+    );
+  });
+
+  it("offers Download and Remove on an active attachment", async () => {
+    vi.stubGlobal("fetch", withAttachments(ATTACHMENT));
+
+    renderAt();
+
+    await screen.findByText("battery-report.pdf");
+    expect(
+      screen.getByRole("button", { name: "Download" })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove" })).toBeInTheDocument();
+  });
+
+  /**
+   * The visible half of soft removal, and what Part 8 asks to see: the record
+   * of what was attached survives, the bytes do not.
+   */
+  const REMOVED: AttachmentMetadata = {
+    ...ATTACHMENT,
+    status: "REMOVED",
+    removedAt: "2026-08-20T10:00:00.000Z",
+    removedReason: "Uploaded the wrong screenshot.",
+    removedBy: { id: 1, name: "Jennifer Anderson" },
+  };
+
+  it("keeps the metadata of a removed attachment", async () => {
+    vi.stubGlobal("fetch", withAttachments(REMOVED));
+
+    renderAt();
+
+    expect(await screen.findByText("battery-report.pdf")).toBeInTheDocument();
+  });
+
+  it("shows why it was removed", async () => {
+    vi.stubGlobal("fetch", withAttachments(REMOVED));
+
+    renderAt();
+
+    expect(
+      await screen.findByText(/Uploaded the wrong screenshot\./u)
+    ).toBeInTheDocument();
+  });
+
+  it("offers no Download for a removed attachment", async () => {
+    vi.stubGlobal("fetch", withAttachments(REMOVED));
+
+    renderAt();
+
+    await screen.findByText("battery-report.pdf");
+    expect(screen.queryByRole("button", { name: "Download" })).toBeNull();
+  });
+
+  it("offers no Remove for something already removed", async () => {
+    vi.stubGlobal("fetch", withAttachments(REMOVED));
+
+    renderAt();
+
+    await screen.findByText("battery-report.pdf");
+    expect(screen.queryByRole("button", { name: "Remove" })).toBeNull();
+  });
+
+  it("disables the add control at five active attachments", async () => {
+    const five = Array.from({ length: 5 }, (_unused, index) => ({
+      ...ATTACHMENT,
+      id: index + 1,
+      originalFilename: `file-${index}.pdf`,
+    }));
+
+    vi.stubGlobal("fetch", withAttachments(...five));
+
+    renderAt();
+
+    await screen.findByText("file-0.pdf");
+    expect(screen.getByLabelText(/Add Attachment/u)).toBeDisabled();
+  });
+
+  it("says why the add control is unavailable", async () => {
+    const five = Array.from({ length: 5 }, (_unused, index) => ({
+      ...ATTACHMENT,
+      id: index + 1,
+      originalFilename: `file-${index}.pdf`,
+    }));
+
+    vi.stubGlobal("fetch", withAttachments(...five));
+
+    renderAt();
+
+    expect(
+      await screen.findByText(/Remove one before adding another\./u)
+    ).toBeInTheDocument();
+  });
+});
+
+/**
+ * The three row states `ui-spec.md` §6 defines that this component shipped
+ * without, plus the field the active row was missing.
+ *
+ * All four came from the peer review of PR #29, and all four are our own
+ * specification going unimplemented — the same pattern as PR #27. Worth noting
+ * why these three were the ones skipped: none of them is represented in the API
+ * response, so nothing in the data model reminds you they exist.
+ */
+describe("the row states the API cannot describe", () => {
+  const held = () => {
+    let release: ((value: Response) => void) | undefined;
+
+    const fetchMock = vi.fn((_url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        return new Promise<Response>((resolve) => {
+          release = resolve;
+        });
+      }
+
+      return Promise.resolve(jsonResponse(TICKET));
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    return () => release;
+  };
+
+  const choose = async () =>
+    await userEvent.upload(
+      screen.getByLabelText(/Add Attachment/u),
+      new File(["%PDF"], "battery-report.pdf", { type: "application/pdf" })
+    );
+
+  it("shows an uploading row carrying the file's own name", async () => {
+    held();
+
+    renderAt();
+
+    await screen.findByText("No files have been attached to this ticket.");
+    await choose();
+
+    expect(await screen.findByText("battery-report.pdf")).toBeInTheDocument();
+  });
+
+  it("marks that row uploading rather than active", async () => {
+    held();
+
+    const { container } = renderAt();
+
+    await screen.findByText("No files have been attached to this ticket.");
+    await choose();
+
+    await waitFor(() => {
+      expect(
+        container.querySelector(".tkt-attachment--uploading")
+      ).not.toBeNull();
+    });
+  });
+
+  // §6: Remove is hidden while a row is uploading. There is nothing on the
+  // server yet to remove.
+  it("offers no Remove on a row that does not exist yet", async () => {
+    held();
+
+    renderAt();
+
+    await screen.findByText("No files have been attached to this ticket.");
+    await choose();
+
+    await screen.findByText("battery-report.pdf");
+    expect(screen.queryByRole("button", { name: "Remove" })).toBeNull();
+  });
+
+  it("shows progress rather than a silent pause", async () => {
+    held();
+
+    renderAt();
+
+    await screen.findByText("No files have been attached to this ticket.");
+    await choose();
+
+    expect(
+      await screen.findByRole("progressbar", {
+        name: /Uploading battery-report\.pdf/u,
+      })
+    ).toBeInTheDocument();
+  });
+
+  // Queried by id rather than by label: while an upload is in flight the label
+  // reads "Uploading…" and so does the progress bar's own name, so a text match
+  // finds two elements.
+  it("disables the add control while one is in flight", async () => {
+    held();
+
+    const { container } = renderAt();
+
+    await screen.findByText("No files have been attached to this ticket.");
+    await choose();
+
+    await waitFor(() => {
+      expect(container.querySelector("#tkt-attachment-file")).toBeDisabled();
+    });
+  });
+});
+
+describe("a file the server refused", () => {
+  const refuse = () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: string, init?: RequestInit) => {
+        if (init?.method === "POST") {
+          return Promise.resolve(
+            jsonResponse(
+              {
+                error: {
+                  code: "FILE_TOO_LARGE",
+                  message:
+                    "That file is larger than 5 MB. Attach a smaller file.",
+                },
+              },
+              413
+            )
+          );
+        }
+
+        return Promise.resolve(jsonResponse(TICKET));
+      })
+    );
+  };
+
+  const upload = async () => {
+    renderAt();
+
+    await screen.findByText("No files have been attached to this ticket.");
+    await userEvent.upload(
+      screen.getByLabelText(/Add Attachment/u),
+      new File(["%PDF"], "huge.pdf", { type: "application/pdf" })
+    );
+  };
+
+  // A generic alert above the list does not say *which* file was refused, which
+  // is the only question a person has after choosing one.
+  it("names the file that was refused", async () => {
+    refuse();
+
+    await upload();
+
+    expect(await screen.findByText("huge.pdf")).toBeInTheDocument();
+  });
+
+  it("puts the reason on the row rather than above the list", async () => {
+    refuse();
+
+    const { container } = renderAt();
+
+    await screen.findByText("No files have been attached to this ticket.");
+    await userEvent.upload(
+      screen.getByLabelText(/Add Attachment/u),
+      new File(["%PDF"], "huge.pdf", { type: "application/pdf" })
+    );
+
+    const row = await waitFor(() => {
+      const found = container.querySelector(".tkt-attachment--invalid");
+
+      expect(found).not.toBeNull();
+
+      return found as HTMLElement;
+    });
+
+    expect(within(row).getByText(/larger than 5 MB/u)).toBeInTheDocument();
+  });
+
+  it("can be dismissed, so the list is not stuck with it", async () => {
+    refuse();
+
+    await upload();
+
+    await screen.findByText("huge.pdf");
+    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+
+    expect(screen.queryByText("huge.pdf")).toBeNull();
+  });
+});
+
+describe("a download that fails", () => {
+  const failDownload = () =>
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => {
+        if (url.includes("/download")) {
+          return Promise.reject(new TypeError("Failed to fetch"));
+        }
+
+        return Promise.resolve(
+          jsonResponse({ ...TICKET, attachments: [ATTACHMENT] })
+        );
+      })
+    );
+
+  it("marks the row unavailable rather than failing silently", async () => {
+    failDownload();
+
+    const { container } = renderAt();
+
+    await screen.findByText("battery-report.pdf");
+    await userEvent.click(screen.getByRole("button", { name: "Download" }));
+
+    await waitFor(() => {
+      expect(container.querySelector(".tkt-attachment--error")).not.toBeNull();
+    });
+  });
+
+  it("offers a retry on the row itself", async () => {
+    failDownload();
+
+    renderAt();
+
+    await screen.findByText("battery-report.pdf");
+    await userEvent.click(screen.getByRole("button", { name: "Download" }));
+
+    expect(
+      await screen.findByRole("button", { name: "Retry download" })
+    ).toBeInTheDocument();
+  });
+
+  // The metadata is still true — it is the download that failed — so the row
+  // keeps it.
+  it("keeps the attachment's metadata visible", async () => {
+    failDownload();
+
+    renderAt();
+
+    await screen.findByText("battery-report.pdf");
+    await userEvent.click(screen.getByRole("button", { name: "Download" }));
+
+    await screen.findByRole("button", { name: "Retry download" });
+    expect(screen.getByText("battery-report.pdf")).toBeInTheDocument();
+  });
+});
+
+describe("removing an attachment", () => {
+  const openConfirm = async () => {
+    vi.stubGlobal("fetch", respond({ ...TICKET, attachments: [ATTACHMENT] }));
+
+    renderAt();
+
+    await screen.findByText("battery-report.pdf");
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+  };
+
+  it("asks for confirmation rather than removing on the first click", async () => {
+    await openConfirm();
+
+    expect(
+      screen.getByRole("group", { name: "Confirm removal" })
+    ).toBeInTheDocument();
+  });
+
+  it("requires a reason before the confirm button works", async () => {
+    await openConfirm();
+
+    expect(
+      screen.getByRole("button", { name: "Remove Attachment" })
+    ).toBeDisabled();
+  });
+
+  it("enables confirmation once the reason is long enough", async () => {
+    await openConfirm();
+
+    await userEvent.type(
+      screen.getByLabelText(/Reason for removing/u),
+      "Wrong file"
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Remove Attachment" })
+    ).toBeEnabled();
+  });
+
+  // Three characters is the rule; two is not "nearly".
+  it("keeps confirmation disabled for a reason that is too short", async () => {
+    await openConfirm();
+
+    await userEvent.type(screen.getByLabelText(/Reason for removing/u), "ab");
+
+    expect(
+      screen.getByRole("button", { name: "Remove Attachment" })
+    ).toBeDisabled();
+  });
+
+  it("can be cancelled", async () => {
+    await openConfirm();
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.queryByRole("group", { name: "Confirm removal" })).toBeNull();
+  });
+});
+
+describe("failure", () => {
+  it("reports a failure that is not a refusal, and offers a retry", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new TypeError("Failed to fetch")))
+    );
+
+    renderAt();
+
+    expect(
+      await screen.findByText("Could not load the ticket")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Try again" })
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The server's own words, not ours.
+   *
+   * It names the rule that was broken — which limit, which type — and a message
+   * of our own would either repeat it or contradict it.
+   */
+  it("shows the attachment rejection the server describes", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: string, init?: RequestInit) => {
+        if (init?.method === "POST") {
+          return Promise.resolve(
+            jsonResponse(
+              {
+                error: {
+                  code: "FILE_TOO_LARGE",
+                  message:
+                    "That file is larger than 5 MB. Attach a smaller file.",
+                },
+              },
+              413
+            )
+          );
+        }
+
+        return Promise.resolve(jsonResponse(TICKET));
+      })
+    );
+
+    renderAt();
+
+    await screen.findByText("No files have been attached to this ticket.");
+
+    await userEvent.upload(
+      screen.getByLabelText(/Add Attachment/u),
+      new File(["%PDF"], "huge.pdf", { type: "application/pdf" })
+    );
+
+    const alert = await screen.findByRole("alert");
+
+    expect(within(alert).getByText(/larger than 5 MB/u)).toBeInTheDocument();
+  });
+});
