@@ -332,3 +332,81 @@ failure between the two left the screens empty.
 
 **All sixteen fixed on the same branch**, with 34 new tests — 414 in total, from 380. No
 finding was disputed.
+
+---
+
+## PR #29 — Ticket Detail and attachments (Issue #19)
+
+**Reviewer:** Supawit Marayat (@beambeambeam). **Two rounds:** Comment with eleven line
+findings, then Approve, then — after five further commits — a second Approve and the merge.
+Every finding was real; none was disputed. 447 tests at the start of the Issue, 609 at the
+end.
+
+### The one that matters most
+
+**The five-attachment limit really was racy, and I had already found it.** Before opening
+the Pull Request I suspected the count-then-insert, probed it with six concurrent uploads
+across three runs, never reproduced it, and shipped it unfixed — writing in the PR
+description that it was "unclaimed" because a hypothesis without a failing test is a vibe.
+
+He caught it by reading the code.
+
+The rule I was following is right for *reporting*: do not call something a bug without a
+test that goes red on it. I applied it to *fixing*, which it does not cover. "I could not
+reproduce it" and "it does not happen" are different sentences, and I acted on the second
+having only established the first. The fix is a transaction behind `SELECT … FOR UPDATE` on
+the ticket row, and the regression test does reproduce the old behaviour now that there is
+something to check it against.
+
+### Four were our own specification going unimplemented
+
+Exactly the category he found four times on PR #26 and again on #27.
+
+| Finding | Where the rule already was |
+| --- | --- |
+| Active rows omitted the file type | `ui-spec.md` §6, "Filename, type, size, upload time" |
+| No uploading state | §6, `tkt-attachment--uploading` |
+| No invalid state | §6, `tkt-attachment--invalid` |
+| No unavailable state | §6, `tkt-attachment--error` |
+
+§6 defines five row states and the component shipped two. The three that were missing share
+one property, which is the part worth keeping: **none of them appears in the API response.**
+An upload in flight has no id and a rejected file has no row at all, so nothing in the data
+model reminds you they exist. They live in a `PendingRow` beside the real list now.
+
+### Three were read-then-write with nothing holding the two together
+
+Beyond the limit race: two removals of one attachment both succeeded, the second overwriting
+the first's time, reason and remover — destroying precisely the record BR-26 exists to keep.
+And on the client, a stale ticket read could still land after a newer one, because aborting
+on cleanup does not stop a response that has already arrived from resolving.
+
+### Two were ordering, one was a swallowed error
+
+Ownership ran fourth, after multer had buffered the whole file, so a stranger's upload was
+answered by the size limit rather than by the permission rule — the status depended on the
+file rather than on who sent it. Cleanup swallowed every `unlink` failure, turning the one
+outcome that creates an orphan into the one that says nothing about it. And the test suite
+left its uploads on disk, a few dozen per run, for ever.
+
+### What the three automated passes did and did not catch
+
+Run before the first review, at my own instigation:
+
+| Pass | Found |
+| --- | --- |
+| `/diagnosing-bugs` | A download that hung for ever on a missing file; two endpoints returning attachments in opposite orders |
+| `/code-review` | A Thai filename mangled through a Latin-1 header; a signal accepted and never forwarded; two functions existing twice |
+| `/security-review` | D-16 — the ownership evidence proves the check, not the identity |
+
+**None of them found any of his eleven.** Nor did 587 passing tests. Four further defects
+came from opening the running screen — three badge fields with no box, two cards touching, a
+heading duplicating the card beneath it, missing icons — which no test in this repository can
+see, and which is what Issue #20 exists to change.
+
+### One decision left open for him
+
+Ticket Detail keeps a heading Figure 1 does not have. Both arrangements were built; the
+departure and its reasoning are in `ui-spec.md` §5.4 rather than left for a reader to notice.
+He approved without objecting to it.
+
