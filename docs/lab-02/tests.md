@@ -71,7 +71,7 @@ in the development database and is never touched by a test run.
 | API-15 | AC-20, BR-25 | Download | `200` with `Content-Disposition: attachment` and `nosniff` for PDF, JPEG and PNG alike | `server/tests/lab-02/attachments.api.test.ts` | **Pass** |
 | API-16 | AC-21, BR-26, BR-27 | Soft removal | Row survives with removal time, reason and remover; a missing reason is `400`; a second removal is `404` | `server/tests/lab-02/attachments.api.test.ts` | **Pass** |
 | API-17 | AC-22, BR-28, BR-29 | After removal | The download URL that worked a moment ago returns `404 ATTACHMENT_REMOVED`; a new upload is accepted because the slot is free | `server/tests/lab-02/attachments.api.test.ts` | **Pass** |
-| API-18 | AC-23, BR-30 | Compensation | Forced metadata failure leaves no file on disk and no row | `server/tests/lab-02/attachments.api.test.ts` | Planned |
+| API-18 | AC-23, BR-30 | Compensation | The transaction is intercepted so the file genuinely reaches the disk and the insert then fails: no file is left behind, no row survives the rollback, and the response names neither the cause nor the upload directory | `server/tests/lab-02/attachments.api.test.ts` | **Pass** |
 | API-19 | AC-24, BR-20 | Safe errors | An unmatched `/api` path and a malformed JSON body both leave through the documented envelope, not Express's HTML default; neither echoes the rejected body nor a stack trace | `server/tests/lab-02/error-envelope.api.test.ts` | **Pass** |
 | API-20 | AC-18 | Cross-requester attachment access | Upload, listing, download and removal each `404` for another requester; a stranger sending an invalid reason is told the attachment does not exist rather than that their reason is short | `server/tests/lab-02/attachments.api.test.ts` | **Pass** |
 | API-25 | BR-25, BR-30 | A row whose file has gone | Answers `500 INTERNAL_ERROR` rather than hanging; names neither the stored filename nor the upload directory | `server/tests/lab-02/attachments.api.test.ts` | **Pass** |
@@ -90,7 +90,7 @@ in the development database and is never touched by a test run.
 | UI-03 | AC-04, BR-10 | Route guard | Opening My Tickets with no context renders the selector, and waits rather than redirecting while a stored id is still resolving | `client/tests/lab-02/RequesterGuard.test.tsx` | **Pass** |
 | UI-04 | AC-05, BR-07 | Context persistence | A stored id resolves back to its requester; one that is no longer active is discarded rather than trusted | `client/tests/lab-02/RequesterContext.test.tsx` | **Pass** |
 | UI-05 | AC-06, BR-08 | Switching clears data | Selecting a different requester persists the change, bumps the generation scoped screens key off, and is not overwritten when the startup resolution lands late | `client/tests/lab-02/RequesterContext.test.tsx` | **Pass** |
-| UI-06 | AC-07, BR-09 | Switching mid-draft | Draft discarded and navigation lands on My Tickets | `client/tests/lab-02/CreateTicket.test.tsx` | Planned |
+| UI-06 | AC-07, BR-09 | Switching mid-draft | The draft is discarded when `generation` changes, including when the same person is re-selected, and an untouched form is left alone | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
 | UI-07 | AC-08 | Reference data source | Options render from the mocked API; the fields stay disabled until they load; a load failure and an empty list each have their own state, and submit is disabled in both | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
 | UI-08 | AC-10, AC-25 | Field-level messages | Each message renders inside its own field group; whitespace-only counts as empty; focus moves to the first invalid control; the API is never called for an invalid form | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
 | UI-09 | AC-12, BR-17 | Busy submit | Button disabled and renamed while the request is in flight, leaving no enabled control to click again | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
@@ -140,18 +140,21 @@ in the development database and is never touched by a test run.
 
 | ID | Requirement / AC | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
-| RESP-01 | AC-25 | Three screens × three viewports | No horizontal page overflow at any combination | `e2e/lab-02/responsive.spec.ts` | Planned |
-| RESP-02 | AC-25 | List adapts below 768 px | Table replaced by cards; no column of data lost | `e2e/lab-02/responsive.spec.ts` | Planned |
-| RESP-03 | AC-25 | Attachment filenames | Fully readable at every viewport; not truncated | `e2e/lab-02/responsive.spec.ts` | Planned |
-| RESP-04 | AC-25 | Zen Green tokens | Computed colours of header, primary button and active nav match §7 | `e2e/lab-02/visual.spec.ts` | Planned |
+| RESP-01 | AC-25 | Three screens × three viewports | No horizontal page overflow at any combination; the failure names the element that crosses the edge rather than only the fact that one did | `e2e/lab-02/visual.spec.ts`, `e2e/lab-02/requester-ticket-flow.spec.ts` | **Pass** |
+| RESP-02 | AC-25 | List adapts below 768 px | The table is hidden and the card carries Category, Related System, Requested Priority, IT Priority, Created and Last Updated — no column of data lost | `e2e/lab-02/visual.spec.ts` | **Pass** |
+| RESP-03 | AC-25 | Nothing clipped at any viewport | No element's text is cut off by its own container, screen-reader-only text excepted — that is clipped on purpose | `e2e/lab-02/visual.spec.ts` | **Pass** |
+| RESP-04 | AC-25 | Zen Green tokens | Computed colours of the header, page background, primary button, list surface and table header match §7, read from the live browser rather than from a class name | `e2e/lab-02/visual.spec.ts` | **Pass** |
 
 ### End-to-end
 
 | ID | Requirement / AC | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
-| E2E-01 | AC-09, 19, 20, 21, 22 | The full journey | Select requester → create ticket → see the number → find it in My Tickets → open it → add, download and remove an attachment → removed file no longer downloadable | `e2e/lab-02/requester-ticket-flow.spec.ts` | Planned |
-| E2E-02 | AC-06, AC-14 | Requester isolation | Switching from A to B removes A's tickets from view | `e2e/lab-02/requester-ticket-flow.spec.ts` | Planned |
-| E2E-03 | AC-18 | Direct URL access | Opening A's ticket URL while B is current is rejected | `e2e/lab-02/requester-ticket-flow.spec.ts` | Planned |
+| E2E-01 | AC-09, 19, 20, 21, 22 | The full journey | Select requester → submit empty and capture the validation state → create → read the backend number → find it by search → open it → attach, download, remove with a reason → the removed file's own URL returns 404 | `e2e/lab-02/requester-ticket-flow.spec.ts` | **Pass** |
+| E2E-02 | AC-06, AC-14 | Requester isolation | After switching from A to B, not one of A's ticket numbers appears in B's list | `e2e/lab-02/requester-ticket-flow.spec.ts` | **Pass** |
+| E2E-03 | AC-18 | Direct URL access | A's ticket href is captured, the requester is switched to B, and the URL is opened directly — the screen says the ticket does not exist or belongs to another requester | `e2e/lab-02/requester-ticket-flow.spec.ts` | **Pass** |
+| E2E-04 | AC-13, AC-15 | The states Part 6 and 7 ask for | The empty state from a requester with no tickets and the no-results state from a search that matches nothing, captured as distinct screens | `e2e/lab-02/requester-ticket-flow.spec.ts` | **Pass** |
+| E2E-05 | AC-11 | A failed submission keeps what was typed | The create request is failed at the browser; the alert appears and Summary and Description still hold their text | `e2e/lab-02/requester-ticket-flow.spec.ts` | **Pass** |
+| E2E-06 | AC-25 | The table scrolls, not the page | `.tkt-table-scroll` carries `overflow-x: auto` and `tabindex=0`, so the far columns are reachable without a pointer | `e2e/lab-02/visual.spec.ts` | **Pass** |
 
 ---
 
@@ -248,3 +251,53 @@ Filled in as each Issue merges; completed before the release Pull Request.
   filter is exercised by asserting that a query for any other status returns the
   no-results state. That is the honest coverage available until Lab 4 introduces
   transitions.
+
+---
+
+## 6. Visual inspection checklist
+
+§8.8 asks for "a short visual checklist confirming no clipping, overlap, unintended
+horizontal scrolling, inconsistent field styling, or missing states". Every line below is
+asserted by the Playwright suite at all three viewports rather than looked at, because a
+person reviewing screenshots cannot see a two-pixel clip and will not notice a page that
+scrolls sideways only once the data grows.
+
+| Check | How it is asserted | Result |
+| --- | --- | --- |
+| No horizontal page scrolling | `document.documentElement.scrollWidth - clientWidth <= 1` on My Tickets, Create Ticket and Ticket Detail | **Pass** |
+| No clipped text | Every label, button, link, cell and heading compared against its own container; `.tkt-visually-hidden` excluded | **Pass** |
+| Header uses the primary green | `getComputedStyle` on `.tkt-header` equals `rgb(0, 107, 60)` | **Pass** |
+| Page sits on the page background | computed `background-color` of `body` equals `rgb(245, 247, 246)` | **Pass** |
+| Primary button uses the primary green | computed on the Create Ticket button | **Pass** |
+| The list is a surface | `.tkt-list` is white above 768 px; below it the cards carry the surface and the list gives up its own | **Pass** |
+| Table header is the pale green | computed on `.tkt-table thead th`, skipped below 768 px where there is no table | **Pass** |
+| Active navigation is not signalled by colour alone | one `[aria-current="page"]` on every screen | **Pass** |
+| Table becomes cards below 768 px | `.tkt-table` hidden and every one of the six card rows present | **Pass** |
+| Attachment filenames readable | covered by the clipping check, which includes `.tkt-attachment__name` | **Pass** |
+| Missing states | empty, no-results, validation-failure, submitting, success and API-failure each captured as their own screenshot | **Pass** |
+
+### What the checklist found
+
+One real §8.7 violation, on its first full run: **My Tickets scrolled 71 px sideways at
+390 px**. `.tkt-pagination__controls` was a flex row with no wrap, and a flex row that
+cannot wrap cannot shrink below its content — Previous, seven numbered pages and Next did
+not fit.
+
+It appeared only once a requester had seven pages of tickets. At six the row fits, which is
+why it passed when the test ran alone and failed in the full suite: each run of the journey
+test adds a ticket, and somewhere past sixty the count crossed the line. Six hundred passing
+unit tests could not see it, and neither could a screenshot taken at six pages.
+
+## 7. Screenshot paths
+
+Written by the Playwright run into `artifacts/lab-02/screenshots/`, forty-five files, named
+per viewport so a rerun overwrites rather than accumulates.
+
+```
+create-ticket/{desktop,tablet,mobile}.png
+create-ticket/{desktop,tablet,mobile}-{initial,validation-failure,success,api-failure}.png
+my-tickets/{desktop,tablet,mobile}.png
+my-tickets/{desktop,tablet,mobile}-{search,requester-a,requester-b,empty,no-results}.png
+ticket-detail/{desktop,tablet,mobile}.png
+ticket-detail/{desktop,tablet,mobile}-{initial,with-attachment,removed-attachment}.png
+```

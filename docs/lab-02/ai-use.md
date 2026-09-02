@@ -53,6 +53,10 @@ minor are often the ones that stopped something going wrong.
 | 19 | *"มันอยู่ใน Scope ที่แลปให้ทำไหมนะ"*<br>"Is that even in the scope the lab asks for?" | Asked mid-implementation, after three fields had already been added to Create Ticket from Figure 1. Three of the five did not belong: IT Priority, Ticket Owner and Resolution Summary are set by work §4.2 excludes, so on a form whose job is to collect input they were permanently empty boxes. They were removed, with tests asserting their absence. |
 | 20 | *"ก่อน code-review อยากให้ /diagnosing-bugs แล้วก็ implement แก้ต่อเลย"*<br>"Before the code review, run /diagnosing-bugs and fix what it finds." | Ordered a pipeline instead of accepting "the tests pass". The discipline it imposes — no hypothesis without a loop that goes red — turned three suspicions into two confirmed defects and one that was left unfixed *and unclaimed*, because six concurrent uploads across three runs never reproduced it. |
 
+| 21 | *"ชั้นพร้อม issue 20 แล้ว"*<br>"I'm ready for Issue 20." | Started the Issue that exists because of everything before it. Playwright is the only suite here that runs the real application, and it found a §8.7 violation on its first full run — a pagination row that could not wrap and ran 71px past the edge on mobile — which six hundred passing unit tests and a screenshot review had both missed. |
+| 22 | *"ครั้งหน้าแยกเปนข้อ ๆ เหมือนที่บีมรีวิวให้เราได้มะแบบทีละ comment"*<br>"Next time split it into separate items, one comment at a time, the way Beam reviews us." | Corrected an asymmetry I had not noticed. The peer reviewer sends line comments I can answer and resolve one at a time; I had been sending back a single block of prose, which makes the author map findings onto locations by hand and leaves nowhere to reply per finding. |
+| 23 | *"โพสกด request changes ไป ๆ ขอเปน section ย่อย ๆ ข้อ ๆ"*<br>"Post it as request changes, in small numbered sections." | Turned a review into a verdict. Request-changes rather than comment forced the top line to say *which* findings block — two of nine — instead of leaving the author to weigh a list themselves. |
+
 <!-- Prompts from later Issues are appended to §2b by the Pull Request that used them. -->
 
 ## 3. My reflection
@@ -72,7 +76,11 @@ minor are often the ones that stopped something going wrong.
 >   across five Pull Requests, several of them the AI's own specification going
 >   unimplemented.
 > - That opening the application found three defects in one session that six hundred tests
->   could not, and what that says about what a passing suite is evidence of.
+>   could not, and what that says about what a passing suite is evidence of — and then that
+>   the browser suite built to close that gap found a fourth on its first run.
+> - That two rows left marked `Planned` in tests.md turned out to be a rule never
+>   implemented (BR-09) and a rule never provable (BR-30), and that the honest column was
+>   what surfaced both.
 > - That the AI twice stated a labsheet figure did not exist, having listed the pages that
 >   carried images and then not opened the one that mattered — and that a review comment to
 >   a classmate was withdrawn on the strength of it before being reinstated.
