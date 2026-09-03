@@ -420,7 +420,11 @@ once. Each rule remembering separately is how the page buttons came to be 36 px 
 table said 44.
 
 Between 768 px and 991 px the table is still the presentation, and nine columns of real
-data are wider than the viewport. The table scrolls inside `.tkt-table-scroll` rather than
+data are wider than the viewport — the band where this rule bites. The rule itself is
+unconditional: `.tkt-table-scroll` carries `overflow-x: auto` at every size, which only
+takes effect where the table is wider than its box. Below 768 px the table gives way to
+cards, and at desktop widths it fits, so in practice the scrolling happens here. The table
+scrolls inside that container rather than
 widening the page: §8.7 forbids the *page* scrolling sideways, not a table. That container
 is focusable and labelled, because a scrollable box that cannot be focused hides its far
 columns from anyone not using a pointer.

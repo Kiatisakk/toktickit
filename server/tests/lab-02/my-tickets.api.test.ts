@@ -386,6 +386,7 @@ describe("invalid query parameters", () => {
     ["sort", "?sort=description"],
     ["order", "?order=sideways"],
     ["status", "?status=ARCHIVED"],
+    ["itPriority", "?itPriority=URGENT"],
     ["sortBy", "?sortBy=createdAt"],
   ])("rejects %s with a message naming it", async (field, query) => {
     const response = await listing(query);

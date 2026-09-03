@@ -662,7 +662,10 @@
 /* ---------------------------------------------------------- table -- */
 
 /* Between 768px and 991px the table is still the presentation and nine columns
-   of real data are wider than the viewport. §8.7 forbids the *page* scrolling
+   of real data are wider than the viewport — the band where this rule bites.
+   The declaration itself stays unconditional: `auto` only takes effect where
+   the table overflows its box, so a wider-than-expected table can never spill
+   onto the page at desktop either. §8.7 forbids the *page* scrolling
    sideways; a table scrolling inside its own box is the standard way to obey
    that. Focusable, or the columns past the edge are reachable with a pointer
    and by no other means. */
