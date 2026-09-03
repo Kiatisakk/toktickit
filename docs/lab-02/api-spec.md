@@ -58,17 +58,27 @@ configuration values (BR-20).
 | `200` | Retrieval, download, soft removal |
 | `201` | Ticket or attachment created |
 | `400` | Invalid field, invalid query parameter, invalid or missing requester context |
-| `404` | Resource absent — or owned by a different requester (BR-12, D-07) |
+| `404` | Resource absent, owned by a different requester (BR-12, D-07), or no route matches the path |
 | `409` | Active-attachment limit reached |
-| `413` | File larger than 5 MB |
+| `413` | Attachment file larger than 5 MB, or a JSON request body larger than 100 KB |
 | `415` | File type not permitted |
 | `500` | Unexpected failure, reported safely |
 
 ### Codes used across endpoints
 
 `REQUESTER_CONTEXT_*` · `VALIDATION_FAILED` · `INVALID_QUERY_PARAMETER` ·
-`TICKET_NOT_FOUND` · `ATTACHMENT_NOT_FOUND` · `ATTACHMENT_LIMIT_REACHED` ·
-`ATTACHMENT_REMOVED` · `FILE_TOO_LARGE` · `UNSUPPORTED_FILE_TYPE` · `INTERNAL_ERROR`
+`REQUEST_TOO_LARGE` · `ROUTE_NOT_FOUND` · `TICKET_NOT_FOUND` · `ATTACHMENT_NOT_FOUND` ·
+`ATTACHMENT_LIMIT_REACHED` · `ATTACHMENT_REMOVED` · `FILE_TOO_LARGE` ·
+`UNSUPPORTED_FILE_TYPE` · `INTERNAL_ERROR`
+
+Every JSON request body is limited to 100 KB (`REQUEST_TOO_LARGE`, `413`) — a stated
+boundary well above the largest documented body (§4), not `express.json()`'s default landed
+on by accident. This is separate from `FILE_TOO_LARGE`, which is the 5 MB per-attachment
+limit on the multipart upload in §5.
+
+A path under `/api` that matches no route answers `404` with `ROUTE_NOT_FOUND`, so a typo'd
+path or a wrong method (e.g. `PUT /api/tickets/1`, which no route defines) is distinguishable
+from `TICKET_NOT_FOUND`, which means a route matched and the resource itself was the problem.
 
 ---
 
