@@ -291,6 +291,85 @@ describe("the badge fields", () => {
   });
 });
 
+describe("loading", () => {
+  // No test in this file had ever asserted the loading state existed at all.
+  it("shows a loading state before the response arrives", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => undefined))
+    );
+
+    renderAt();
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading");
+  });
+});
+
+/**
+ * `generation` is in the fetch effect's dependency list so that switching
+ * requester re-asks (see the comment above `load` in TicketDetail.tsx), but
+ * nothing had ever exercised the case that makes that matter: the URL
+ * survives a requester switch, and a ticket that belonged to the old
+ * requester must stop being shown the moment the new one cannot see it.
+ */
+describe("switching requester", () => {
+  it("turns a ticket that was visible into not-found once it belongs to someone else", async () => {
+    const fetchMock = vi.fn((_url: string, init?: RequestInit) => {
+      const headers = init?.headers as Record<string, string> | undefined;
+
+      if (headers?.["X-Development-Requester-Id"] === "1") {
+        return Promise.resolve(jsonResponse(TICKET));
+      }
+
+      // The API answers a stranger's ticket exactly as a missing one.
+      return Promise.resolve(
+        jsonResponse(
+          { error: { code: "TICKET_NOT_FOUND", message: "Not found." } },
+          404
+        )
+      );
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={["/tickets/42"]}>
+        <RequesterContext.Provider value={CONTEXT}>
+          <Routes>
+            <Route element={<TicketDetail />} path="/tickets/:ticketId" />
+          </Routes>
+        </RequesterContext.Provider>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByLabelText("Ticket No.")).toHaveValue(
+      "TKT-2026-000042"
+    );
+
+    rerender(
+      <MemoryRouter initialEntries={["/tickets/42"]}>
+        <RequesterContext.Provider
+          value={{
+            ...CONTEXT,
+            generation: CONTEXT.generation + 1,
+            requester: {
+              id: 2,
+              name: "Somchai Wattana",
+              email: "somchai.wattana@example.ac.th",
+            },
+          }}
+        >
+          <Routes>
+            <Route element={<TicketDetail />} path="/tickets/:ticketId" />
+          </Routes>
+        </RequesterContext.Provider>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("Ticket not found")).toBeInTheDocument();
+  });
+});
+
 describe("a ticket that is not yours", () => {
   const refused = () =>
     respond(

@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   type TicketRow,
@@ -101,11 +102,25 @@ describe("the desktop table", () => {
     ).toHaveAttribute("aria-sort", "descending");
   });
 
-  it("leaves unsorted columns without a sort state", () => {
+  // A sortable column that is not the current sort still gets "none" rather
+  // than a missing attribute: WAI-ARIA treats the two as different states, and
+  // "none" is what tells a screen reader user the column can be sorted at
+  // all, just not right now.
+  it("marks an inactive sortable column with aria-sort='none'", () => {
     renderTable();
 
     expect(
       screen.getByRole("columnheader", { name: /Summary/u })
+    ).toHaveAttribute("aria-sort", "none");
+  });
+
+  // A column with no field at all — Category is never sortable — carries no
+  // aria-sort, because it does not have the capability "none" would claim.
+  it("leaves a column that is never sortable without a sort state", () => {
+    renderTable();
+
+    expect(
+      screen.getByRole("columnheader", { name: "Category" })
     ).not.toHaveAttribute("aria-sort");
   });
 
@@ -148,6 +163,143 @@ describe("the tablet band", () => {
       "aria-label",
       "Your tickets"
     );
+  });
+
+  // Without an explicit role a bare <div> has none, and `aria-label` is only
+  // ever surfaced as an accessible name on an element that has one — so the
+  // label above is inert without this.
+  it("gives the scroll container the role its aria-label needs to mean anything", () => {
+    const { container } = renderTable();
+
+    expect(container.querySelector(".tkt-table-scroll")).toHaveAttribute(
+      "role",
+      "region"
+    );
+  });
+});
+
+describe("clicking a sortable header", () => {
+  it("asks for that column when it is not already the sort", async () => {
+    const onSort = vi.fn();
+
+    render(
+      <MemoryRouter>
+        <TicketTable
+          onSort={onSort}
+          order="desc"
+          sort="createdAt"
+          tickets={[TICKET]}
+        />
+      </MemoryRouter>
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Ticket No." }));
+
+    expect(onSort).toHaveBeenCalledWith("ticketNumber");
+  });
+
+  // The header button carries the same field regardless of direction — it is
+  // `onSort`, driven by the caller, that decides a repeat click means
+  // "toggle". This only proves the header always sends its own field.
+  it("asks for the same field again when its own header is clicked twice", async () => {
+    const onSort = vi.fn();
+
+    render(
+      <MemoryRouter>
+        <TicketTable
+          onSort={onSort}
+          order="desc"
+          sort="createdAt"
+          tickets={[TICKET]}
+        />
+      </MemoryRouter>
+    );
+
+    const header = screen.getByRole("button", { name: /Created Date/u });
+
+    await userEvent.click(header);
+    await userEvent.click(header);
+
+    expect(onSort).toHaveBeenNthCalledWith(1, "createdAt");
+    expect(onSort).toHaveBeenNthCalledWith(2, "createdAt");
+  });
+});
+
+describe("the mobile sort control", () => {
+  // Below 768px `.tkt-table` — sort buttons included — is hidden entirely
+  // (components.css), so this is the only way left to change the sort.
+  it("offers every sortable column and none of the others", () => {
+    renderTable();
+
+    const select = screen.getByLabelText("Sort by");
+
+    for (const label of [
+      "Ticket No.",
+      "Created Date",
+      "Summary",
+      "Requested Priority",
+      "Last Updated",
+    ]) {
+      expect(
+        within(select).getByRole("option", { name: label })
+      ).toBeInTheDocument();
+    }
+
+    for (const label of ["Category", "IT Priority", "Current Status"]) {
+      expect(within(select).queryByRole("option", { name: label })).toBeNull();
+    }
+  });
+
+  it("calls onSort with the chosen field", async () => {
+    const onSort = vi.fn();
+
+    render(
+      <MemoryRouter>
+        <TicketTable
+          onSort={onSort}
+          order="desc"
+          sort="createdAt"
+          tickets={[TICKET]}
+        />
+      </MemoryRouter>
+    );
+
+    await userEvent.selectOptions(
+      screen.getByLabelText("Sort by"),
+      "ticketNumber"
+    );
+
+    expect(onSort).toHaveBeenCalledWith("ticketNumber");
+  });
+
+  // The direction control re-sends the *current* field — the same call a
+  // second click on an active header makes, which `onSort` already treats as
+  // "toggle the direction".
+  it("re-sends the current field from the direction toggle", async () => {
+    const onSort = vi.fn();
+
+    render(
+      <MemoryRouter>
+        <TicketTable
+          onSort={onSort}
+          order="desc"
+          sort="createdAt"
+          tickets={[TICKET]}
+        />
+      </MemoryRouter>
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /Descending/u }));
+
+    expect(onSort).toHaveBeenCalledWith("createdAt");
+  });
+
+  it("labels the direction toggle with the current order", () => {
+    renderTable();
+
+    expect(
+      screen.getByRole("button", { name: /Descending/u })
+    ).toBeInTheDocument();
   });
 });
 

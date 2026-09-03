@@ -263,22 +263,34 @@ export const TicketDetail = () => {
           </div>
 
           <div className="tkt-span-4">
-            <label className="tkt-field-label" htmlFor="tkt-detail-description">
+            {/* A `<span>`, not a `<label>`: `htmlFor` on a `<label>` only
+                ever associates with a form control, and the `<p>` below is
+                not one — that pairing is invalid HTML regardless of what the
+                two elements say. `aria-labelledby` does the same job for an
+                element `<label>` cannot target, matching the pattern already
+                used for the badge fields above (Requested Priority, IT
+                Priority, Current Status). */}
+            <span className="tkt-field-label" id="tkt-detail-description-label">
               Description
-            </label>
+            </span>
             {/* A block rather than a textarea: it is prose to read, not a
                 control, and a read-only textarea invites a click that does
                 nothing and scrolls text that should simply be there. */}
-            <p className="tkt-readonly-block" id="tkt-detail-description">
+            <p
+              aria-labelledby="tkt-detail-description-label"
+              className="tkt-readonly-block"
+              id="tkt-detail-description"
+            >
               {ticket.description}
             </p>
           </div>
 
           <div className="tkt-span-4">
-            <label className="tkt-field-label" htmlFor="tkt-detail-resolution">
+            <span className="tkt-field-label" id="tkt-detail-resolution-label">
               Resolution Summary
-            </label>
+            </span>
             <p
+              aria-labelledby="tkt-detail-resolution-label"
               className={
                 ticket.resolutionSummary
                   ? "tkt-readonly-block"

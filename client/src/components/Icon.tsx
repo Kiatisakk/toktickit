@@ -24,6 +24,12 @@ const GLYPHS = {
   brand: "clock",
   home: "house",
   back: "arrow-left",
+  // The four `StateBlock` kinds (ui-spec.md §3). `no-results` reuses `search`
+  // rather than a name of its own: a magnifying glass is what "your search
+  // found nothing" already means.
+  loading: "hourglass-split",
+  empty: "inbox",
+  warning: "exclamation-triangle",
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

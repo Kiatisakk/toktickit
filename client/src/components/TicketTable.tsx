@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { Link } from "react-router";
 
 import type { TicketListRow } from "../lib/api";
@@ -36,6 +37,16 @@ const COLUMNS: {
   { field: null, label: "Ticket Owner" },
   { field: "updatedAt", label: "Last Updated" },
 ];
+
+/**
+ * The columns a reader can actually sort by, derived from `COLUMNS` rather
+ * than listed again — so the mobile sort control below can never end up
+ * offering a field the desktop headers do not, or missing one they do.
+ */
+const SORTABLE_COLUMNS = COLUMNS.filter(
+  (column): column is { field: SortField; label: string; wraps?: boolean } =>
+    column.field !== null
+);
 
 /**
  * "Aug 29, 2026 09:14 AM" — the shape the illustrations print.
@@ -78,13 +89,26 @@ export const TicketTable = ({
   order,
   onSort,
 }: TicketTableProps) => {
+  // A column with no `field` is not sortable at all, so it carries no
+  // `aria-sort` — the attribute would claim a capability the header does not
+  // have. A sortable column that is not the current sort still gets an
+  // explicit "none" rather than nothing: WAI-ARIA's own definition of
+  // `aria-sort` treats "not present" and "none" as different states, and a
+  // screen reader user can only tell a column is sortable at all from the
+  // attribute existing on it.
   const ariaSort = (field: SortField | null) => {
-    if (field === null || field !== sort) {
+    if (field === null) {
       return undefined;
+    }
+
+    if (field !== sort) {
+      return "none" as const;
     }
 
     return order === "asc" ? ("ascending" as const) : ("descending" as const);
   };
+
+  const sortFieldId = useId();
 
   return (
     <>
@@ -99,6 +123,11 @@ export const TicketTable = ({
       <div
         aria-label="Your tickets"
         className="tkt-table-scroll"
+        // `role="region"` is what makes `aria-label` mean anything here. A
+        // bare `<div>` has no implicit role, and `aria-label` is only ever
+        // surfaced as an accessible name on an element that has one — without
+        // it the label is inert, present in the DOM and announced by nobody.
+        role="region"
         // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region
         // must be focusable to be scrollable by keyboard.
         tabIndex={0}
@@ -179,6 +208,48 @@ export const TicketTable = ({
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/*
+        The sort buttons live only in <th> above, and `.tkt-table` — buttons
+        included — is `display: none` below 768px (components.css), so a
+        mobile reader had no way to change the sort at all. This is that
+        control: a labelled field select plus a direction toggle, wired to the
+        same `onSort` the headers call, and visible only where the table
+        itself is not (`.tkt-mobile-sort` in components.css).
+
+        Choosing a field behaves exactly like clicking its header — `onSort`
+        resets to descending and page 1 either way. The direction button
+        re-sends the *current* field, which `onSort` already treats as
+        "toggle": the same call a second click on an active header makes.
+      */}
+      <div className="tkt-mobile-sort">
+        <label className="tkt-field-label" htmlFor={sortFieldId}>
+          Sort by
+        </label>
+        <div className="tkt-mobile-sort__row">
+          <select
+            className="tkt-field"
+            id={sortFieldId}
+            onChange={(event) => onSort(event.target.value as SortField)}
+            value={sort}
+          >
+            {SORTABLE_COLUMNS.map((column) => (
+              <option key={column.field} value={column.field}>
+                {column.label}
+              </option>
+            ))}
+          </select>
+          <button
+            aria-pressed={order === "asc"}
+            className="tkt-btn tkt-btn--secondary"
+            onClick={() => onSort(sort)}
+            type="button"
+          >
+            <span aria-hidden="true">{order === "asc" ? "▲" : "▼"}</span>
+            {order === "asc" ? "Ascending" : "Descending"}
+          </button>
+        </div>
       </div>
 
       <ul className="tkt-cards">
