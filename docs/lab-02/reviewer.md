@@ -270,9 +270,9 @@ satisfied both. He removed the linear-history rule and merged it himself.
 
 Entries are added by the Pull Request they describe:
 
-- [ ] Issue #18 — My Tickets
-- [ ] Issue #19 — Ticket Detail and attachments
-- [ ] Issue #20 — End-to-end and visual evidence
+- [x] Issue #18 — My Tickets
+- [x] Issue #19 — Ticket Detail and attachments
+- [x] Issue #20 — End-to-end and visual evidence
 - [ ] Issue #21 — Report and submission
 - [ ] Release Pull Request into `main`
 - [ ] Further reviews given on the partner's repository
@@ -410,3 +410,60 @@ Ticket Detail keeps a heading Figure 1 does not have. Both arrangements were bui
 departure and its reasoning are in `ui-spec.md` §5.4 rather than left for a reader to notice.
 He approved without objecting to it.
 
+---
+
+## PR #31 and PR #32 — end-to-end and visual evidence (Issue #20)
+
+**Reviewer:** Supawit Marayat (@beambeambeam). **Verdict:** approved twice, `LGTM` both
+times, no line comments in either.
+
+| | |
+| --- | --- |
+| PR #31 opened | 2026-09-02 11:56:39 UTC · 21 files, `feature/e2e-visual-evidence` → `lab2-staging` |
+| Approved | 2026-09-02 11:57:55 UTC — 76 seconds later |
+| Merged | 2026-09-02 17:15:37 UTC **by me**, which Part 9 reserves for the reviewer |
+| PR #32 opened | 2026-09-02 18:57:50 UTC — same branch, same tip `4285f76`, no code changed |
+| Approved | 2026-09-03 06:30:13 UTC |
+| Merged | 2026-09-03 06:30:21 UTC by @beambeambeam |
+
+### There was nothing to reply to, and that is the entry
+
+This Issue asks for the comments received and the reply given to each. There were none, in
+either direction — no line comments, no requested changes, one word of review body twice.
+It is the only Pull Request in Lab 2 that produced no finding at all.
+
+Recording the timestamps rather than only the verdict, because 21 files approved 76 seconds
+after opening is not evidence that 21 files were read, and this same document says of his
+PR #42 that at 101 files whatever the reviewer misses, nobody catches. That standard has to
+point in both directions or it is not a standard.
+
+### The merge that was not mine to click
+
+I merged #31 myself. Part 9 requires the reviewer to merge, and `mergedBy` is permanent: a
+`git revert` would have added a commit while leaving my name on the merge, fixing the tree
+and not the thing Part 9 checks.
+
+So `lab2-staging` was moved back to `228b22a`, its state immediately before the merge, with
+`--force-with-lease` pinned to the merge commit so the push would fail if anything had
+landed in the meantime. Nothing had, and `feature/e2e-visual-evidence` still pointed at
+`4285f76`, untouched. GitHub refuses to reopen a merged Pull Request, so #32 was opened
+from the same branch at the same commit with the reason written into its description, so
+the duplicate notification would not be a mystery.
+
+He approved the unchanged code and performed the merge. His own `reviewer.md` records the
+episode from his side, procedural reason included, which nothing obliged him to write down.
+
+**Cost:** an hour, one duplicate notification, and a Pull Request number. The cost of not
+noticing would have been Part 9.
+
+### What this Pull Request was for
+
+The suite this PR adds is the first thing in the repository that can see a rendered page.
+Its own first full run produced the argument for its existence: a 71 px horizontal overflow
+in the My Tickets pagination controls at 390 px, which appears only once a Requester has
+seven pages of Tickets. 609 passing unit tests could not see it — jsdom loads no stylesheet
+and has no layout engine — and a screenshot taken at six pages looks correct.
+
+It also found that BR-09 had never been implemented. The rule held only because Change
+Requester unmounts the form on the way out; re-selecting the same person left the draft
+standing. No test failed, because no test could reach the case.
