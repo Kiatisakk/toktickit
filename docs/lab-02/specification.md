@@ -465,10 +465,11 @@ object the form places beside the offending control.
 - **AC-18** *(FR-15, FR-16, BR-12)* Given a ticket owned by Requester A, when Requester B
   requests it by its direct address, then the response is indistinguishable from the
   response for a ticket that does not exist.
-- **AC-19** *(FR-17, BR-21, BR-22, BR-23)* Given an owned ticket, when a file is uploaded,
-  then permitted files under 5 MB are accepted up to five active attachments, and a
-  disallowed type, an oversized file, and a sixth attachment are each rejected with their
-  own message.
+- **AC-19** *(FR-17, BR-21, BR-22, BR-23)* Given an owned ticket, when a file is uploaded —
+  whether from Create Ticket during creation or from Ticket Detail afterwards — then
+  permitted files under 5 MB are accepted up to five active attachments, and a disallowed
+  type, an oversized file, and a sixth attachment are each rejected with their own message.
+  See D-17 for what happens when the ticket is created but an attachment then fails.
 - **AC-20** *(FR-19, BR-25)* Given an active owned attachment, when it is downloaded, then
   the stored file is returned as a download rather than rendered in the browser.
 - **AC-21** *(FR-20, BR-26, BR-27)* Given an owned attachment, when it is removed with a
@@ -803,3 +804,38 @@ excludes. It is written down so that no reader has to infer it, and so that Lab 
 inherits a stated starting point. The checks themselves survive that change
 untouched: they read the requester from `res.locals`, never from the URL, so only
 the middleware that populates it is replaced.
+
+### D-17 A partial attachment failure on creation does not fail the ticket
+
+Issue #40 lets Create Ticket pick attachments, closing the "during creation"
+half of FR-17. Submitting still means two things happening in sequence: one
+`POST /api/tickets` that mints the ticket, then one
+`POST /api/tickets/:id/attachments` per chosen file, exactly the request
+`AttachmentSection` already makes on Ticket Detail. The two calls can succeed
+and fail independently, and this entry is about the case where they do:
+the ticket is created, and one or more of its files then fail to attach.
+
+The ticket in that case is not defective. It has a valid category, related
+system, summary, description and a server-issued number — every rule BR-13
+through BR-16 states is about the ticket, and none of them was broken.
+BR-18 ("A rejected submission creates no ticket, no attachment, and no
+partial record") describes a *rejected* submission: one where validation
+failed before anything was written. This is not that. The ticket was
+accepted and written before the attachment step ever ran, so BR-18 does not
+reach backward to un-create it because something afterward went wrong.
+
+So the success screen says so rather than staying silent: it names every
+file that did not attach and why, in the server's own words, and points at
+View Ticket — the newly created Ticket Detail, where `AttachmentSection`
+already knows how to retry an upload — rather than inventing a second retry
+mechanism on the Create Ticket screen itself.
+
+*Rejected:* treating a partial attachment failure as if it were a whole
+failed submission — either rolling the ticket back or hiding the failure and
+showing a plain success. Rolling back means deleting a ticket that met every
+rule that governs tickets because a *different* resource, on a *different*
+endpoint, hit a *different* rule (BR-21 to BR-23); nothing in FR-17 or BR-18
+asks for that coupling, and D-03 already accepts that attachments are
+outside the ticket's own transaction for exactly this reason. Hiding the
+failure is worse: the person is told their evidence is attached when it is
+not, and finds out only when someone asks for a file that was never there.

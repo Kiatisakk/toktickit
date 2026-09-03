@@ -208,6 +208,39 @@ no lint error or warning anywhere in the repository. Ten new tests hold the fixe
 
 ---
 
+## PR #33, #34, #36 and #38 — audit-driven conformance fixes
+
+**Reviewer:** Supawit Marayat (@beambeambeam). **Verdict:** approved all four, `LGTM` each
+time, no line comments on any of them.
+
+| | Opened | Approved | Gap |
+| --- | --- | --- | --- |
+| #33 — reviewer.md record of #31/#32 | 08:13 | 15:27:41 | ~7h |
+| #34 — E2E onto the test database (Issue #20), 35 files | 13:56 | 15:28:17 | ~1h32m |
+| #36 — API contract conformance (Issue #35), 8 files | 14:27 | 15:28:50 | ~1h01m |
+| #38 — UI conformance (Issue #37), 9 files | 14:30 | 15:29:22 | ~59m |
+
+All four dates 2026-09-03 UTC. Merged by @beambeambeam, in order, between 15:27:51 and
+15:30:07 — under three minutes end to end.
+
+**Recording the pattern, not just the verdict**, for the same reason this document
+recorded #31 taking 76 seconds on 21 files: three of these four PRs were approved within
+three minutes of each other, including #34 at 35 changed files. An hour's gap between
+opening and approving is a reasonable review time taken in isolation; four approvals
+landing three minutes apart reads more like one sitting at the end of that hour than four
+independent reads. I have no way to tell which from outside the review, and no finding to
+weigh it against either way — nothing here was wrong, so there is nothing to check the
+review against.
+
+**None of these four originated as a planned Issue before the code existed.** #34 grew out
+of my own audit of Issue #20's acceptance criteria; #36 and #37 came from a wider audit of
+`api-spec.md` and `ui-spec.md` against the implementation, where the fix was written before
+the Issue documenting it — the reverse of the order this project otherwise holds to. Worth
+recording here because a timestamp comparison would show it, and better said once than left
+for a reader to notice on their own.
+
+---
+
 ## Reviews I gave
 
 ### beambeambeam/toktickit#39 — Lab 2 specification

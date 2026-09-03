@@ -3,6 +3,10 @@ import { useNavigate } from "react-router";
 
 import { AppShell } from "../components/AppShell";
 import { Button } from "../components/Button";
+import {
+  CreateTicketAttachments,
+  type QueuedAttachmentRow,
+} from "../components/CreateTicketAttachments";
 import { Icon } from "../components/Icon";
 import { Select } from "../components/Select";
 import { StateBlock } from "../components/StateBlock";
@@ -16,7 +20,9 @@ import {
   fetchCategories,
   fetchRelatedSystems,
   type ReferenceItem,
+  uploadAttachment,
 } from "../lib/api";
+import { validateAttachment } from "../lib/attachments";
 
 /** Mirrors the server's limits so the message appears before a round trip. */
 const LIMITS = {
@@ -103,8 +109,12 @@ const validate = (draft: Draft): Record<string, string> => {
 /**
  * The Create Ticket screen (§8.2).
  *
- * Attachments are not here. They arrive with the Ticket Detail Issue, where the
- * upload endpoint they need is built; this screen creates the ticket itself.
+ * Attachments are picked here (Issue #40) but not sent here: `POST
+ * /api/tickets` stays JSON-only per `api-spec.md` §3, so a chosen file is held
+ * in memory until the ticket has an id, then uploaded through the same
+ * `POST /api/tickets/:id/attachments` endpoint Ticket Detail uses. A file that
+ * fails client-side validation is never sent at all — see D-17 for what
+ * happens when the ticket is created but one of its attachments then fails.
  */
 export const CreateTicket = () => {
   const { requester, generation } = useRequester();
@@ -117,6 +127,15 @@ export const CreateTicket = () => {
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [created, setCreated] = useState<CreatedTicket | null>(null);
+
+  const [attachments, setAttachments] = useState<QueuedAttachmentRow[]>([]);
+  /** Assigns each picker row an id of its own — see `QueuedAttachmentRow`. */
+  const nextAttachmentId = useRef(0);
+
+  /** Filenames the ticket was created without, and why (D-17). */
+  const [failedAttachments, setFailedAttachments] = useState<
+    { filename: string; reason: string }[]
+  >([]);
 
   /*
    * BR-09: a draft written as one Requester is never submitted as another.
@@ -140,6 +159,7 @@ export const CreateTicket = () => {
     seen.current = generation;
     setDraft(EMPTY);
     setErrors({});
+    setAttachments([]);
     void navigate("/my-tickets");
   }, [generation, navigate]);
 
@@ -204,6 +224,39 @@ export const CreateTicket = () => {
 
   const usable = reference.kind === "loaded";
 
+  /**
+   * Validates a chosen file on the spot, the client half of BR-21 to BR-23.
+   *
+   * A file that fails is turned into an `invalid` row and never touches
+   * `attachments`' queued files — it is never sent, on this submit or any
+   * later one, unless the person chooses a different file for that slot.
+   */
+  const addAttachment = (file: File) => {
+    const id = `attachment-${nextAttachmentId.current}`;
+    nextAttachmentId.current += 1;
+    const validation = validateAttachment(file);
+
+    if (!validation.ok) {
+      setAttachments((current) => [
+        ...current,
+        {
+          id,
+          kind: "invalid",
+          filename: file.name,
+          sizeBytes: file.size,
+          reason: validation.reason,
+        },
+      ]);
+      return;
+    }
+
+    setAttachments((current) => [...current, { id, kind: "queued", file }]);
+  };
+
+  const removeAttachment = (id: string) => {
+    setAttachments((current) => current.filter((row) => row.id !== id));
+  };
+
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
 
@@ -234,6 +287,60 @@ export const CreateTicket = () => {
         requester.id
       );
 
+      /*
+       * The ticket exists now, so the queued files can finally be sent —
+       * `POST /api/tickets/:id/attachments`, the same endpoint and the same
+       * `uploadAttachment` call Ticket Detail uses, one request per file.
+       *
+       * Sequential rather than parallel, on purpose. Each upload does its own
+       * `FOR UPDATE`-locked count check against BR-23's five-attachment
+       * limit, and this ticket starts at zero: five requests fired at once
+       * would all race that lock over the same empty ticket, and which files
+       * "win" would depend on network timing rather than the order the
+       * person picked them in. The limit is still enforced server-side
+       * either way — this is about a predictable outcome, not about
+       * avoiding a failure that cannot otherwise happen.
+       *
+       * A failure here is not a rejected submission (BR-18 does not apply):
+       * the ticket is real, and D-17 is the record of that decision. So a
+       * failed file is reported rather than retried automatically or rolled
+       * back — the person retries it from Ticket Detail, which is where
+       * every other post-creation attachment already goes through.
+       */
+      const failed: { filename: string; reason: string }[] = [];
+
+      for (const row of attachments) {
+        if (row.kind !== "queued") {
+          continue;
+        }
+
+        setAttachments((current) =>
+          current.map((entry) =>
+            entry.id === row.id
+              ? {
+                  id: row.id,
+                  kind: "uploading",
+                  filename: row.file.name,
+                  sizeBytes: row.file.size,
+                }
+              : entry
+          )
+        );
+
+        try {
+          await uploadAttachment(ticket.id, row.file, requester.id);
+        } catch (error) {
+          failed.push({
+            filename: row.file.name,
+            reason:
+              error instanceof ApiError
+                ? error.message
+                : "The file could not be attached.",
+          });
+        }
+      }
+
+      setFailedAttachments(failed);
       setCreated(ticket);
     } catch (error) {
       // BR-19: whatever went wrong, the draft stays on screen. `draft` is
@@ -277,12 +384,33 @@ export const CreateTicket = () => {
             <dd>{created.currentStatus}</dd>
           </dl>
 
+          {/*
+            D-17. The ticket is real and correct even when an attachment
+            failed to join it — BR-18 describes a rejected submission, and
+            this is not one — so the failure is named rather than hidden, and
+            View Ticket below is where it gets retried rather than here.
+          */}
+          {failedAttachments.length > 0 ? (
+            <p className="tkt-callout tkt-callout--warning" role="alert">
+              {failedAttachments.length === 1
+                ? "One file could not be attached:"
+                : `${failedAttachments.length} files could not be attached:`}
+              <br />
+              {failedAttachments
+                .map((file) => `${file.filename} — ${file.reason}`)
+                .join("; ")}{" "}
+              Open the ticket below to try attaching them again.
+            </p>
+          ) : null}
+
           <div className="tkt-actions">
             <Button
               onClick={() => {
                 setCreated(null);
                 setDraft(EMPTY);
                 setErrors({});
+                setAttachments([]);
+                setFailedAttachments([]);
               }}
               variant="secondary"
             >
@@ -465,6 +593,15 @@ export const CreateTicket = () => {
             />
           </div>
         </div>
+
+        {/* ui-spec.md §5.2: "Then Summary and Description at full width,
+            then attachments, then the actions." */}
+        <CreateTicketAttachments
+          disabled={submitting}
+          onAdd={addAttachment}
+          onRemove={removeAttachment}
+          rows={attachments}
+        />
 
         {failure ? (
           <p className="tkt-callout tkt-callout--error" role="alert">

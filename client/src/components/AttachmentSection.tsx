@@ -7,6 +7,13 @@ import {
   removeAttachment,
   uploadAttachment,
 } from "../lib/api";
+import {
+  ACCEPT,
+  ACTIVE_LIMIT,
+  formatSize,
+  type PendingRow,
+  typeLabel,
+} from "../lib/attachments";
 import { formatWhen } from "../lib/formatWhen";
 import { Badge } from "./Badge";
 import { Button } from "./Button";
@@ -25,47 +32,13 @@ import { TextArea } from "./TextArea";
  * that were missing — uploading, invalid, unavailable — all describe a row with
  * no server-side identity, or one that has lost the use of it, which is exactly
  * why they were easy to skip: nothing in the API response represents them, so
- * they have to be held here. `PendingRow` is that holding.
+ * they have to be held here. `PendingRow`, from `lib/attachments`, is that
+ * holding — shared with Create Ticket's picker (Issue #40), which needs the
+ * same two states for the same reason.
  */
 
-const LIMIT = 5;
 const MIN_REASON = 3;
 const MAX_REASON = 500;
-
-/** How the four permitted types are named on screen. */
-const TYPE_LABELS: Record<string, string> = {
-  "application/pdf": "PDF",
-  "image/jpeg": "JPG",
-  "image/png": "PNG",
-  "image/webp": "WEBP",
-};
-
-const typeLabel = (mimeType: string) => TYPE_LABELS[mimeType] ?? mimeType;
-
-const formatSize = (bytes: number) => {
-  if (bytes < 1024) {
-    return `${bytes} B`;
-  }
-
-  if (bytes < 1024 * 1024) {
-    return `${Math.round(bytes / 1024)} KB`;
-  }
-
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
-
-/**
- * A row with no server-side identity: one being sent, or one the server
- * refused.
- *
- * The API has nothing to say about either — an upload in flight has no id, and
- * a rejected file has no row at all — so they live beside the real list rather
- * than inside it, and they carry the filename the person actually chose, which
- * is the one thing they want to see.
- */
-type PendingRow =
-  | { kind: "uploading"; filename: string; sizeBytes: number }
-  | { kind: "invalid"; filename: string; reason: string };
 
 interface AttachmentSectionProps {
   ticketId: number;
@@ -95,7 +68,7 @@ export const AttachmentSection = ({
 
   const active = attachments.filter((one) => one.status === "ACTIVE");
   const uploading = pending?.kind === "uploading";
-  const full = active.length >= LIMIT;
+  const full = active.length >= ACTIVE_LIMIT;
 
   const onFile = async (file: File) => {
     setPending({
@@ -188,10 +161,10 @@ export const AttachmentSection = ({
             Attachments
           </h2>
           <p className="tkt-field-hint">
-            JPG, PNG, WEBP or PDF · up to 5 MB · up to {LIMIT} files.{" "}
+            JPG, PNG, WEBP or PDF · up to 5 MB · up to {ACTIVE_LIMIT} files.{" "}
             {full
               ? "Remove one before adding another."
-              : `${active.length} of ${LIMIT} used.`}
+              : `${active.length} of ${ACTIVE_LIMIT} used.`}
           </p>
         </div>
 
@@ -202,7 +175,7 @@ export const AttachmentSection = ({
               the label already is the control, and it stays keyboard reachable
               without any script. */}
           <input
-            accept="image/jpeg,image/png,image/webp,application/pdf"
+            accept={ACCEPT}
             className="tkt-file-input"
             disabled={full || uploading}
             id="tkt-attachment-file"

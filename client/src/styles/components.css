@@ -505,6 +505,24 @@
   color: var(--tkt-text);
 }
 
+/* D-17: the ticket was created, so this is not an error — but one or more of
+   its attachments were not, so it is not a plain success either. */
+.tkt-callout--warning {
+  background-color: var(--tkt-warning-pale);
+  border: 1px solid var(--tkt-warning);
+  color: var(--tkt-warning);
+}
+
+/* Create Ticket's attachment picker (Issue #40). It sits inside the same
+   `tkt-card` as the rest of the form rather than opening one of its own — see
+   the comment on `CreateTicketAttachments` — so it is set off by a rule
+   instead of a border. */
+.tkt-inline-section {
+  border-top: 1px solid var(--tkt-border);
+  margin-top: var(--tkt-space-6);
+  padding-top: var(--tkt-space-6);
+}
+
 /*
  * Read-back of what was just created. A definition list rather than a table:
  * these are label/value pairs, not rows of like things.
