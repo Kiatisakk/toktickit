@@ -323,14 +323,18 @@ returning the metadata shape.
 Order of operations, which is what makes BR-30 hold:
 
 1. Validate the context and the ticket's ownership.
-2. Count active attachments; reject at five.
-3. Validate declared type, extension, and size **in memory**, before anything is written.
+2. Validate declared type, extension, and size **in memory**, before anything is written.
+3. Lock the ticket row and count active attachments; reject at five.
 4. Write to `server/uploads/` under a generated name.
 5. Insert the metadata row.
 6. If step 5 fails, delete the file written in step 4.
 
-Validating before writing means a rejected upload never creates a file to clean up. The
-compensation in step 6 exists for the one window that remains.
+Validating before writing means a rejected upload never creates a file to clean up. Step 3
+takes a row lock (`SELECT … FOR UPDATE` on the ticket) so two uploads racing each other
+cannot both see four active attachments and both be let through; the file check happens
+first specifically so that lock is held for as short a time as possible, rather than for
+however long it takes to read and inspect the upload. The compensation in step 6 exists for
+the one window that remains.
 
 | Status | Code | When |
 | --- | --- | --- |
