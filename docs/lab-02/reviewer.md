@@ -500,3 +500,54 @@ and has no layout engine — and a screenshot taken at six pages looks correct.
 It also found that BR-09 had never been implemented. The rule held only because Change
 Requester unmounts the form on the way out; re-selecting the same person left the draft
 standing. No test failed, because no test could reach the case.
+
+---
+
+## PR #41 — Create Ticket accepts attachments, FR-17 (Issue #40)
+
+**Reviewer:** Supawit Marayat (@beambeambeam). **Verdict:** approved, `LGTM`, no line
+comments.
+
+| | |
+| --- | --- |
+| PR #41 opened | 2026-09-03 16:38:45 UTC · 11 files, `feature/create-ticket-attachments` → `lab2-staging` |
+| Approved | 2026-09-03 16:50:13 UTC — under twelve minutes later |
+| Merged | 2026-09-03 16:50:19 UTC by @beambeambeam |
+
+Contents under review: the Create Ticket attachment picker, the shared client-side
+attachment rules, D-17, UI-28–UI-31, the E2E invalid-attachment capture, and the three
+documentation updates. Full verification ran before opening: 310/310 client tests, ultracite
+and oxlint clean, client build green, server tree untouched.
+
+**Nothing to reply to.** Third Pull Request in a row with no line comments and a one-word
+body. The pattern is now worth naming rather than noting each time: approval arrives in
+minutes, and whatever it did or did not cover, the record cannot tell.
+
+Two procedural points, both mine. Issue #40 had no card on the board at all — it never
+entered Backlog, so there was nothing that travelled the columns. The card was created when
+the Pull Request opened and placed straight into PR Review, the link already confirmed in
+the Development panel. And the Issue was closed by hand after the merge, since a merge into
+`lab2-staging` closes nothing on its own. The card is Done.
+
+One honest caveat on what the approval covers. E2E-07 is recorded as **Planned** in
+`tests.md`: the capture code is in the journey spec on all three viewport projects, but no
+full E2E run has produced the three screenshots yet. Flipping that row to Pass is one word,
+still owed.
+
+---
+
+## PR #42 — audit leftovers (no Issue)
+
+**Status at writing:** open, awaiting review. 7 files, `fix/lab2-audit-followups` →
+`lab2-staging`, +93/−5.
+
+No Issue covers it, said in one line in the description as the workflow guide requires for
+exactly this case: two audit leftovers (T3-17 prose, T3-23(d) API test) too small for their
+own Issues, then a third commit (`c2d8ad7`, the E2E-leftover wipe) pushed after opening,
+which needs a re-review before merge.
+
+The description itself had to be rewritten twice. The first version went up as UTF-16 —
+PowerShell's `>` redirect encodes that way by default — and the replacement lost every
+non-ASCII character to `???` on the way through `gh` on Windows. Both descriptions are now
+ASCII-only and byte-verified. Rule adopted: files for `gh` go through the write tool only,
+never through a shell redirect.
