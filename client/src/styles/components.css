@@ -917,10 +917,19 @@
   margin: 0;
 }
 
+/* Wraps. The row holds Previous, Next and up to seven numbers, and a flex row
+   that cannot wrap cannot shrink below its content either — so at 390px it ran
+   71px past the edge and took the page with it, which is exactly the horizontal
+   scrolling §8.7 forbids.
+
+   It only appeared once a requester had seven pages of tickets, which is why no
+   screenshot review caught it: at six pages the row fits. */
 .tkt-pagination__controls {
   align-items: center;
   display: flex;
-  gap: var(--tkt-space-3);
+  flex-wrap: wrap;
+  gap: var(--tkt-space-2);
+  justify-content: flex-end;
 }
 
 .tkt-pagination__position {
@@ -1046,8 +1055,20 @@
     align-items: stretch;
   }
 
+  /* One line for the summary, one for the controls, centred — rather than the
+     two fighting for a 390px row. */
+  .tkt-pagination {
+    justify-content: center;
+  }
+
+  .tkt-pagination__summary {
+    text-align: center;
+    width: 100%;
+  }
+
   .tkt-pagination__controls {
-    justify-content: space-between;
+    justify-content: center;
+    width: 100%;
   }
 }
 

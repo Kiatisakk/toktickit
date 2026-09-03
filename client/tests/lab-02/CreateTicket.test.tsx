@@ -585,3 +585,93 @@ describe("the field set", () => {
     );
   });
 });
+
+/**
+ * UI-06 / BR-09 — a draft written as one Requester is never submitted as
+ * another.
+ *
+ * The rule already held through the routing: Change Requester navigates away
+ * and the component unmounts, taking the draft with it. That is the routing
+ * doing it rather than the rule being enforced, and it stops being true the
+ * moment anything switches identity without leaving the page. These assert the
+ * guard, not the navigation.
+ */
+describe("switching Requester mid-draft", () => {
+  const renderWith = (context: RequesterContextValue) =>
+    render(
+      <MemoryRouter>
+        <RequesterContext.Provider value={context}>
+          <CreateTicket />
+        </RequesterContext.Provider>
+      </MemoryRouter>
+    );
+
+  beforeEach(() => {
+    vi.stubGlobal("fetch", referenceFetch());
+  });
+
+  it("discards what was typed", async () => {
+    const { rerender } = renderWith(CONTEXT);
+
+    await screen.findByLabelText(/^Summary/u);
+    await userEvent.type(
+      screen.getByLabelText(/^Summary/u),
+      "Half-written under the first requester"
+    );
+
+    rerender(
+      <MemoryRouter>
+        <RequesterContext.Provider
+          value={{
+            ...CONTEXT,
+            generation: CONTEXT.generation + 1,
+            requester: {
+              id: 2,
+              name: "Somchai Wattana",
+              email: "somchai.wattana@example.ac.th",
+            },
+          }}
+        >
+          <CreateTicket />
+        </RequesterContext.Provider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/^Summary/u)).toHaveValue("");
+    });
+  });
+
+  // Re-selecting the same person is still a new context, which is why the
+  // guard watches `generation` rather than the requester's id.
+  it("discards it even when the same person is chosen again", async () => {
+    const { rerender } = renderWith(CONTEXT);
+
+    await screen.findByLabelText(/^Summary/u);
+    await userEvent.type(screen.getByLabelText(/^Summary/u), "Still a draft");
+
+    rerender(
+      <MemoryRouter>
+        <RequesterContext.Provider
+          value={{ ...CONTEXT, generation: CONTEXT.generation + 1 }}
+        >
+          <CreateTicket />
+        </RequesterContext.Provider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/^Summary/u)).toHaveValue("");
+    });
+  });
+
+  it("leaves an untouched form alone on first render", async () => {
+    renderWith(CONTEXT);
+
+    const summary = await screen.findByLabelText(/^Summary/u);
+
+    await userEvent.type(summary, "Typed once, nothing switched");
+
+    expect(summary).toHaveValue("Typed once, nothing switched");
+  });
+});

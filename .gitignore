@@ -48,3 +48,9 @@ Thumbs.db
 
 # Uploaded attachments. Generated names, real user content — never in git.
 server/uploads/
+
+# Playwright — run output and its HTML report. The curated screenshots under
+# artifacts/ are committed; these two are regenerated on every run.
+test-results/
+playwright-report/
+.playwright/

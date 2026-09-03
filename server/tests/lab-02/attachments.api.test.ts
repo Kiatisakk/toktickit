@@ -1,7 +1,7 @@
 import { readdir, unlink } from "node:fs/promises";
 
 import request from "supertest";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { app } from "../../src/app.js";
 import { pathFor, UPLOAD_DIR } from "../../src/attachments/storage.js";
@@ -282,6 +282,98 @@ describe("the rejection rules", () => {
     );
 
     expect(await filesOnDisk()).toHaveLength(before.length);
+  });
+});
+
+/**
+ * API-18 / BR-30 — the compensation, forced.
+ *
+ * "If storing a file succeeds but recording its metadata fails, the stored file
+ * is removed." Every other test exercises paths where nothing was ever written;
+ * this is the one window the compensation exists for, and no request can reach
+ * it — the insert has to be made to fail.
+ *
+ * Spying on `prisma.attachment.create` does not work, because the route runs
+ * inside `prisma.$transaction` and calls `tx.attachment.create` on the
+ * transaction client, which is a different object. So the transaction is
+ * intercepted and the real one is handed a proxied `tx` whose `attachment
+ * .create` rejects. Everything else in the transaction — the row lock, the
+ * count, the file write — runs for real, which is the point: the file has to
+ * genuinely reach the disk before the failure, or the test proves nothing.
+ */
+const failTheInsert = () => {
+  const realTransaction = prisma.$transaction.bind(prisma);
+
+  return vi.spyOn(prisma, "$transaction").mockImplementationOnce(((
+    run: (tx: unknown) => Promise<unknown>
+  ) =>
+    realTransaction(
+      async (tx: unknown) =>
+        await run(
+          new Proxy(tx as object, {
+            get(target, property) {
+              if (property !== "attachment") {
+                return Reflect.get(target, property);
+              }
+
+              return new Proxy(Reflect.get(target, property) as object, {
+                get(model, method) {
+                  if (method !== "create") {
+                    return Reflect.get(model, method);
+                  }
+
+                  return () =>
+                    Promise.reject(new Error("forced metadata failure"));
+                },
+              });
+            },
+          })
+        )
+    )) as never);
+};
+
+describe("when the metadata write fails after the file is on disk", () => {
+  it("leaves no orphaned file behind", async () => {
+    const before = await filesOnDisk();
+    const spy = failTheInsert();
+
+    const response = await attach(ticketOfA, ownerA, "doomed.pdf");
+
+    spy.mockRestore();
+
+    expect(response.status).toBe(500);
+    expect(await filesOnDisk()).toHaveLength(before.length);
+  });
+
+  // The rollback covers this one, but a compensation that deleted the file and
+  // left the row would be worse than either failure alone.
+  it("leaves no orphaned row either", async () => {
+    const spy = failTheInsert();
+
+    await attach(ticketOfA, ownerA, "doomed.pdf");
+
+    spy.mockRestore();
+
+    const rows = await prisma.attachment.count({
+      where: { ticketId: ticketOfA },
+    });
+
+    expect(rows).toBe(0);
+  });
+
+  // BR-20: the caller is told the server failed, not how.
+  it("says nothing about the filesystem or the cause", async () => {
+    const spy = failTheInsert();
+
+    const response = await attach(ticketOfA, ownerA, "doomed.pdf");
+
+    spy.mockRestore();
+
+    const body = JSON.stringify(response.body);
+
+    expect(body).not.toContain("forced metadata failure");
+    expect(body).not.toContain("uploads");
+    expect(response.body.error.code).toBe("INTERNAL_ERROR");
   });
 });
 

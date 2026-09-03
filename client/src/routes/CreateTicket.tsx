@@ -107,7 +107,7 @@ const validate = (draft: Draft): Record<string, string> => {
  * upload endpoint they need is built; this screen creates the ticket itself.
  */
 export const CreateTicket = () => {
-  const { requester } = useRequester();
+  const { requester, generation } = useRequester();
   const navigate = useNavigate();
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -117,6 +117,32 @@ export const CreateTicket = () => {
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [created, setCreated] = useState<CreatedTicket | null>(null);
+
+  /*
+   * BR-09: a draft written as one Requester is never submitted as another.
+   *
+   * Today the rule also holds by accident — Change Requester navigates away and
+   * the component unmounts, taking the draft with it. That is the routing doing
+   * it, not the rule being enforced, and it stops being true the moment
+   * anything switches identity without leaving the page. The guard puts the
+   * rule where the rule lives.
+   *
+   * `generation` rather than `requester.id`, because it also bumps when the
+   * same person is re-selected, which is still a new context.
+   */
+  const seen = useRef(generation);
+
+  useEffect(() => {
+    if (seen.current === generation) {
+      return;
+    }
+
+    seen.current = generation;
+    setDraft(EMPTY);
+    setErrors({});
+    void navigate("/my-tickets");
+  }, [generation, navigate]);
+
   /** Bumped on every rejected submit so repeated failures re-focus. */
   const [attempt, setAttempt] = useState(0);
 
