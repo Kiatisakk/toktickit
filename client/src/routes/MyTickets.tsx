@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { AppShell } from "../components/AppShell";
@@ -168,6 +168,33 @@ export const MyTickets = () => {
     },
     [requester, filters, sort, order, page]
   );
+
+  /*
+   * A filter, a page and a sort order chosen for Requester A do not describe
+   * Requester B. Left alone, sitting on page 4 with a filter applied and
+   * switching requester immediately re-requests page 4 of the new person's
+   * much shorter list — which is empty, and looks like a bug rather than a
+   * stale selection.
+   *
+   * This cannot live inside the effect below: that effect also runs on every
+   * filter change, and resetting there would wipe the filter the user just
+   * set. The BR-09 guard in `CreateTicket.tsx` is the same shape for the same
+   * reason — a ref remembers the `generation` already seen, and the reset
+   * only fires the first time it changes, never on mount.
+   */
+  const seenGeneration = useRef(generation);
+
+  useEffect(() => {
+    if (seenGeneration.current === generation) {
+      return;
+    }
+
+    seenGeneration.current = generation;
+    setFilters(NO_FILTERS);
+    setSort("createdAt");
+    setOrder("desc");
+    setPage(1);
+  }, [generation]);
 
   // `generation` is in the dependency list so that changing requester discards
   // what is on screen and refetches, rather than leaving one person's tickets

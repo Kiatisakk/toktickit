@@ -280,6 +280,111 @@ describe("the page controls on the screen", () => {
   });
 });
 
+/**
+ * `TicketTable` was only ever rendered with `onSort={() => undefined}` before
+ * this, so nothing had ever clicked a header. This exercises the real
+ * `onSort` this screen wires up: toggling direction, changing field, and the
+ * page-1 reset a sort change shares with a filter change.
+ */
+describe("sorting", () => {
+  it("toggles direction when the active column's header is clicked", async () => {
+    const fetchMock = listFetch([ticket(1)]);
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderScreen();
+
+    await screen.findAllByText("TKT-2026-000001");
+    // The default sort is Created Date, descending.
+    await userEvent.click(
+      screen.getByRole("button", { name: /Created Date/u })
+    );
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("order=asc"),
+        expect.anything()
+      );
+    });
+  });
+
+  it("changes the sort field and resets to descending when a new column is clicked", async () => {
+    const fetchMock = listFetch([ticket(1)]);
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderScreen();
+
+    await screen.findAllByText("TKT-2026-000001");
+    await userEvent.click(screen.getByRole("button", { name: "Ticket No." }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("sort=ticketNumber"),
+        expect.anything()
+      );
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("order=desc"),
+        expect.anything()
+      );
+    });
+  });
+
+  // Staying on page 3 of a result set a new sort might narrow differently
+  // shows nothing and looks like a failure — the same reasoning §-labelled
+  // "returns to the first page when the query changes" applies to a filter.
+  it("returns to the first page when the sort column changes", async () => {
+    const fetchMock = listFetch([ticket(1)], {
+      page: 1,
+      pageSize: 10,
+      totalItems: 55,
+      totalPages: 6,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderScreen();
+
+    await screen.findAllByText("TKT-2026-000001");
+    await userEvent.click(screen.getByRole("button", { name: "Page 3" }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("page=3"),
+        expect.anything()
+      );
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Summary" }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("page=1"),
+        expect.anything()
+      );
+    });
+  });
+
+  // Below 768px the table's own sort buttons are hidden along with the rest
+  // of the table (components.css), so this control is the only way to sort.
+  it("sorts from the mobile control too", async () => {
+    const fetchMock = listFetch([ticket(1)]);
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderScreen();
+
+    await screen.findAllByText("TKT-2026-000001");
+    await userEvent.selectOptions(
+      screen.getByLabelText("Sort by"),
+      "ticketNumber"
+    );
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("sort=ticketNumber"),
+        expect.anything()
+      );
+    });
+  });
+});
+
 describe("filtering", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", listFetch([ticket(1)]));
@@ -303,6 +408,27 @@ describe("filtering", () => {
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining("categoryId=4"),
+        expect.anything()
+      );
+    });
+  });
+
+  // Category was the only filter any test ever changed. The other three
+  // dropdowns are wired through the same `setFilter` helper, but nothing had
+  // ever exercised them.
+  it.each([
+    ["Requested Priority", "requestedPriority", "HIGH"],
+    ["IT Priority", "itPriority", "MEDIUM"],
+    ["Current Status", "status", "OPEN"],
+  ])("sends the %s filter to the API", async (label, param, value) => {
+    renderScreen();
+
+    await screen.findAllByText("TKT-2026-000001");
+    await userEvent.selectOptions(screen.getByLabelText(label), value);
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining(`${param}=${value}`),
         expect.anything()
       );
     });
@@ -561,6 +687,80 @@ describe("switching requester", () => {
           }),
         })
       );
+    });
+  });
+
+  /**
+   * A filter and a page number that meant something for Requester A do not
+   * mean the same thing for Requester B. Left on screen, Requester A sitting
+   * on page 3 of a filtered list who switches to Requester B immediately
+   * requests page 3 of B's — usually much shorter — filtered list, which is
+   * empty and looks like a bug.
+   */
+  it("discards the filter, sort and page when the requester changes", async () => {
+    const fetchMock = listFetch([ticket(1)], {
+      page: 1,
+      pageSize: 10,
+      totalItems: 55,
+      totalPages: 6,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <RequesterContext.Provider value={CONTEXT}>
+          <MyTickets />
+        </RequesterContext.Provider>
+      </MemoryRouter>
+    );
+
+    await screen.findAllByText("TKT-2026-000001");
+
+    // Apply a filter and move off page 1, as the requester whose data is
+    // about to disappear.
+    await userEvent.selectOptions(screen.getByLabelText("Category"), "4");
+    await userEvent.click(screen.getByRole("button", { name: "Page 3" }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("page=3"),
+        expect.anything()
+      );
+    });
+
+    rerender(
+      <MemoryRouter>
+        <RequesterContext.Provider
+          value={{
+            ...CONTEXT,
+            generation: CONTEXT.generation + 1,
+            requester: {
+              id: 2,
+              name: "Somchai Wattana",
+              email: "somchai.wattana@example.ac.th",
+            },
+          }}
+        >
+          <MyTickets />
+        </RequesterContext.Provider>
+      </MemoryRouter>
+    );
+
+    // The filter control itself resets…
+    await waitFor(() => {
+      expect(screen.getByLabelText("Category")).toHaveValue("");
+    });
+
+    // …and so does the page and the filter sent to the API — not the stale
+    // page=3, categoryId=4 request Requester A's session left behind.
+    await waitFor(() => {
+      const lastTicketsCall = fetchMock.mock.calls
+        .map(([url]) => String(url))
+        .filter((url) => url.includes("/api/tickets"))
+        .at(-1);
+
+      expect(lastTicketsCall).toContain("page=1");
+      expect(lastTicketsCall).not.toContain("categoryId=4");
     });
   });
 });
