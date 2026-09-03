@@ -230,7 +230,10 @@ illustration shows the fields present and empty. See [decision D-04](#d-04-field
   can never repeat or skip a row when timestamps collide.
 - **BR-33** Permitted page sizes are 10, 20, and 50; the default is 10.
 - **BR-34** An unrecognised or out-of-range query parameter is an error. Parameters never
-  silently fall back to a default.
+  silently fall back to a default. Exception: a blank value for `categoryId`,
+  `requestedPriority`, `itPriority`, or `status` means "no filter," not an error — that is
+  what an "All" dropdown sends. `page`, `pageSize`, `sort`, and `order` have no such
+  reading and are rejected blank the same as any other bad value.
 
 ### Empty and no-results states
 
@@ -660,6 +663,28 @@ run — and that data is what the Part 7 evidence photographs, spread deliberate
 four requesters with a pagination-length list for one and none at all for another.
 Rebuilding it after every test run is not a reasonable ask.
 
+**Update.** The Playwright suite (Issue #20) was, for most of the sprint, still pointed at
+the *development* database rather than this one — an oversight the suite's own acceptance
+criteria named and nothing caught until an audit read `playwright.config.ts` against them.
+Every journey the suite runs creates a ticket, so Requester 1's demonstration list grew
+from 25 to 73 over repeated runs, and 27 of the committed 45 screenshots changed on a
+rerun with no code behind the difference. `npm run test:e2e` now rebuilds
+`toktickit_test` from nothing before every run (`npm run e2e:prepare`, which is
+`db:test:setup` — reference data only), so the evidence is reproducible and the
+development database is untouched by the suite that was supposed to leave it alone in
+the first place.
+
+The first version of this fix also ran the demonstration seed into `toktickit_test`, on
+the assumption that the Part 7 screenshots needed a populated list the way the development
+database has one. They do not — no E2E spec asserts anything about ticket volume, and the
+one empty-state case (Pimchanok) only needs a requester with zero tickets, which the
+reference seed already gives it for free. What the demonstration seed *did* do was leave
+sixty-odd tickets and three IT Staff users sitting in `toktickit_test` after the suite
+finished, silently breaking four `vitest` assertions in the server suite that assume the
+Ticket and non-Requester User tables are otherwise empty — caught only because that suite
+was rerun immediately afterward. `toktickit_test` now carries reference data alone, for
+both suites, which is what it always carried before this Issue existed.
+
 ### D-13 "Ticket Date" is a label, not a column
 
 BR-05 names three server-set timestamps — ticket date, created, updated — but the model
@@ -685,7 +710,7 @@ or card fields." It offers five examples — Ticket Number, Summary, Category, C
 Status, Last Updated — and then says outright that "the example is not a complete mandatory
 column list."
 
-We show eight: those five, plus three.
+We show nine: those five, plus four.
 
 **Created Date**, because Last Updated alone cannot answer "how long has this been open?",
 which is the question a requester chasing a ticket is actually asking. Two timestamps
@@ -702,8 +727,14 @@ deliberate and it is the point: it says the field exists and that IT has not tri
 ticket yet, which is information, where a missing column would be silence. D-04 covers why
 the three unused columns exist at all.
 
+**Ticket Owner**, for the same reason as IT Priority and by the same D-04 covering
+argument: §4.2 excludes the staff workflow, not the fact that a ticket eventually has an
+owner. Lab 2 never sets it either, so it shows an em dash on every row today, and that is
+the point rather than an oversight — this entry originally counted eight columns and left
+this one out of both the count and the justification, which the column itself never was.
+
 Nothing is dropped from the five examples. Related System appears on the mobile card but
-not in the desktop table: eight columns already sit at the limit of `--tkt-content-max`
+not in the desktop table: nine columns already sit at the limit of `--tkt-content-max`
 before horizontal scrolling starts, and a ticket's system is a detail-screen fact rather
 than one you scan a list by.
 

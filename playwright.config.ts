@@ -89,9 +89,23 @@ export default defineConfig({
    */
   webServer: [
     {
-      command: "npm run dev -w server",
+      // `dev:test`, not `dev`: the API has to be pointed at `toktickit_test`.
+      // Running the suite against the development database was the original
+      // arrangement and it cost twice. Each journey creates a ticket, so
+      // Requester 1's demonstration list grew from 25 to 73 over the sprint —
+      // which is how the 71 px pagination overflow came to be discovered, and
+      // also why 27 of the 45 committed screenshots changed on every run with
+      // no code behind the difference. Issue #20 asks for this in as many
+      // words: "The suite runs against the test database, not the demo
+      // database."
+      command: "npm run dev:test -w server",
       url: "http://localhost:3000/api/health",
-      reuseExistingServer: !process.env["CI"],
+      // Deliberately not reused. A server already listening on this port is
+      // almost certainly `npm run dev`, which is bound to the development
+      // database — reusing it would run the whole suite against the wrong data
+      // and report success. A port clash is a worse-looking failure and a much
+      // better one.
+      reuseExistingServer: false,
       timeout: 120_000,
     },
     {

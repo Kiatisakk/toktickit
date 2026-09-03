@@ -20,8 +20,9 @@
     "db:seed": "npm run db:seed --workspace server",
     "db:seed:demo": "npm run db:seed:demo --workspace server",
     "db:test:setup": "npm run db:test:setup --workspace server",
-    "test:e2e": "playwright test",
-    "test:e2e:desktop": "playwright test --project=desktop",
+    "e2e:prepare": "npm run db:test:setup",
+    "test:e2e": "npm run e2e:prepare && playwright test",
+    "test:e2e:desktop": "npm run e2e:prepare && playwright test --project=desktop",
     "test:e2e:report": "playwright show-report playwright-report"
   },
   "devDependencies": {

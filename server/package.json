@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "node --import tsx --watch src/server.ts",
+    "dev:test": "dotenv -e .env.test -- node --import tsx src/server.ts",
     "build": "tsc -b",
     "start": "node dist/server.js",
     "test": "vitest run",
