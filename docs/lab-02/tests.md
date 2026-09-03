@@ -135,6 +135,10 @@ in the development database and is never touched by a test run.
 | API-22 | BR-34 | Repeated or nested query parameters are rejected | `?status=NEW&status=OPEN` and `?categoryId[gt]=1` are named as errors rather than read as absent and silently dropped | `server/tests/lab-02/ticket-query.test.ts` | **Pass** |
 | API-23 | BR-33 | Page size is matched as text | `10.0`, `1e1`, `+10`, `0x0A` are refused; only the three spellings the contract names are accepted | `server/tests/lab-02/ticket-query.test.ts` | **Pass** |
 | API-24 | AC-16 | The IT priority filter narrows the list | A fixture triaged directly in the database is the only row returned; the untriaged rows are excluded | `server/tests/lab-02/my-tickets.api.test.ts` | **Pass** |
+| UI-28 | AC-19, FR-17 | Create Ticket queues a valid file | Chosen files sit after Description and before the actions; a valid file is queued (filename, type, size, Remove) rather than sent immediately; no `/attachments` request fires before submit | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
+| UI-29 | AC-19, BR-21 | Create Ticket rejects an invalid file client-side | A file whose extension does not match its declared type is named with the reason inline, is never queued or counted, and can be dismissed | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
+| UI-30 | AC-19, BR-21–23 | The 5-file / 5 MB / type boundaries on Create Ticket | Exactly 5 MB accepted, one byte over refused; the picker disables at five queued files; `accept` limited to the four permitted types | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
+| UI-31 | FR-17, D-17 | A partial attachment failure after ticket creation | The ticket still shows as created; the failed filename and the server's reason appear in an alert; View Ticket stays enabled; a fully successful set of uploads shows no alert at all | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
 
 ### Responsive and visual
 
@@ -155,6 +159,7 @@ in the development database and is never touched by a test run.
 | E2E-04 | AC-13, AC-15 | The states Part 6 and 7 ask for | The empty state from a requester with no tickets and the no-results state from a search that matches nothing, captured as distinct screens | `e2e/lab-02/requester-ticket-flow.spec.ts` | **Pass** |
 | E2E-05 | AC-11 | A failed submission keeps what was typed | The create request is failed at the browser; the alert appears and Summary and Description still hold their text | `e2e/lab-02/requester-ticket-flow.spec.ts` | **Pass** |
 | E2E-06 | AC-25 | The table scrolls, not the page | `.tkt-table-scroll` carries `overflow-x: auto` and `tabindex=0`, so the far columns are reachable without a pointer | `e2e/lab-02/visual.spec.ts` | **Pass** |
+| E2E-07 | AC-19, FR-17 | Create Ticket's invalid-attachment state, in a real browser | An oversized file chosen on Create Ticket shows its inline rejection reason; captured at all three viewports as `create-ticket/{viewport}-invalid-attachment.png`, the file `ui-spec.md` §10 names | `e2e/lab-02/requester-ticket-flow.spec.ts` | Planned |
 
 ---
 
@@ -180,7 +185,7 @@ in the development database and is never touched by a test run.
 | AC-16 | UNIT-05, API-11 |
 | AC-17 | UI-11 |
 | AC-18 | API-12, API-20, UI-12, E2E-03 |
-| AC-19 | UNIT-07, API-13, API-14, E2E-01 |
+| AC-19 | UNIT-07, API-13, API-14, E2E-01, UI-28, UI-29, UI-30, UI-31, E2E-07 |
 | AC-20 | API-15, E2E-01 |
 | AC-21 | API-16, UI-13, E2E-01 |
 | AC-22 | API-17, UI-14, E2E-01 |
@@ -305,7 +310,7 @@ per viewport so a rerun overwrites rather than accumulates.
 
 ```
 create-ticket/{desktop,tablet,mobile}.png
-create-ticket/{desktop,tablet,mobile}-{initial,validation-failure,success,api-failure}.png
+create-ticket/{desktop,tablet,mobile}-{initial,validation-failure,invalid-attachment,success,api-failure}.png
 my-tickets/{desktop,tablet,mobile}.png
 my-tickets/{desktop,tablet,mobile}-{search,requester-a,requester-b,empty,no-results}.png
 ticket-detail/{desktop,tablet,mobile}.png

@@ -292,6 +292,34 @@ rather than withhold undecided ones, which is D-04's reasoning applied to a scre
 Read-only controls take `--tkt-readonly` and muted text, so a value the form supplies is
 never mistaken for one the requester is expected to type.
 
+**Attachments** (Issue #40, FR-17). A picker sits inside the same card as the rest of the
+form, after Description and before Cancel/Create Ticket, rather than opening a card of its
+own as Ticket Detail's does — §5.2 reads Create Ticket as one flowing screen, and a card
+nested in a card doubles the border and padding on every edge. It reaches only two of §6's
+five row states, because the other three all describe a row with a server-side identity and
+nothing here has one until the ticket does:
+
+| State | Reachable here? | Why |
+| --- | --- | --- |
+| Uploading | Yes, during submit | Each queued file is sent once the ticket has an id |
+| Invalid | Yes, before submit | Client-side validation, mirroring `server/src/attachments/rules.ts` |
+| Active | No | No attachment has a server id until after the ticket is created |
+| Removed | No | Nothing to remove before anything exists |
+| Unavailable | No | Nothing has been downloaded yet |
+
+A chosen file that passes validation is held on screen as a *queued* row — filename, type,
+size, and a Remove control — rather than uploaded immediately: `POST /api/tickets` stays
+JSON-only (`api-spec.md` §3), so there is no ticket id for
+`POST /api/tickets/:id/attachments` to target until the ticket itself has been created. One
+that fails validation becomes an Invalid row immediately, naming the file and the reason,
+and is never sent. Submitting the form creates the ticket first, then uploads each queued
+file in turn through the same endpoint and the same `uploadAttachment` call Ticket Detail
+uses.
+
+If the ticket is created but one or more attachments then fail to upload, the success screen
+names which files did not attach and why, and still offers View Ticket as the way to retry
+them there — see D-17 in `specification.md` for the reasoning.
+
 ### 5.3 My Tickets
 
 Page title and subtitle, then a filter bar — search box, Category, Requested Priority, IT
