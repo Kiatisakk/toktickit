@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { Icon, type IconName } from "./Icon";
+
 export type StateKind = "loading" | "empty" | "no-results" | "error";
 
 interface StateBlockProps {
@@ -10,11 +12,16 @@ interface StateBlockProps {
   action?: ReactNode;
 }
 
-const ICONS: Record<StateKind, string> = {
-  loading: "⏳",
-  empty: "📭",
-  "no-results": "🔍",
-  error: "⚠️",
+/**
+ * ui-spec.md §3 requires Bootstrap Icons here, with no exemption for this
+ * component — a hardcoded emoji was never one of the allowed icons, and every
+ * platform renders emoji differently, which the illustrations do not.
+ */
+const ICONS: Record<StateKind, IconName> = {
+  loading: "loading",
+  empty: "empty",
+  "no-results": "search",
+  error: "warning",
 };
 
 /**
@@ -40,9 +47,7 @@ export const StateBlock = ({
     data-state={kind}
     role={kind === "error" ? "alert" : "status"}
   >
-    <span aria-hidden="true" className="tkt-state__icon">
-      {ICONS[kind]}
-    </span>
+    <Icon className="tkt-state__icon" name={ICONS[kind]} />
 
     <p className="tkt-state__title">{title}</p>
 
