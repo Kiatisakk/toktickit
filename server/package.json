@@ -16,7 +16,7 @@
     "db:seed:demo": "tsx prisma/seed-demo.ts",
     "db:generate": "prisma generate",
     "postinstall": "prisma generate",
-    "db:test:setup": "dotenv -e .env.test -- prisma migrate deploy && dotenv -e .env.test -- prisma db seed"
+    "db:test:setup": "dotenv -e .env.test -- tsx prisma/wipe-journey.ts && dotenv -e .env.test -- prisma migrate deploy && dotenv -e .env.test -- prisma db seed"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
