@@ -675,3 +675,392 @@ describe("switching Requester mid-draft", () => {
     expect(summary).toHaveValue("Typed once, nothing switched");
   });
 });
+
+/**
+ * UI-28 to UI-31 — the Create Ticket attachment picker (Issue #40, FR-17).
+ *
+ * `POST /api/tickets` stays JSON-only (`api-spec.md` §3): these tests assert
+ * that a chosen file is held on screen rather than sent immediately, and is
+ * only uploaded — through the same `POST /api/tickets/:id/attachments`
+ * endpoint AttachmentSection uses — once the ticket itself exists. Whether the
+ * server enforces the same type/size/count rules is UNIT-07 and API-14's job;
+ * these assert what the screen does before and around that call.
+ */
+describe("the attachment picker", () => {
+  const CREATED = {
+    id: 42,
+    ticketNumber: "TKT-2026-000042",
+    summary: "Laptop battery drains quickly",
+    currentStatus: "NEW",
+    createdAt: "2026-08-29T09:14:22.481Z",
+  };
+
+  const attachmentMeta = (id: number, filename: string) => ({
+    id,
+    originalFilename: filename,
+    mimeType: "application/pdf",
+    sizeBytes: 1024,
+    uploadedAt: "2026-08-29T09:14:22.481Z",
+    uploadedBy: { id: 1, name: "Jennifer Anderson" },
+    status: "ACTIVE",
+    removedAt: null,
+    removedReason: null,
+    removedBy: null,
+  });
+
+  /**
+   * Distinguishes the three POST destinations a submit can reach: ticket
+   * creation, and one call per queued attachment. `onUpload` receives the
+   * 1-based call number so a test can fail the second file without failing
+   * the first.
+   */
+  const withSubmitFlow = (options: {
+    onUpload?: (call: number) => Response;
+  }) => {
+    let uploadCall = 0;
+
+    return vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST" && url.includes("/attachments")) {
+        uploadCall += 1;
+
+        if (options.onUpload) {
+          return Promise.resolve(options.onUpload(uploadCall));
+        }
+
+        return Promise.resolve(
+          jsonResponse(
+            attachmentMeta(uploadCall, `file-${uploadCall}.pdf`),
+            201
+          )
+        );
+      }
+
+      if (init?.method === "POST") {
+        return Promise.resolve(jsonResponse(CREATED, 201));
+      }
+
+      if (url.includes("/api/categories")) {
+        return Promise.resolve(jsonResponse(CATEGORIES));
+      }
+
+      return Promise.resolve(jsonResponse(SYSTEMS));
+    });
+  };
+
+  const pdf = (name: string, bytes = 1024) =>
+    new File([new Uint8Array(bytes)], name, { type: "application/pdf" });
+
+  beforeEach(() => {
+    vi.stubGlobal("fetch", referenceFetch());
+  });
+
+  it("sits after Description and before the form actions", async () => {
+    const { container } = renderScreen();
+
+    await screen.findByRole("option", { name: "Hardware" });
+
+    const card = container.querySelector("form.tkt-card");
+    const children = [...(card?.children ?? [])];
+    const gridIndex = children.findIndex((el) =>
+      el.classList.contains("tkt-grid")
+    );
+    const attachmentsIndex = children.findIndex(
+      (el) => el.querySelector("#tkt-create-attachment-file") !== null
+    );
+    const actionsIndex = children.findIndex(
+      (el) =>
+        el.classList.contains("tkt-actions") &&
+        el.querySelector('button[type="submit"]') !== null
+    );
+
+    expect(gridIndex).toBeGreaterThanOrEqual(0);
+    expect(attachmentsIndex).toBeGreaterThan(gridIndex);
+    expect(actionsIndex).toBeGreaterThan(attachmentsIndex);
+  });
+
+  // UI-28: a chosen valid file is queued rather than sent.
+  it("queues a valid file instead of uploading it immediately", async () => {
+    renderScreen();
+    await screen.findByRole("option", { name: "Hardware" });
+
+    await userEvent.upload(
+      screen.getByLabelText(/Add Attachment/u),
+      pdf("evidence.pdf")
+    );
+
+    expect(await screen.findByText("evidence.pdf")).toBeInTheDocument();
+    expect(screen.getByText(/1 of 5 selected/u)).toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalledWith(
+      expect.stringContaining("/attachments"),
+      expect.anything()
+    );
+  });
+
+  it("lets a queued file be removed before submitting", async () => {
+    renderScreen();
+    await screen.findByRole("option", { name: "Hardware" });
+
+    await userEvent.upload(
+      screen.getByLabelText(/Add Attachment/u),
+      pdf("evidence.pdf")
+    );
+    await screen.findByText("evidence.pdf");
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+
+    expect(screen.queryByText("evidence.pdf")).toBeNull();
+  });
+
+  // UI-29: a file that fails client-side validation is named, explained, and
+  // never sent — the extension does not match the (permitted) declared type,
+  // which is the one rejection reachable through the control: `accept`
+  // filters the MIME type itself before the browser ever offers this one.
+  it("rejects a file whose name does not match its type, and never sends it", async () => {
+    renderScreen();
+    await screen.findByRole("option", { name: "Hardware" });
+
+    const mismatched = new File(["not really a pdf"], "notes.txt", {
+      type: "application/pdf",
+    });
+
+    await userEvent.upload(
+      screen.getByLabelText(/Add Attachment/u),
+      mismatched
+    );
+
+    expect(await screen.findByText("notes.txt")).toBeInTheDocument();
+    expect(screen.getByText(/does not match its type/u)).toBeInTheDocument();
+    // Never queued, so it plays no part in the 5-file count.
+    expect(screen.getByText(/0 of 5 selected/u)).toBeInTheDocument();
+
+    // And it stays unsent even when the form itself goes through: the
+    // submit loop only sends `queued` rows, and this one never became one.
+    const spy = vi.fn(withSubmitFlow({}));
+    vi.stubGlobal("fetch", spy);
+    await fillValid();
+    await submit();
+
+    await screen.findAllByText(/TKT-2026-000042/u);
+    expect(spy).not.toHaveBeenCalledWith(
+      expect.stringContaining("/attachments"),
+      expect.anything()
+    );
+  });
+
+  it("can dismiss a rejected file, clearing it from the list", async () => {
+    renderScreen();
+    await screen.findByRole("option", { name: "Hardware" });
+
+    await userEvent.upload(
+      screen.getByLabelText(/Add Attachment/u),
+      new File(["x"], "notes.txt", { type: "application/pdf" })
+    );
+    await screen.findByText("notes.txt");
+
+    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+
+    expect(screen.queryByText("notes.txt")).toBeNull();
+  });
+
+  // UI-30: the 5-file, 5 MB and type boundaries, mirrored from
+  // `server/src/attachments/rules.ts` exactly rather than approximated.
+  describe("the boundaries", () => {
+    it("accepts a file at exactly the 5 MB limit", async () => {
+      renderScreen();
+      await screen.findByRole("option", { name: "Hardware" });
+
+      await userEvent.upload(
+        screen.getByLabelText(/Add Attachment/u),
+        pdf("exactly-five-mb.pdf", 5 * 1024 * 1024)
+      );
+
+      expect(
+        await screen.findByText("exactly-five-mb.pdf")
+      ).toBeInTheDocument();
+      expect(screen.getByText(/1 of 5 selected/u)).toBeInTheDocument();
+    });
+
+    it("rejects a file one byte over the 5 MB limit", async () => {
+      renderScreen();
+      await screen.findByRole("option", { name: "Hardware" });
+
+      await userEvent.upload(
+        screen.getByLabelText(/Add Attachment/u),
+        pdf("just-over.pdf", 5 * 1024 * 1024 + 1)
+      );
+
+      expect(await screen.findByText("just-over.pdf")).toBeInTheDocument();
+      expect(screen.getByText(/larger than 5 MB/u)).toBeInTheDocument();
+    });
+
+    it("disables the control once five files are queued", async () => {
+      renderScreen();
+      await screen.findByRole("option", { name: "Hardware" });
+
+      // Sequential on purpose: each pick must land before the next is
+      // chosen, or the count read between them is stale.
+      for (const index of [0, 1, 2, 3, 4]) {
+        await userEvent.upload(
+          screen.getByLabelText(/Add Attachment/u),
+          pdf(`file-${index}.pdf`)
+        );
+      }
+
+      // Full, so the hint switches to the same "remove one first" wording
+      // AttachmentSection uses rather than continuing to count up to it.
+      expect(
+        await screen.findByText(/Remove one before adding another\./u)
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText(/Add Attachment/u)).toBeDisabled();
+    });
+
+    it("limits the picker to the permitted types via accept", () => {
+      renderScreen();
+
+      expect(screen.getByLabelText(/Add Attachment/u)).toHaveAttribute(
+        "accept",
+        "image/jpeg,image/png,image/webp,application/pdf"
+      );
+    });
+  });
+
+  // UI-31 / D-17: the ticket is real even when an attachment failed to join
+  // it, so the success screen says so and points at the ticket rather than
+  // hiding the failure or pretending the whole submission failed.
+  describe("a partial attachment failure (D-17)", () => {
+    it("still shows the ticket as created", async () => {
+      vi.stubGlobal(
+        "fetch",
+        withSubmitFlow({
+          onUpload: () =>
+            jsonResponse(
+              {
+                error: {
+                  code: "FILE_TOO_LARGE",
+                  message:
+                    "That file is larger than 5 MB. Attach a smaller file.",
+                },
+              },
+              413
+            ),
+        })
+      );
+
+      renderScreen();
+      await fillValid();
+      await userEvent.upload(
+        screen.getByLabelText(/Add Attachment/u),
+        pdf("evidence.pdf")
+      );
+      await submit();
+
+      expect(await screen.findAllByText(/TKT-2026-000042/u)).not.toHaveLength(
+        0
+      );
+    });
+
+    it("names the file that failed to attach and why", async () => {
+      vi.stubGlobal(
+        "fetch",
+        withSubmitFlow({
+          onUpload: () =>
+            jsonResponse(
+              {
+                error: {
+                  code: "FILE_TOO_LARGE",
+                  message:
+                    "That file is larger than 5 MB. Attach a smaller file.",
+                },
+              },
+              413
+            ),
+        })
+      );
+
+      renderScreen();
+      await fillValid();
+      await userEvent.upload(
+        screen.getByLabelText(/Add Attachment/u),
+        pdf("evidence.pdf")
+      );
+      await submit();
+
+      const alert = await screen.findByRole("alert");
+
+      expect(alert).toHaveTextContent("evidence.pdf");
+      expect(alert).toHaveTextContent(/larger than 5 MB/u);
+    });
+
+    it("still offers View Ticket, so the failure can be retried there", async () => {
+      vi.stubGlobal(
+        "fetch",
+        withSubmitFlow({
+          onUpload: () =>
+            jsonResponse(
+              { error: { code: "FILE_TOO_LARGE", message: "Too large." } },
+              413
+            ),
+        })
+      );
+
+      renderScreen();
+      await fillValid();
+      await userEvent.upload(
+        screen.getByLabelText(/Add Attachment/u),
+        pdf("evidence.pdf")
+      );
+      await submit();
+
+      expect(
+        await screen.findByRole("button", { name: "View Ticket" })
+      ).toBeEnabled();
+    });
+
+    it("reports each file that failed when more than one did", async () => {
+      vi.stubGlobal(
+        "fetch",
+        withSubmitFlow({
+          onUpload: (call) =>
+            call === 1
+              ? jsonResponse(attachmentMeta(1, "first.pdf"), 201)
+              : jsonResponse(
+                  { error: { code: "FILE_TOO_LARGE", message: "Too large." } },
+                  413
+                ),
+        })
+      );
+
+      renderScreen();
+      await fillValid();
+      await userEvent.upload(
+        screen.getByLabelText(/Add Attachment/u),
+        pdf("first.pdf")
+      );
+      await userEvent.upload(
+        screen.getByLabelText(/Add Attachment/u),
+        pdf("second.pdf")
+      );
+      await submit();
+
+      const alert = await screen.findByRole("alert");
+
+      expect(alert).toHaveTextContent("second.pdf");
+      expect(alert).not.toHaveTextContent("first.pdf");
+    });
+
+    it("says nothing failed when every attachment uploads cleanly", async () => {
+      vi.stubGlobal("fetch", withSubmitFlow({}));
+
+      renderScreen();
+      await fillValid();
+      await userEvent.upload(
+        screen.getByLabelText(/Add Attachment/u),
+        pdf("evidence.pdf")
+      );
+      await submit();
+
+      await screen.findAllByText(/TKT-2026-000042/u);
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+  });
+});

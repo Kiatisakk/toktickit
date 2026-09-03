@@ -50,6 +50,23 @@ test.describe("the complete Requester journey", () => {
       `${info.project.name}-validation-failure`
     );
 
+    // Issue #40 / D-17: an oversized file is rejected client-side, on the
+    // row, before anything is sent — the state `ui-spec.md` §10 commits to a
+    // screenshot for and that nothing on the screen could produce until this
+    // picker existed.
+    await page.getByLabel(/Add Attachment/u).setInputFiles({
+      name: "too-big.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.alloc(5 * 1024 * 1024 + 1),
+    });
+    await expect(page.getByText(/larger than 5 MB/u)).toBeVisible();
+    await shoot(
+      page,
+      "create-ticket",
+      `${info.project.name}-invalid-attachment`
+    );
+    await page.getByRole("button", { name: "Dismiss" }).click();
+
     // Reference data comes from the database, not from a constant.
     await page.getByLabel("Category").selectOption({ index: 1 });
     await page.getByLabel("Related System").selectOption({ index: 1 });
