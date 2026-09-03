@@ -58,17 +58,27 @@ configuration values (BR-20).
 | `200` | Retrieval, download, soft removal |
 | `201` | Ticket or attachment created |
 | `400` | Invalid field, invalid query parameter, invalid or missing requester context |
-| `404` | Resource absent — or owned by a different requester (BR-12, D-07) |
+| `404` | Resource absent, owned by a different requester (BR-12, D-07), or no route matches the path |
 | `409` | Active-attachment limit reached |
-| `413` | File larger than 5 MB |
+| `413` | Attachment file larger than 5 MB, or a JSON request body larger than 100 KB |
 | `415` | File type not permitted |
 | `500` | Unexpected failure, reported safely |
 
 ### Codes used across endpoints
 
 `REQUESTER_CONTEXT_*` · `VALIDATION_FAILED` · `INVALID_QUERY_PARAMETER` ·
-`TICKET_NOT_FOUND` · `ATTACHMENT_NOT_FOUND` · `ATTACHMENT_LIMIT_REACHED` ·
-`ATTACHMENT_REMOVED` · `FILE_TOO_LARGE` · `UNSUPPORTED_FILE_TYPE` · `INTERNAL_ERROR`
+`REQUEST_TOO_LARGE` · `ROUTE_NOT_FOUND` · `TICKET_NOT_FOUND` · `ATTACHMENT_NOT_FOUND` ·
+`ATTACHMENT_LIMIT_REACHED` · `ATTACHMENT_REMOVED` · `FILE_TOO_LARGE` ·
+`UNSUPPORTED_FILE_TYPE` · `INTERNAL_ERROR`
+
+Every JSON request body is limited to 100 KB (`REQUEST_TOO_LARGE`, `413`) — a stated
+boundary well above the largest documented body (§4), not `express.json()`'s default landed
+on by accident. This is separate from `FILE_TOO_LARGE`, which is the 5 MB per-attachment
+limit on the multipart upload in §5.
+
+A path under `/api` that matches no route answers `404` with `ROUTE_NOT_FOUND`, so a typo'd
+path or a wrong method (e.g. `PUT /api/tickets/1`, which no route defines) is distinguishable
+from `TICKET_NOT_FOUND`, which means a route matched and the resource itself was the problem.
 
 ---
 
@@ -204,6 +214,12 @@ Returns only tickets owned by the context (FR-10).
 | `page` | integer ≥ 1 | `1` |
 | `pageSize` | `10` `20` `50` | `10` |
 
+A blank value (`?page=`) is not the same as an omitted one. `search`, `categoryId`,
+`requestedPriority`, `itPriority`, and `status` treat `""` as "not supplied" — it is what a
+cleared search box or an "All" dropdown sends, and is the one exception BR-34 makes. `sort`,
+`order`, `page`, and `pageSize` have no such control behind them, so a blank value there is
+rejected like any other invalid one rather than silently answered with the default.
+
 Every sort is applied with the ticket `id` descending as a secondary key. Without it,
 tickets sharing a `createdAt` — which the seed guarantees — could appear on two pages or
 on none (BR-32).
@@ -235,7 +251,7 @@ on none (BR-32).
 
 | Status | Code | When |
 | --- | --- | --- |
-| `400` | `INVALID_QUERY_PARAMETER` | Unknown parameter, unknown enum value, `pageSize` outside the permitted set, `page` below 1, or `sort`/`order` not in the allowed list |
+| `400` | `INVALID_QUERY_PARAMETER` | Unknown parameter, unknown enum value, `pageSize` outside the permitted set, `page` below 1, `sort`/`order` not in the allowed list, or `sort`/`order`/`page`/`pageSize` supplied blank |
 
 `details` names the offending parameter and why. Parameters never fall back silently
 (BR-34):
@@ -307,14 +323,18 @@ returning the metadata shape.
 Order of operations, which is what makes BR-30 hold:
 
 1. Validate the context and the ticket's ownership.
-2. Count active attachments; reject at five.
-3. Validate declared type, extension, and size **in memory**, before anything is written.
+2. Validate declared type, extension, and size **in memory**, before anything is written.
+3. Lock the ticket row and count active attachments; reject at five.
 4. Write to `server/uploads/` under a generated name.
 5. Insert the metadata row.
 6. If step 5 fails, delete the file written in step 4.
 
-Validating before writing means a rejected upload never creates a file to clean up. The
-compensation in step 6 exists for the one window that remains.
+Validating before writing means a rejected upload never creates a file to clean up. Step 3
+takes a row lock (`SELECT … FOR UPDATE` on the ticket) so two uploads racing each other
+cannot both see four active attachments and both be let through; the file check happens
+first specifically so that lock is held for as short a time as possible, rather than for
+however long it takes to read and inspect the upload. The compensation in step 6 exists for
+the one window that remains.
 
 | Status | Code | When |
 | --- | --- | --- |

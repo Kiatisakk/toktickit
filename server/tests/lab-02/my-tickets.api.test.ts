@@ -257,6 +257,20 @@ describe("filters", () => {
     expect(response.body.data).toEqual([]);
   });
 
+  // The RESOLVED case above proves a filter that matches nothing returns
+  // nothing — it does not prove the filter itself works, since a status
+  // parameter that was silently ignored would look identical. Every seeded
+  // ticket is NEW (§4.2 excludes every status change in Lab 2), so this is
+  // the one value that can prove a matching filter returns matches.
+  it("returns the seeded rows for the status every ticket actually has", async () => {
+    const response = await listing("?status=NEW&pageSize=50");
+    const mine = response.body.data.filter((t: { summary: string }) =>
+      t.summary.startsWith(PREFIX)
+    );
+
+    expect(mine).toHaveLength(OWNER_A_COUNT);
+  });
+
   it("combines filters rather than replacing them", async () => {
     const response = await listing(
       `?categoryId=${categoryId}&requestedPriority=HIGH&pageSize=50`

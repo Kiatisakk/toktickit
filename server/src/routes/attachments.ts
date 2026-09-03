@@ -242,11 +242,12 @@ attachmentsRouter.get(
 /**
  * Adds one file to an owned ticket.
  *
- * The order is the contract, and it is what makes BR-30 hold: ownership, then
- * the active count, then the file's own rules, then the write, then the row —
- * and if the row fails, the file is removed. Everything that can be decided
- * without touching the disk is decided before the disk is touched, so the
- * compensating delete covers one narrow window rather than every rejection.
+ * The order is the contract (api-spec.md §5), and it is what makes BR-30
+ * hold: ownership, then the file's own rules, then the active count, then the
+ * write, then the row — and if the row fails, the file is removed. The count
+ * is taken under a row lock so two uploads racing each other cannot both see
+ * four; that lock is held for as short a time as possible, which is why it is
+ * acquired after the file has already been checked rather than before.
  */
 attachmentsRouter.post(
   "/tickets/:id/attachments",

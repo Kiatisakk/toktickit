@@ -107,6 +107,10 @@ describe("filters", () => {
     expect(valueOf({ itPriority: "HIGH" }).itPriority).toBe("HIGH");
   });
 
+  it.each(["URGENT", "low", "1"])("rejects itPriority %j", (itPriority) => {
+    expect(detailsOf({ itPriority })).toHaveProperty("itPriority");
+  });
+
   it.each(["NEW", "OPEN", "IN_PROGRESS", "PENDING", "RESOLVED", "CLOSED"])(
     "accepts status %s",
     (value) => {
@@ -187,6 +191,32 @@ describe("parameters the contract does not define", () => {
 
   it("explains why, not just that", () => {
     expect(detailsOf({ pageSize: "15" })["pageSize"]).toMatch(/10, 20, 50/u);
+  });
+});
+
+/**
+ * A blank value is not the same as an omitted one: `?page=` was typed (or
+ * built), while leaving `page` out of the query string entirely is what the
+ * default exists for. Only the filter dropdowns get to say `""` and mean "not
+ * filtering" — page, pageSize, sort and order have no such control behind
+ * them, so a blank value there is a mistake the way any other invalid value
+ * is, not a request for the default.
+ */
+describe("blank where a filter dropdown would mean 'not filtering'", () => {
+  it.each(["page", "pageSize", "sort", "order"])(
+    "rejects a blank %s rather than falling back to its default",
+    (field) => {
+      expect(detailsOf({ [field]: "" })).toHaveProperty(field);
+    }
+  );
+
+  it("still applies every default when the parameters are omitted, not blank", () => {
+    expect(valueOf({})).toMatchObject({
+      sort: "createdAt",
+      order: "desc",
+      page: 1,
+      pageSize: 10,
+    });
   });
 });
 

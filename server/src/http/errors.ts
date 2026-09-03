@@ -18,6 +18,8 @@ export const ErrorCode = {
   requesterContextInactive: "REQUESTER_CONTEXT_INACTIVE",
   validationFailed: "VALIDATION_FAILED",
   invalidQueryParameter: "INVALID_QUERY_PARAMETER",
+  requestTooLarge: "REQUEST_TOO_LARGE",
+  routeNotFound: "ROUTE_NOT_FOUND",
   ticketNotFound: "TICKET_NOT_FOUND",
   attachmentNotFound: "ATTACHMENT_NOT_FOUND",
   attachmentRemoved: "ATTACHMENT_REMOVED",
