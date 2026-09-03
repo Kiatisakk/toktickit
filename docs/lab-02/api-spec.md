@@ -204,6 +204,12 @@ Returns only tickets owned by the context (FR-10).
 | `page` | integer ≥ 1 | `1` |
 | `pageSize` | `10` `20` `50` | `10` |
 
+A blank value (`?page=`) is not the same as an omitted one. `search`, `categoryId`,
+`requestedPriority`, `itPriority`, and `status` treat `""` as "not supplied" — it is what a
+cleared search box or an "All" dropdown sends, and is the one exception BR-34 makes. `sort`,
+`order`, `page`, and `pageSize` have no such control behind them, so a blank value there is
+rejected like any other invalid one rather than silently answered with the default.
+
 Every sort is applied with the ticket `id` descending as a secondary key. Without it,
 tickets sharing a `createdAt` — which the seed guarantees — could appear on two pages or
 on none (BR-32).
@@ -235,7 +241,7 @@ on none (BR-32).
 
 | Status | Code | When |
 | --- | --- | --- |
-| `400` | `INVALID_QUERY_PARAMETER` | Unknown parameter, unknown enum value, `pageSize` outside the permitted set, `page` below 1, or `sort`/`order` not in the allowed list |
+| `400` | `INVALID_QUERY_PARAMETER` | Unknown parameter, unknown enum value, `pageSize` outside the permitted set, `page` below 1, `sort`/`order` not in the allowed list, or `sort`/`order`/`page`/`pageSize` supplied blank |
 
 `details` names the offending parameter and why. Parameters never fall back silently
 (BR-34):
