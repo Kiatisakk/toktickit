@@ -159,7 +159,7 @@ in the development database and is never touched by a test run.
 | E2E-04 | AC-13, AC-15 | The states Part 6 and 7 ask for | The empty state from a requester with no tickets and the no-results state from a search that matches nothing, captured as distinct screens | `e2e/lab-02/requester-ticket-flow.spec.ts` | **Pass** |
 | E2E-05 | AC-11 | A failed submission keeps what was typed | The create request is failed at the browser; the alert appears and Summary and Description still hold their text | `e2e/lab-02/requester-ticket-flow.spec.ts` | **Pass** |
 | E2E-06 | AC-25 | The table scrolls, not the page | `.tkt-table-scroll` carries `overflow-x: auto` and `tabindex=0`, so the far columns are reachable without a pointer | `e2e/lab-02/visual.spec.ts` | **Pass** |
-| E2E-07 | AC-19, FR-17 | Create Ticket's invalid-attachment state, in a real browser | An oversized file chosen on Create Ticket shows its inline rejection reason; captured at all three viewports as `create-ticket/{viewport}-invalid-attachment.png`, the file `ui-spec.md` §10 names | `e2e/lab-02/requester-ticket-flow.spec.ts` | Planned |
+| E2E-07 | AC-19, FR-17 | Create Ticket's invalid-attachment state, in a real browser | An oversized file chosen on Create Ticket shows its inline rejection reason; captured at all three viewports as `create-ticket/{viewport}-invalid-attachment.png`, the file `ui-spec.md` §10 names | `e2e/lab-02/requester-ticket-flow.spec.ts` | **Pass** |
 
 ---
 

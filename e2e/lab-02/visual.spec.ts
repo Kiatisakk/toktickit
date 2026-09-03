@@ -162,6 +162,15 @@ test.describe("nothing clipped, nothing overflowing", () => {
     if (await scroller.isVisible()) {
       expect(await computed(scroller, "overflow-x")).toBe("auto");
       await expect(scroller).toHaveAttribute("tabindex", "0");
+
+      // `overflow-x: auto` is only half the guarantee. It clips descendants
+      // whose containing block sits inside this box, and an absolutely
+      // positioned element's containing block is its nearest *positioned*
+      // ancestor — so while this box was `static`, the `.tkt-visually-hidden`
+      // spans in the last columns escaped it and widened the page instead.
+      // Asserted rather than left to `expectNoHorizontalScroll`, which caught
+      // it only when the data happened to push those cells past the edge.
+      expect(await computed(scroller, "position")).not.toBe("static");
     }
   });
 });
