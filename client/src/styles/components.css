@@ -67,9 +67,11 @@
 }
 
 /* The active page is marked by an underline *and* aria-current, so the state
-   does not depend on colour alone. */
+   does not depend on colour alone. ui-spec.md §4: the underline is
+   --tkt-green-accent, not the header's own inverse text colour — the two read
+   as the same white line against the green header, which said nothing. */
 .tkt-nav-link--active {
-  border-bottom-color: var(--tkt-text-inverse);
+  border-bottom-color: var(--tkt-green-accent);
   font-weight: 600;
 }
 
@@ -302,7 +304,12 @@
   text-align: center;
 }
 
-.tkt-state__icon {
+/* `.tkt-state .tkt-state__icon`, not the bare class: the icon is now
+   `<Icon>`, which always carries `.tkt-icon` too (0.85em, sized for a glyph
+   beside a word). That rule sits later in this file, so at equal specificity
+   it would win the cascade and shrink this icon back down. The extra class
+   here beats it on specificity instead of relying on source order. */
+.tkt-state .tkt-state__icon {
   font-size: 2rem;
   line-height: 1;
 }
@@ -670,16 +677,27 @@
   width: 100%;
 }
 
-/* One line per cell, as the illustration draws it. A summary broken across two
-   lines makes every row a different height and the column impossible to scan.
-   Safe now that `.tkt-table-scroll` wraps the table: the overflow lands in that
-   box rather than on the page, which is what §8.7 forbids. */
 .tkt-table th,
 .tkt-table td {
   border-bottom: 1px solid var(--tkt-border);
   padding: var(--tkt-space-3);
   text-align: left;
   vertical-align: middle;
+}
+
+/* Data stays one line per cell, as the illustration draws it: a value broken
+   across two lines makes every row a different height and the column
+   impossible to scan. Safe now that `.tkt-table-scroll` wraps the table — the
+   overflow lands in that box rather than on the page, which is what §8.7
+   forbids.
+
+   Header labels do NOT get this. ui-spec.md §3 forbids `nowrap` on `th`
+   specifically: eight unbreakable headings ("Requested Priority", "Current
+   Status", …) are wider than their columns' data and would push the table
+   past --tkt-content-max, which is the horizontal scroll §8.7 forbids — the
+   opposite of what this rule exists to prevent. `.tkt-cell-summary` still
+   overrides this for the one column allowed to wrap its data too. */
+.tkt-table td {
   white-space: nowrap;
 }
 
@@ -861,6 +879,23 @@
   padding: 0;
 }
 
+/* The mobile stand-in for the header sort buttons, which `.tkt-table` takes
+   with it below 768px. Hidden here and switched on beside `.tkt-cards` in the
+   mobile breakpoint below, for the same reason: it has no reason to exist
+   wherever the table it replaces is still visible. */
+.tkt-mobile-sort {
+  display: none;
+}
+
+.tkt-mobile-sort__row {
+  display: flex;
+  gap: var(--tkt-space-2);
+}
+
+.tkt-mobile-sort__row select {
+  flex: 1;
+}
+
 .tkt-ticket-card {
   background-color: var(--tkt-surface);
   border: 1px solid var(--tkt-border);
@@ -1019,6 +1054,24 @@
     min-height: var(--tkt-touch-target);
   }
 
+  /* Four controls that are not sized from --tkt-control-height anywhere, so
+     raising the token at the top of this block never reached them: the nav
+     toggle and nav links (~30px/38px tall with no min-height at all), the
+     breadcrumb link (no padding, so an icon-only crumb's hit area was the
+     glyph itself, ~11px), and the ticket-number link in a mobile card
+     (inline text, ~24px). Wired to the token here rather than each one
+     hardcoding 44px, which is exactly the failure this section's opening
+     paragraph describes. min-width matters as much as min-height for the
+     breadcrumb link: the Requester Selection crumb can be icon-only, and a
+     tall-but-narrow target is still not a 44px one. */
+  .tkt-nav-toggle,
+  .tkt-nav-link,
+  .tkt-breadcrumb__item a,
+  .tkt-ticket-card__head a {
+    min-height: var(--tkt-control-height);
+    min-width: var(--tkt-control-height);
+  }
+
   /* Below 768px the table is replaced by cards rather than being scrolled
      sideways, which §8.7 forbids at the page level. */
   .tkt-table {
@@ -1027,6 +1080,16 @@
 
   .tkt-cards {
     display: block;
+  }
+
+  /* The sort control comes back with the table's sort buttons gone: the
+     select and the direction toggle sit above the card list, in the space
+     the hidden table's header row would have occupied. */
+  .tkt-mobile-sort {
+    display: flex;
+    flex-direction: column;
+    gap: var(--tkt-space-2);
+    margin-bottom: var(--tkt-space-3);
   }
 
   /* The cards already carry a surface each, so the list must not be a second
