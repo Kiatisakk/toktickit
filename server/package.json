@@ -14,7 +14,6 @@
     "db:migrate:dev": "prisma migrate dev && prisma generate",
     "db:seed": "prisma db seed",
     "db:seed:demo": "tsx prisma/seed-demo.ts",
-    "db:test:seed:demo": "dotenv -e .env.test -- tsx prisma/seed-demo.ts",
     "db:generate": "prisma generate",
     "postinstall": "prisma generate",
     "db:test:setup": "dotenv -e .env.test -- prisma migrate deploy && dotenv -e .env.test -- prisma db seed"

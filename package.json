@@ -20,8 +20,7 @@
     "db:seed": "npm run db:seed --workspace server",
     "db:seed:demo": "npm run db:seed:demo --workspace server",
     "db:test:setup": "npm run db:test:setup --workspace server",
-    "db:test:seed:demo": "npm run db:test:seed:demo --workspace server",
-    "e2e:prepare": "npm run db:test:setup && npm run db:test:seed:demo",
+    "e2e:prepare": "npm run db:test:setup",
     "test:e2e": "npm run e2e:prepare && playwright test",
     "test:e2e:desktop": "npm run e2e:prepare && playwright test --project=desktop",
     "test:e2e:report": "playwright show-report playwright-report"

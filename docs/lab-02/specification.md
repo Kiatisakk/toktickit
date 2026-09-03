@@ -669,10 +669,21 @@ criteria named and nothing caught until an audit read `playwright.config.ts` aga
 Every journey the suite runs creates a ticket, so Requester 1's demonstration list grew
 from 25 to 73 over repeated runs, and 27 of the committed 45 screenshots changed on a
 rerun with no code behind the difference. `npm run test:e2e` now rebuilds
-`toktickit_test` from nothing before every run (`npm run e2e:prepare`, itself
-`db:test:setup` plus a demo seed scoped to `.env.test`), so the evidence is reproducible
-and the development database is untouched by the suite that was supposed to leave it
-alone in the first place.
+`toktickit_test` from nothing before every run (`npm run e2e:prepare`, which is
+`db:test:setup` — reference data only), so the evidence is reproducible and the
+development database is untouched by the suite that was supposed to leave it alone in
+the first place.
+
+The first version of this fix also ran the demonstration seed into `toktickit_test`, on
+the assumption that the Part 7 screenshots needed a populated list the way the development
+database has one. They do not — no E2E spec asserts anything about ticket volume, and the
+one empty-state case (Pimchanok) only needs a requester with zero tickets, which the
+reference seed already gives it for free. What the demonstration seed *did* do was leave
+sixty-odd tickets and three IT Staff users sitting in `toktickit_test` after the suite
+finished, silently breaking four `vitest` assertions in the server suite that assume the
+Ticket and non-Requester User tables are otherwise empty — caught only because that suite
+was rerun immediately afterward. `toktickit_test` now carries reference data alone, for
+both suites, which is what it always carried before this Issue existed.
 
 ### D-13 "Ticket Date" is a label, not a column
 
