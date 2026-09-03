@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "node --import tsx --watch src/server.ts",
+    "dev:test": "dotenv -e .env.test -- node --import tsx src/server.ts",
     "build": "tsc -b",
     "start": "node dist/server.js",
     "test": "vitest run",
@@ -13,6 +14,7 @@
     "db:migrate:dev": "prisma migrate dev && prisma generate",
     "db:seed": "prisma db seed",
     "db:seed:demo": "tsx prisma/seed-demo.ts",
+    "db:test:seed:demo": "dotenv -e .env.test -- tsx prisma/seed-demo.ts",
     "db:generate": "prisma generate",
     "postinstall": "prisma generate",
     "db:test:setup": "dotenv -e .env.test -- prisma migrate deploy && dotenv -e .env.test -- prisma db seed"

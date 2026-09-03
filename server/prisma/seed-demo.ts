@@ -75,6 +75,14 @@ const SUMMARIES = [
 const DISTRIBUTION = [55, 6, 0, 3];
 
 /**
+ * Every demonstration ticket, counted once.
+ *
+ * The dates below run backwards from this, so the number has to come from the
+ * distribution itself — a second literal here is a second thing to forget.
+ */
+const TOTAL_TICKETS = DISTRIBUTION.reduce((sum, count) => sum + count, 0);
+
+/**
  * IT staff, for Ticket Owner. Named as the labsheet illustrations name them.
  *
  * They live in the demonstration seed rather than the reference seed because
@@ -195,11 +203,22 @@ const seedDemo = async () => {
 
         // Spread over the past few weeks so Created Date and Last Updated read
         // like a real queue rather than a bulk import, and so sorting by date
-        // does something visible. Clamped to the first of January: a run in
-        // early January would otherwise reach back into last year and stamp a
-        // ticket with a number whose year does not match its date.
+        // does something visible.
+        //
+        // The offset counts *down* while the sequence counts up, because the
+        // ticket number and the creation time have to run in the same
+        // direction. D-02 takes the format from the page 11 illustration, where
+        // eight contiguous numbers descend against timestamps that descend with
+        // them: a higher number is a newer ticket. Subtracting the sequence
+        // itself inverted exactly that — the lowest number got yesterday and
+        // the highest got two months ago — so the default createdAt-descending
+        // sort listed the numbers climbing down the page instead of up.
+        //
+        // Clamped to the first of January: a run in early January would
+        // otherwise reach back into last year and stamp a ticket with a number
+        // whose year does not match its date.
         const raisedAt = new Date();
-        raisedAt.setDate(raisedAt.getDate() - sequence);
+        raisedAt.setDate(raisedAt.getDate() - (TOTAL_TICKETS - sequence + 1));
         raisedAt.setHours(9 + (n % 8), (n * 7) % 60, 0, 0);
 
         if (raisedAt.getFullYear() < year) {

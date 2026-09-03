@@ -214,11 +214,19 @@ npm run db:migrate                # migrate, then generate the Prisma client
 npm run db:seed                   # reference data — idempotent
 npm run db:seed:demo              # demonstration tickets (development database only)
 npm run db:test:setup             # migrate + reference seed into toktickit_test
+npm run db:test:seed:demo         # demonstration tickets, into toktickit_test this time
 
 npm test                          # unit, API, UI component, UI style
-npm run test:e2e                  # Playwright: E2E, responsive, visual, screenshots
+npm run test:e2e                  # runs e2e:prepare first, then Playwright
 npm exec -- ultracite check       # lint and format
 ```
+
+`npm run test:e2e` no longer assumes the test database is already in the state the suite
+needs: it runs `npm run e2e:prepare` (`db:test:setup` plus `db:test:seed:demo`) first, every
+time, so a rerun starts from the same rebuilt data rather than from whatever the previous
+run left behind. Before this, the suite's `webServer` pointed at the *development*
+database, which the suite itself then grew on every run — see the note appended to D-11 in
+`specification.md`.
 
 ---
 
