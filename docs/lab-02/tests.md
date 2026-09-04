@@ -145,7 +145,7 @@ in the development database and is never touched by a test run.
 | ID | Requirement / AC | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
 | RESP-01 | AC-25 | Three screens × three viewports | No horizontal page overflow at any combination; the failure names the element that crosses the edge rather than only the fact that one did | `e2e/lab-02/visual.spec.ts`, `e2e/lab-02/requester-ticket-flow.spec.ts` | **Pass** |
-| RESP-02 | AC-25 | List adapts below 768 px | The table is hidden and the card carries Category, Related System, Requested Priority, IT Priority, Created and Last Updated — no column of data lost | `e2e/lab-02/visual.spec.ts` | **Pass** |
+| RESP-02 | AC-25 | The list changes presentation at 768 px | Table shown and cards absent above the breakpoint, cards shown and table absent below it, asserted at all three viewports against a list known to have a row; below it the card carries Category, Related System, Requested Priority, IT Priority, Created and Last Updated — no column of data lost | `e2e/lab-02/visual.spec.ts` | **Pass** |
 | RESP-03 | AC-25 | Nothing clipped at any viewport | No element's text is cut off by its own container, screen-reader-only text excepted — that is clipped on purpose | `e2e/lab-02/visual.spec.ts` | **Pass** |
 | RESP-04 | AC-25 | Zen Green tokens | Computed colours of the header, page background, primary button, list surface and table header match §7, read from the live browser rather than from a class name | `e2e/lab-02/visual.spec.ts` | **Pass** |
 
@@ -264,12 +264,23 @@ Filled in as each Issue merges; completed before the release Pull Request.
 | --- | --- | --- | --- | --- |
 | Server (unit + API) | 14 | 349 | 349 | 2026-09-04 (Issue #21) |
 | Client (component + style) | 16 | 310 | 310 | 2026-09-04 (Issue #21) |
-| End-to-end | 3 | 60 | 58, 2 skipped | 2026-09-04 (Issue #21) |
+| End-to-end | 3 | 60 | 60 | 2026-09-04 (Issue #21) |
 
-The two skipped end-to-end tests are one test skipping itself outside its own band:
-`visual.spec.ts` asserts the table becomes cards below 768 px, which only the mobile
-project can answer, so the desktop and tablet projects skip it rather than assert
-something they cannot see. 60 is 20 tests run against all three viewport projects.
+Nothing is skipped. 60 is 20 tests against all three viewport projects.
+
+There were two skips until this Issue, both from one test that asserted only that the
+table is hidden below 768 px and stood itself down everywhere else. That left the other
+half of the rule unwatched: no test anywhere asserted the table is *shown* at 768 px and
+above, so a media query that hid it at every width would have failed nothing. The two
+tests that do touch the table on a wide screen both guard themselves with
+`if (await …isVisible())`, which passes silently when the element is absent, so they
+would not have caught it either.
+
+RESP-02 now asserts both directions at every viewport — table visible and cards absent
+above the breakpoint, the reverse below it. It also requires a row to be on screen
+first: with an empty list neither presentation exists, and both assertions would pass
+without testing anything. That was not hypothetical — the rewrite went green 24 times
+against a database of zero tickets before the precondition was added.
 
 Counted by running the suites for this row rather than carried forward: `npm test`
 after `npm run db:test:setup`, and `npm run test:e2e`. The figures this table held
@@ -314,7 +325,7 @@ scrolls sideways only once the data grows.
 | Page sits on the page background | computed `background-color` of `body` equals `rgb(245, 247, 246)` | **Pass** |
 | Primary button uses the primary green | computed on the Create Ticket button | **Pass** |
 | The list is a surface | `.tkt-list` is white above 768 px; below it the cards carry the surface and the list gives up its own | **Pass** |
-| Table header is the pale green | computed on `.tkt-table thead th`, skipped below 768 px where there is no table | **Pass** |
+| Table header is the pale green | computed on `.tkt-table thead th`, whose presence is itself asserted per viewport — present above 768 px, absent below it — rather than guarded by an `if` that passes when the element is missing for any reason | **Pass** |
 | Active navigation is not signalled by colour alone | one `[aria-current="page"]` on every screen | **Pass** |
 | Table becomes cards below 768 px | `.tkt-table` hidden and every one of the six card rows present | **Pass** |
 | Attachment filenames readable | covered by the clipping check, which includes `.tkt-attachment__name` | **Pass** |
