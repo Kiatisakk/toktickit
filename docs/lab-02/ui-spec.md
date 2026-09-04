@@ -528,12 +528,13 @@ states and a bare state name would have them overwrite each other.
 create-ticket/{desktop,tablet,mobile}.png
 create-ticket/{desktop,tablet,mobile}-{initial,validation-failure,submitting,success,api-failure,invalid-attachment}.png
 my-tickets/{desktop,tablet,mobile}.png
-my-tickets/{desktop,tablet,mobile}-{empty,no-results,search,requester-a,requester-b}.png
+my-tickets/{desktop,tablet,mobile}-{empty,no-results,search,requester-a,requester-b,filters,sorting,pagination}.png
 ticket-detail/{desktop,tablet,mobile}.png
 ticket-detail/{desktop,tablet,mobile}-{initial,with-attachment,removed-attachment,unauthorized}.png
+requester-selection/{desktop,tablet,mobile}-{loading,initial,failure,selected}.png
 ```
 
-Fifty-four files: 21, 18 and 15. This list is the one a reader checks the evidence against,
+Seventy-five files: 21, 27, 15 and 12. This list is the one a reader checks the evidence against,
 so it is worth saying what it looked like before Issue #21 audited it, and what the audit
 got wrong on its first pass.
 
@@ -550,3 +551,10 @@ the document's to withdraw. And it is not a race: the test holds the *response* 
 the request, so the real `POST` is issued, the ticket really is created, and the screen sits
 on its busy button until the answer is handed back. Nothing in the application was changed
 to make the picture possible, which is the only thing that would have made it worthless.
+
+The last twenty-one came from the same audit noticing what the journey never walks
+past: the Selection screen has no place in a flow that starts beyond it, and a list of
+three tickets never grows a second page. `evidence.spec.ts` photographs those states
+deliberately — the four Selection states under `requester-selection/`, and `filters`,
+`sorting` and `pagination` beside the rest of My Tickets — with twelve tickets created
+through the API so the page control genuinely exists.

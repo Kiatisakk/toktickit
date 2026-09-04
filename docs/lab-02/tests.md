@@ -160,6 +160,8 @@ in the development database and is never touched by a test run.
 | E2E-05 | AC-11 | A failed submission keeps what was typed | The create request is failed at the browser; the alert appears and Summary and Description still hold their text | `e2e/lab-02/requester-ticket-flow.spec.ts` | **Pass** |
 | E2E-06 | AC-25 | The table scrolls, not the page | `.tkt-table-scroll` carries `overflow-x: auto` and `tabindex=0`, so the far columns are reachable without a pointer | `e2e/lab-02/visual.spec.ts` | **Pass** |
 | E2E-07 | AC-19, FR-17 | Create Ticket's invalid-attachment state, in a real browser | An oversized file chosen on Create Ticket shows its inline rejection reason; captured at all three viewports as `create-ticket/{viewport}-invalid-attachment.png`, the file `ui-spec.md` §10 names | `e2e/lab-02/requester-ticket-flow.spec.ts` | **Pass** |
+| E2E-08 | AC-01, AC-02, AC-03 | The Requester Selection screen's four states | Loading held at the browser, the active-requester dropdown, the failure state with its Try again, and the selected requester shown in the shell beside Change Requester; captured at all three viewports as `requester-selection/{viewport}-{loading,initial,failure,selected}.png` | `e2e/lab-02/evidence.spec.ts` | **Pass** |
+| E2E-09 | AC-15 | My Tickets controls doing something | Twelve tickets created through the API so a second page exists; pagination, a reordered sort, and a narrowed filter captured at all three viewports as `my-tickets/{viewport}-{pagination,sorting,filters}.png` | `e2e/lab-02/evidence.spec.ts` | **Pass** |
 
 ---
 
@@ -167,9 +169,9 @@ in the development database and is never touched by a test run.
 
 | AC | Covered by |
 | --- | --- |
-| AC-01 | API-01, API-02 |
-| AC-02 | UI-01 |
-| AC-03 | UI-02 |
+| AC-01 | API-01, API-02, E2E-08 |
+| AC-02 | UI-01, E2E-08 |
+| AC-03 | UI-02, E2E-08 |
 | AC-04 | API-03, UI-03 |
 | AC-05 | UI-04 |
 | AC-06 | UI-05, E2E-02 |
@@ -181,7 +183,7 @@ in the development database and is never touched by a test run.
 | AC-12 | UI-09 |
 | AC-13 | UI-10, UI-15, UI-17, UI-32, E2E-04 |
 | AC-14 | API-08, UI-18, E2E-02 |
-| AC-15 | UNIT-04, API-09, API-10, API-26, E2E-04 |
+| AC-15 | UNIT-04, API-09, API-10, API-26, E2E-04, E2E-09 |
 | AC-16 | UNIT-05, API-11, API-22, API-24, UI-16, UI-32 |
 | AC-17 | UI-11 |
 | AC-18 | API-12, API-20, API-27, API-30, UI-12, UI-19, E2E-03 |
@@ -262,12 +264,12 @@ Filled in as each Issue merges; completed before the release Pull Request.
 | --- | --- | --- | --- | --- |
 | Server (unit + API) | 14 | 349 | 349 | 2026-09-04 (Issue #21) |
 | Client (component + style) | 16 | 310 | 310 | 2026-09-04 (Issue #21) |
-| End-to-end | 2 | 54 | 52, 2 skipped | 2026-09-04 (Issue #21) |
+| End-to-end | 3 | 60 | 58, 2 skipped | 2026-09-04 (Issue #21) |
 
 The two skipped end-to-end tests are one test skipping itself outside its own band:
 `visual.spec.ts` asserts the table becomes cards below 768 px, which only the mobile
 project can answer, so the desktop and tablet projects skip it rather than assert
-something they cannot see. 54 is 18 tests run against all three viewport projects.
+something they cannot see. 60 is 20 tests run against all three viewport projects.
 
 Counted by running the suites for this row rather than carried forward: `npm test`
 after `npm run db:test:setup`, and `npm run test:e2e`. The figures this table held
@@ -332,14 +334,15 @@ unit tests could not see it, and neither could a screenshot taken at six pages.
 
 ## 9. Screenshot paths
 
-Written by the Playwright run into `artifacts/lab-02/screenshots/`, forty-five files, named
+Written by the Playwright run into `artifacts/lab-02/screenshots/`, seventy-five files, named
 per viewport so a rerun overwrites rather than accumulates.
 
 ```
 create-ticket/{desktop,tablet,mobile}.png
-create-ticket/{desktop,tablet,mobile}-{initial,validation-failure,invalid-attachment,success,api-failure}.png
+create-ticket/{desktop,tablet,mobile}-{initial,validation-failure,submitting,success,api-failure,invalid-attachment}.png
 my-tickets/{desktop,tablet,mobile}.png
-my-tickets/{desktop,tablet,mobile}-{search,requester-a,requester-b,empty,no-results}.png
+my-tickets/{desktop,tablet,mobile}-{empty,no-results,search,requester-a,requester-b,filters,sorting,pagination}.png
 ticket-detail/{desktop,tablet,mobile}.png
-ticket-detail/{desktop,tablet,mobile}-{initial,with-attachment,removed-attachment}.png
+ticket-detail/{desktop,tablet,mobile}-{initial,with-attachment,removed-attachment,unauthorized}.png
+requester-selection/{desktop,tablet,mobile}-{loading,initial,failure,selected}.png
 ```
