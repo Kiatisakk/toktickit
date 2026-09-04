@@ -243,6 +243,41 @@ for a reader to notice on their own.
 
 ## Reviews I gave
 
+Four Pull Requests on his repository, in order. §14 Part 9 asks for review evidence in both
+directions, and until Issue #21 audited this file only the first of the four was written
+down — the three that followed had been given on GitHub and never recorded here.
+
+| Pull Request | Files | What I did | Outcome |
+| --- | --- | --- | --- |
+| [#39](https://github.com/beambeambeam/toktickit/pull/39) — Lab 2 specification | — | **Changes requested** 2026-08-19, then **approved** 2026-08-22 | Merged 2026-08-28 |
+| [#42](https://github.com/beambeambeam/toktickit/pull/42) — requester ticketing flow | 100 | **Changes requested** 2026-09-02 11:42, nine numbered findings, two of them blocking; **approved** 13:25 after both were fixed | Merged |
+| [#43](https://github.com/beambeambeam/toktickit/pull/43) — My Tickets discovery and ownership | 27 | **Comment** 2026-09-02 16:54, three line comments, no verdict | Merged |
+| [#44](https://github.com/beambeambeam/toktickit/pull/44) — Ticket Detail, attachments, evidence | 50 | **Comment** 2026-09-03 08:10, five line comments; **approved** 12:43 | Merged |
+
+Details of #39 below; the three later ones are summarised rather than transcribed, since
+the threads are readable on his repository and the findings that mattered are named here.
+
+**#42's two blocking findings**, both about Part 8 evidence proving less than it claimed:
+the end-to-end test asserted that another Requester's ticket *link* was absent from the
+list, which proves nothing about access — the case that matters is the URL typed in
+directly. And a removed attachment was asserted by its badge reading `Removed` rather than
+by its download URL refusing. In both, the UI hiding a control is the convenience and the
+server refusing is the security; Part 8 asks for the second. He fixed both.
+
+**#44's five** were about the evidence set rather than the code: two screenshots named as
+separate states were byte-identical files produced by two consecutive `page.screenshot()`
+calls with no interaction between them, verified by comparing their blob SHAs; the
+visual-comparison document's baseline images were cited from a directory his own PR
+description said was intentionally uncommitted; and its checklist recorded `Pass` against
+rows for checks the suite does not perform — no `getComputedStyle`, no `scrollWidth`
+anywhere in it — above a closing line saying human visual approval was still pending.
+
+**On #43 I raised a mobile touch-target rule of his own that his CSS did not meet**, and
+described how this repository had solved the same problem by raising a shared token inside
+the mobile breakpoint rather than writing the number into each rule. Issue #37 later found
+four controls here that were never wired to that token. The advice was right and this
+repository was not following it at the time I gave it.
+
 ### beambeambeam/toktickit#39 — Lab 2 specification
 
 [beambeambeam/toktickit#39](https://github.com/beambeambeam/toktickit/pull/39) ·
@@ -308,7 +343,7 @@ Entries are added by the Pull Request they describe:
 - [x] Issue #20 — End-to-end and visual evidence
 - [ ] Issue #21 — Report and submission
 - [ ] Release Pull Request into `main`
-- [ ] Further reviews given on the partner's repository
+- [x] Further reviews given on the partner's repository
 
 ---
 
@@ -538,8 +573,9 @@ still owed.
 
 ## PR #42 — audit leftovers (no Issue)
 
-**Status at writing:** open, awaiting review. 7 files, `fix/lab2-audit-followups` →
-`lab2-staging`, +93/−5.
+**Reviewer:** Supawit Marayat (@beambeambeam). **Verdict:** approved, `LGTM`, no line
+comments. Opened 2026-09-03 16:58 UTC, approved 2026-09-04 03:12:02, merged 03:12:17 —
+five commits and 58 files by the time it closed, having opened at seven.
 
 No Issue covers it, said in one line in the description as the workflow guide requires for
 exactly this case: two audit leftovers (T3-17 prose, T3-23(d) API test) too small for their
@@ -551,3 +587,24 @@ PowerShell's `>` redirect encodes that way by default — and the replacement lo
 non-ASCII character to `???` on the way through `gh` on Windows. Both descriptions are now
 ASCII-only and byte-verified. Rule adopted: files for `gh` go through the write tool only,
 never through a shell redirect.
+
+**Two more commits landed before it was reviewed, and one of them was the point of the
+whole PR in hindsight.** The tablet end-to-end run had been failing on and off for two days
+on `expectNoHorizontalScroll` — 234 px one day, 97 px the next. It was written off as
+data-dependent flake once. On the second appearance it got diagnosed instead:
+`.tkt-table-scroll` carried `overflow-x: auto` on a `position: static` box, and overflow
+only clips descendants whose containing block lies inside the overflowing box. The
+`.tkt-visually-hidden` spans in the Ticket Owner and IT Priority cells — the last two of
+nine columns — escaped to the initial containing block, sat past the right edge of an
+834 px viewport, and widened the document. The table was scrolling correctly inside its own
+box the whole time; it was the page that scrolled, which is the one thing §8.7 forbids.
+Intermittent because whether those two cells land past the edge depends on how wide the
+data makes the seven columns before them.
+
+Measured on the live page before committing to a fix — 344 px of page overflow with the box
+`static`, none with it `relative` — and `visual.spec.ts` now asserts the containing block
+directly, since `expectNoHorizontalScroll` only catches it when the data cooperates.
+
+Each of the three pushes after opening was announced on the PR with what changed and why,
+rather than left for the reviewer to diff. That is the least an author owes a reviewer whose
+target keeps moving, and it is not a substitute for not moving it.

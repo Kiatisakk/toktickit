@@ -53,7 +53,7 @@ in the development database and is never touched by a test run.
 
 | ID | Requirement / AC | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
-| API-01 | AC-01, AC-04, BR-07 | Seed idempotency and required counts | Second run changes nothing, ids included; 4 categories, 7 related systems, 4 active and 1 inactive requester; a retired row is moved off its positive display slot | `server/tests/lab-02/seed.api.test.ts` | **Pass** |
+| API-01 | AC-01, AC-04, BR-07 | Seed idempotency and required counts | Second run changes nothing, ids included; 4 categories, at least six related systems, 4 active and 1 inactive requester; a retired row is moved off its positive display slot | `server/tests/lab-02/seed.api.test.ts` | **Pass** |
 | API-02 | AC-01, BR-07 | `GET /api/requesters` | Only active requesters; the inactive one is absent; no role or active flag exposed | `server/tests/lab-02/requesters.api.test.ts` | **Pass** |
 | API-21 | AC-08 | `GET /api/related-systems` and `/api/categories` | Active rows only, in display order rather than alphabetically | `server/tests/lab-02/requesters.api.test.ts` | **Pass** |
 | API-03 | AC-04, BR-03, BR-07, BR-20 | Context header validation | Missing, blank, malformed, non-positive, unsafe-integer, unknown, inactive and non-requester each return `400` with their own code; no response leaks a path or a database message | `server/tests/lab-02/requester-context.api.test.ts` | **Pass** |
@@ -128,7 +128,7 @@ in the development database and is never touched by a test run.
 | STYLE-14 | AC-25 | The two badge columns cannot be confused | Every status has its own modifier; the element says which family it belongs to, so priority and status of the same hue stay distinguishable | `client/tests/lab-02/style/badges.test.tsx` | **Pass** |
 | UI-18 | AC-14 | The page controls appear on the screen itself | Windowed numbers, the real total rather than the page length, a click asking the API for that page, and the table and controls sharing one surface | `client/tests/lab-02/MyTickets.test.tsx` | **Pass** |
 | STYLE-11 | AC-25 | Create Ticket carries the fields Figure 1 shows | Ticket No., Ticket Date, Requester, Current Status and IT Priority are all read-only; status reads New per BR-02; the ticket fields are laid out four across | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
-| UI-14 | AC-13, BR-34 | The ticket list response is validated in full | Every field the screen renders is checked, including `itPriority` and `ticketOwner`; one malformed row rejects the whole page as `UNEXPECTED_RESPONSE` | `client/tests/lab-02/api-contract.test.ts` | **Pass** |
+| UI-32 | AC-13, BR-34 | The ticket list response is validated in full | Every field the screen renders is checked, including `itPriority` and `ticketOwner`; one malformed row rejects the whole page as `UNEXPECTED_RESPONSE` | `client/tests/lab-02/api-contract.test.ts` | **Pass** |
 | UI-15 | AC-13 | Loading shows skeleton rows with the filter bar live | Skeleton keeps the list's shape so nothing jumps on a refetch; one status line rather than eight; Search stays enabled | `client/tests/lab-02/MyTickets.test.tsx` | **Pass** |
 | UI-16 | AC-16 | A failed category load is stated, not silent | The filter is disabled and says why; the ticket list, which does not depend on it, still renders | `client/tests/lab-02/MyTickets.test.tsx` | **Pass** |
 | UI-17 | AC-13 | Retry runs through the effect that owns the abort | Try again re-enters the same effect, so a filter change during a slow retry cannot be overwritten by the stale response | `client/tests/lab-02/MyTickets.test.tsx` | **Pass** |
@@ -177,24 +177,38 @@ in the development database and is never touched by a test run.
 | AC-08 | API-21, UI-07 |
 | AC-09 | UNIT-01, UNIT-02, API-04, API-07, E2E-01 |
 | AC-10 | UNIT-03, API-05, UI-08 |
-| AC-11 | API-06 |
+| AC-11 | API-06, E2E-05 |
 | AC-12 | UI-09 |
-| AC-13 | UI-10 |
-| AC-14 | API-08, E2E-02 |
-| AC-15 | UNIT-04, API-09, API-10 |
-| AC-16 | UNIT-05, API-11 |
+| AC-13 | UI-10, UI-15, UI-17, UI-32, E2E-04 |
+| AC-14 | API-08, UI-18, E2E-02 |
+| AC-15 | UNIT-04, API-09, API-10, API-26, E2E-04 |
+| AC-16 | UNIT-05, API-11, API-22, API-24, UI-16, UI-32 |
 | AC-17 | UI-11 |
-| AC-18 | API-12, API-20, UI-12, E2E-03 |
-| AC-19 | UNIT-07, API-13, API-14, E2E-01, UI-28, UI-29, UI-30, UI-31, E2E-07 |
-| AC-20 | API-15, E2E-01 |
-| AC-21 | API-16, UI-13, E2E-01 |
+| AC-18 | API-12, API-20, API-27, API-30, UI-12, UI-19, E2E-03 |
+| AC-19 | UNIT-07, API-13, API-14, API-28, UI-20, UI-21, UI-22, UI-23, UI-28, UI-29, UI-30, UI-31, E2E-01, E2E-07 |
+| AC-20 | API-15, API-25, UI-24, E2E-01 |
+| AC-21 | API-16, API-29, UI-13, E2E-01 |
 | AC-22 | API-17, UI-14, E2E-01 |
-| AC-23 | API-18 |
+| AC-23 | API-18, API-25 |
 | AC-24 | API-19 |
-| AC-25 | STYLE-01, STYLE-02, STYLE-03, STYLE-04, STYLE-05, STYLE-06, STYLE-07, STYLE-08, RESP-01, RESP-02, RESP-03, RESP-04 |
+| AC-25 | UI-25, UI-26, UI-27, STYLE-01, STYLE-02, STYLE-03, STYLE-04, STYLE-05, STYLE-06, STYLE-07, STYLE-08, STYLE-09, STYLE-10, STYLE-11, STYLE-12, STYLE-13, STYLE-14, RESP-01, RESP-02, RESP-03, RESP-04, E2E-06 |
 
-No acceptance criterion is unmapped, and no planned test exists without a criterion to
-justify it.
+Every acceptance criterion is mapped, and every test in section 2 appears against the
+criterion it declares there — either directly, or through a business rule that the
+criterion cites in `specification.md`.
+
+Two tests have no acceptance criterion to sit under. That is a gap in the specification
+rather than in the suite:
+
+| Rule | Covered by | Why it has no criterion |
+| --- | --- | --- |
+| BR-24 — stored filenames are generated by the server, and the uploaded name is never used as a path or as an authorization input | UNIT-06 | No acceptance criterion cites BR-24. It is a security property of how files are stored rather than behaviour a Requester can observe, so no Given-When-Then was ever written for it. The test exists because the rule does. |
+| BR-33 — permitted page sizes are 10, 20 and 50, defaulting to 10 | API-23 | AC-16 covers *rejecting* an out-of-range `pageSize`, but nothing states what the permitted values are. The boundary is tested; the criterion for it was never written. |
+
+Both surfaced by generating this table from `tests.md` and `specification.md` and comparing
+it against what was here, rather than by reading it. So did the thirty-two tests the
+previous version of this table omitted: they had been written, they were passing, and the
+matrix simply never gained the rows.
 
 ---
 
@@ -246,9 +260,19 @@ Filled in as each Issue merges; completed before the release Pull Request.
 
 | Suite | Files | Tests | Passing | Recorded on |
 | --- | --- | --- | --- | --- |
-| Server (unit + API) | 11 | 213 | 213 | 2026-08-30 (Issue #18) |
-| Client (component + style) | 13 | 153 | 153 | 2026-08-30 (Issue #18) |
-| End-to-end | — | — | — | — |
+| Server (unit + API) | 14 | 349 | 349 | 2026-09-04 (Issue #21) |
+| Client (component + style) | 16 | 310 | 310 | 2026-09-04 (Issue #21) |
+| End-to-end | 2 | 54 | 52, 2 skipped | 2026-09-04 (Issue #21) |
+
+The two skipped end-to-end tests are one test skipping itself outside its own band:
+`visual.spec.ts` asserts the table becomes cards below 768 px, which only the mobile
+project can answer, so the desktop and tablet projects skip it rather than assert
+something they cannot see. 54 is 18 tests run against all three viewport projects.
+
+Counted by running the suites for this row rather than carried forward: `npm test`
+after `npm run db:test:setup`, and `npm run test:e2e`. The figures this table held
+before — 11 files/213 and 13 files/153, dated 2026-08-30 — had been true at Issue #18
+and were never updated as six further Issues added tests.
 
 ---
 
@@ -272,7 +296,7 @@ Filled in as each Issue merges; completed before the release Pull Request.
 
 ---
 
-## 6. Visual inspection checklist
+## 8. Visual inspection checklist
 
 §8.8 asks for "a short visual checklist confirming no clipping, overlap, unintended
 horizontal scrolling, inconsistent field styling, or missing states". Every line below is
@@ -306,7 +330,7 @@ why it passed when the test ran alone and failed in the full suite: each run of 
 test adds a ticket, and somewhere past sixty the count crossed the line. Six hundred passing
 unit tests could not see it, and neither could a screenshot taken at six pages.
 
-## 7. Screenshot paths
+## 9. Screenshot paths
 
 Written by the Playwright run into `artifacts/lab-02/screenshots/`, forty-five files, named
 per viewport so a rerun overwrites rather than accumulates.
