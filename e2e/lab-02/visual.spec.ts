@@ -85,16 +85,26 @@ test.describe("Zen Green tokens, as the browser computes them", () => {
 
   test("the table header carries the pale green the illustration draws", async ({
     page,
-  }) => {
+  }, info) => {
+    const onMobile = info.project.name === "mobile";
+
     await signInAs(page, REQUESTER);
+    await expect(firstTicketLink(page)).toBeVisible();
 
     const heading = page.locator(".tkt-table thead th").first();
 
-    // Below 768px the table is replaced by cards, so there is no header to check.
-    if (await heading.isVisible()) {
-      expect(await computed(heading, "background-color")).toBe(ZEN_GREEN.pale);
-      expect(await computed(heading, "color")).toBe(ZEN_GREEN.primary);
+    // Below 768px the table is replaced by cards, so there is no header. That
+    // used to be an `if`, which passes silently when the element is missing for
+    // any other reason — including the table having been hidden everywhere by
+    // mistake. Asserted per viewport instead, so its absence is checked too.
+    await expect(heading).toBeVisible({ visible: !onMobile });
+
+    if (onMobile) {
+      return;
     }
+
+    expect(await computed(heading, "background-color")).toBe(ZEN_GREEN.pale);
+    expect(await computed(heading, "color")).toBe(ZEN_GREEN.primary);
   });
 
   test("the active navigation item is marked, and not only by colour", async ({
@@ -154,12 +164,19 @@ test.describe("nothing clipped, nothing overflowing", () => {
    */
   test("the table scrolls inside its own container, reachable by keyboard", async ({
     page,
-  }) => {
+  }, info) => {
+    const onMobile = info.project.name === "mobile";
+
     await signInAs(page, REQUESTER);
+    await expect(firstTicketLink(page)).toBeVisible();
 
     const scroller = page.locator(".tkt-table-scroll");
 
-    if (await scroller.isVisible()) {
+    // Same reasoning as the header above: presence is asserted per viewport
+    // rather than assumed, so a container that vanished would fail here.
+    await expect(scroller).toBeVisible({ visible: !onMobile });
+
+    if (!onMobile) {
       expect(await computed(scroller, "overflow-x")).toBe("auto");
       await expect(scroller).toHaveAttribute("tabindex", "0");
 
@@ -195,13 +212,35 @@ test.describe("the three screens at this viewport", () => {
   });
 });
 
-test.describe("below 768px the table becomes cards", () => {
-  test("and loses no column in the process", async ({ page }, info) => {
-    test.skip(info.project.name !== "mobile", "only meaningful below 768px");
+test.describe("the list changes presentation at 768px", () => {
+  test("table above it, cards below it, never both and never neither", async ({
+    page,
+  }, info) => {
+    const onMobile = info.project.name === "mobile";
 
     await signInAs(page, REQUESTER);
 
-    await expect(page.locator(".tkt-table")).toBeHidden();
+    // A list with no rows renders the empty state, and then neither the table
+    // nor the cards exist — which would pass both assertions below without
+    // testing anything. Proven by running it that way once: 24 green against a
+    // database of zero tickets. So the row is a precondition, not decoration.
+    await expect(firstTicketLink(page)).toBeVisible();
+
+    // Both halves of the rule, at every viewport. This test used to skip itself
+    // outside mobile and assert only that the table was hidden — so nothing in
+    // the suite ever checked that the table is *shown* at 768px and above, and
+    // a media query that hid it everywhere would have failed no test at all.
+    // The two other tests that touch the table guard themselves with
+    // `if (await …isVisible())`, which passes silently when the element is
+    // missing, so they would not have caught it either.
+    await expect(page.locator(".tkt-table")).toBeVisible({
+      visible: !onMobile,
+    });
+    await expect(page.locator(".tkt-cards")).toBeVisible({ visible: onMobile });
+
+    if (!onMobile) {
+      return;
+    }
 
     const card = page.locator(".tkt-ticket-card").first();
 

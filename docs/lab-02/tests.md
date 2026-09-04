@@ -53,7 +53,7 @@ in the development database and is never touched by a test run.
 
 | ID | Requirement / AC | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
-| API-01 | AC-01, AC-04, BR-07 | Seed idempotency and required counts | Second run changes nothing, ids included; 4 categories, 7 related systems, 4 active and 1 inactive requester; a retired row is moved off its positive display slot | `server/tests/lab-02/seed.api.test.ts` | **Pass** |
+| API-01 | AC-01, AC-04, BR-07 | Seed idempotency and required counts | Second run changes nothing, ids included; 4 categories, at least six related systems, 4 active and 1 inactive requester; a retired row is moved off its positive display slot | `server/tests/lab-02/seed.api.test.ts` | **Pass** |
 | API-02 | AC-01, BR-07 | `GET /api/requesters` | Only active requesters; the inactive one is absent; no role or active flag exposed | `server/tests/lab-02/requesters.api.test.ts` | **Pass** |
 | API-21 | AC-08 | `GET /api/related-systems` and `/api/categories` | Active rows only, in display order rather than alphabetically | `server/tests/lab-02/requesters.api.test.ts` | **Pass** |
 | API-03 | AC-04, BR-03, BR-07, BR-20 | Context header validation | Missing, blank, malformed, non-positive, unsafe-integer, unknown, inactive and non-requester each return `400` with their own code; no response leaks a path or a database message | `server/tests/lab-02/requester-context.api.test.ts` | **Pass** |
@@ -96,18 +96,18 @@ in the development database and is never touched by a test run.
 | UI-09 | AC-12, BR-17 | Busy submit | Button disabled and renamed while the request is in flight, leaving no enabled control to click again | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
 | UI-10 | AC-13, BR-19 | Failure preserves input | Every entered value survives a failed submission; the message is readable rather than the exception; the control re-enables; server-reported field messages reach their field | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
 | UI-11 | AC-17, BR-35 | Empty vs no-results | Different text, different actions and different `data-state`; filters are sent to the API rather than applied in the browser; a query change returns to page one | `client/tests/lab-02/MyTickets.test.tsx` | **Pass** |
-| UI-12 | AC-18, FR-16 | Detail is read-only | Every input carries `readonly` except the file picker; no comment box, no status control, and none of the three tab labels §4.2 excludes | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
-| UI-13 | AC-21, BR-27 | Attachment add and remove | Removal asks for confirmation rather than acting on the first click; confirm stays disabled below three characters | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
-| UI-14 | AC-22 | Removed attachment | Metadata and the removal reason stay visible; neither Download nor Remove is offered | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
-| UI-19 | AC-18 | A ticket that is not yours | One wording for "missing" and "someone else's", so the screen does not undo what the endpoint is careful about; a non-numeric path never calls the API | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
-| UI-20 | AC-19, BR-21 | The file picker | `accept` limited to the four permitted types, which is why the unsupported-type rejection is unreachable through the control and the failure test uses a size refusal | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
-| UI-21 | AC-19, BR-23 | The add control at the limit | Disabled at five active attachments, and says why | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
-| UI-22 | AC-19 | The uploading row | Carries the chosen file's own name, is marked `tkt-attachment--uploading`, shows indeterminate progress, hides Remove, and disables the add control | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
-| UI-23 | AC-19 | The invalid row | Names the refused file and puts the server's reason on the row rather than in an alert above the list; can be dismissed | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
-| UI-24 | AC-20 | The unavailable row | A failed download marks that row `tkt-attachment--error`, offers Retry download on the row itself, and keeps the metadata, which is still true | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
-| UI-25 | AC-25 | The detail screen names its ticket | An `h1` of the ticket number over the summary, above the card — a deliberate departure from Figure 1, which has no heading | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
-| UI-26 | AC-25 | Back sits beside the heading | Found inside `.tkt-list-header`, where a full-height control belongs next to a page title | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
-| UI-27 | AC-25 | The badge fields keep their box | All three render `.tkt-readonly-badge` with the pill inside it, so the row of eight has one edge throughout; the attachment section stays a second card | `client/tests/lab-02/TicketDetail.test.tsx` | **Pass** |
+| UI-12 | AC-18, FR-16 | Detail is read-only | Every input carries `readonly` except the file picker; no comment box, no status control, and none of the three tab labels §4.2 excludes | `client/tests/lab-02/RequesterTicketDetail.test.tsx` | **Pass** |
+| UI-13 | AC-21, BR-27 | Attachment add and remove | Removal asks for confirmation rather than acting on the first click; confirm stays disabled below three characters | `client/tests/lab-02/AttachmentSection.test.tsx` | **Pass** |
+| UI-14 | AC-22 | Removed attachment | Metadata and the removal reason stay visible; neither Download nor Remove is offered | `client/tests/lab-02/AttachmentSection.test.tsx` | **Pass** |
+| UI-19 | AC-18 | A ticket that is not yours | One wording for "missing" and "someone else's", so the screen does not undo what the endpoint is careful about; a non-numeric path never calls the API | `client/tests/lab-02/RequesterTicketDetail.test.tsx` | **Pass** |
+| UI-20 | AC-19, BR-21 | The file picker | `accept` limited to the four permitted types, which is why the unsupported-type rejection is unreachable through the control and the failure test uses a size refusal | `client/tests/lab-02/AttachmentSection.test.tsx` | **Pass** |
+| UI-21 | AC-19, BR-23 | The add control at the limit | Disabled at five active attachments, and says why | `client/tests/lab-02/AttachmentSection.test.tsx` | **Pass** |
+| UI-22 | AC-19 | The uploading row | Carries the chosen file's own name, is marked `tkt-attachment--uploading`, shows indeterminate progress, hides Remove, and disables the add control | `client/tests/lab-02/AttachmentSection.test.tsx` | **Pass** |
+| UI-23 | AC-19 | The invalid row | Names the refused file and puts the server's reason on the row rather than in an alert above the list; can be dismissed | `client/tests/lab-02/AttachmentSection.test.tsx` | **Pass** |
+| UI-24 | AC-20 | The unavailable row | A failed download marks that row `tkt-attachment--error`, offers Retry download on the row itself, and keeps the metadata, which is still true | `client/tests/lab-02/AttachmentSection.test.tsx` | **Pass** |
+| UI-25 | AC-25 | The detail screen names its ticket | An `h1` of the ticket number over the summary, above the card — a deliberate departure from Figure 1, which has no heading | `client/tests/lab-02/RequesterTicketDetail.test.tsx` | **Pass** |
+| UI-26 | AC-25 | Back sits beside the heading | Found inside `.tkt-list-header`, where a full-height control belongs next to a page title | `client/tests/lab-02/RequesterTicketDetail.test.tsx` | **Pass** |
+| UI-27 | AC-25 | The badge fields keep their box | All three render `.tkt-readonly-badge` with the pill inside it, so the row of eight has one edge throughout; the attachment section stays a second card | `client/tests/lab-02/RequesterTicketDetail.test.tsx` | **Pass** |
 
 ### UI style
 
@@ -128,7 +128,7 @@ in the development database and is never touched by a test run.
 | STYLE-14 | AC-25 | The two badge columns cannot be confused | Every status has its own modifier; the element says which family it belongs to, so priority and status of the same hue stay distinguishable | `client/tests/lab-02/style/badges.test.tsx` | **Pass** |
 | UI-18 | AC-14 | The page controls appear on the screen itself | Windowed numbers, the real total rather than the page length, a click asking the API for that page, and the table and controls sharing one surface | `client/tests/lab-02/MyTickets.test.tsx` | **Pass** |
 | STYLE-11 | AC-25 | Create Ticket carries the fields Figure 1 shows | Ticket No., Ticket Date, Requester, Current Status and IT Priority are all read-only; status reads New per BR-02; the ticket fields are laid out four across | `client/tests/lab-02/CreateTicket.test.tsx` | **Pass** |
-| UI-14 | AC-13, BR-34 | The ticket list response is validated in full | Every field the screen renders is checked, including `itPriority` and `ticketOwner`; one malformed row rejects the whole page as `UNEXPECTED_RESPONSE` | `client/tests/lab-02/api-contract.test.ts` | **Pass** |
+| UI-32 | AC-13, BR-34 | The ticket list response is validated in full | Every field the screen renders is checked, including `itPriority` and `ticketOwner`; one malformed row rejects the whole page as `UNEXPECTED_RESPONSE` | `client/tests/lab-02/api-contract.test.ts` | **Pass** |
 | UI-15 | AC-13 | Loading shows skeleton rows with the filter bar live | Skeleton keeps the list's shape so nothing jumps on a refetch; one status line rather than eight; Search stays enabled | `client/tests/lab-02/MyTickets.test.tsx` | **Pass** |
 | UI-16 | AC-16 | A failed category load is stated, not silent | The filter is disabled and says why; the ticket list, which does not depend on it, still renders | `client/tests/lab-02/MyTickets.test.tsx` | **Pass** |
 | UI-17 | AC-13 | Retry runs through the effect that owns the abort | Try again re-enters the same effect, so a filter change during a slow retry cannot be overwritten by the stale response | `client/tests/lab-02/MyTickets.test.tsx` | **Pass** |
@@ -145,7 +145,7 @@ in the development database and is never touched by a test run.
 | ID | Requirement / AC | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
 | RESP-01 | AC-25 | Three screens × three viewports | No horizontal page overflow at any combination; the failure names the element that crosses the edge rather than only the fact that one did | `e2e/lab-02/visual.spec.ts`, `e2e/lab-02/requester-ticket-flow.spec.ts` | **Pass** |
-| RESP-02 | AC-25 | List adapts below 768 px | The table is hidden and the card carries Category, Related System, Requested Priority, IT Priority, Created and Last Updated — no column of data lost | `e2e/lab-02/visual.spec.ts` | **Pass** |
+| RESP-02 | AC-25 | The list changes presentation at 768 px | Table shown and cards absent above the breakpoint, cards shown and table absent below it, asserted at all three viewports against a list known to have a row; below it the card carries Category, Related System, Requested Priority, IT Priority, Created and Last Updated — no column of data lost | `e2e/lab-02/visual.spec.ts` | **Pass** |
 | RESP-03 | AC-25 | Nothing clipped at any viewport | No element's text is cut off by its own container, screen-reader-only text excepted — that is clipped on purpose | `e2e/lab-02/visual.spec.ts` | **Pass** |
 | RESP-04 | AC-25 | Zen Green tokens | Computed colours of the header, page background, primary button, list surface and table header match §7, read from the live browser rather than from a class name | `e2e/lab-02/visual.spec.ts` | **Pass** |
 
@@ -160,6 +160,8 @@ in the development database and is never touched by a test run.
 | E2E-05 | AC-11 | A failed submission keeps what was typed | The create request is failed at the browser; the alert appears and Summary and Description still hold their text | `e2e/lab-02/requester-ticket-flow.spec.ts` | **Pass** |
 | E2E-06 | AC-25 | The table scrolls, not the page | `.tkt-table-scroll` carries `overflow-x: auto` and `tabindex=0`, so the far columns are reachable without a pointer | `e2e/lab-02/visual.spec.ts` | **Pass** |
 | E2E-07 | AC-19, FR-17 | Create Ticket's invalid-attachment state, in a real browser | An oversized file chosen on Create Ticket shows its inline rejection reason; captured at all three viewports as `create-ticket/{viewport}-invalid-attachment.png`, the file `ui-spec.md` §10 names | `e2e/lab-02/requester-ticket-flow.spec.ts` | **Pass** |
+| E2E-08 | AC-01, AC-02, AC-03 | The Requester Selection screen's four states | Loading held at the browser, the active-requester dropdown, the failure state with its Try again, and the selected requester shown in the shell beside Change Requester; captured at all three viewports as `requester-selection/{viewport}-{loading,initial,failure,selected}.png` | `e2e/lab-02/evidence.spec.ts` | **Pass** |
+| E2E-09 | AC-15 | My Tickets controls doing something | Twelve tickets created through the API so a second page exists; pagination, a reordered sort, and a narrowed filter captured at all three viewports as `my-tickets/{viewport}-{pagination,sorting,filters}.png` | `e2e/lab-02/evidence.spec.ts` | **Pass** |
 
 ---
 
@@ -167,9 +169,9 @@ in the development database and is never touched by a test run.
 
 | AC | Covered by |
 | --- | --- |
-| AC-01 | API-01, API-02 |
-| AC-02 | UI-01 |
-| AC-03 | UI-02 |
+| AC-01 | API-01, API-02, E2E-08 |
+| AC-02 | UI-01, E2E-08 |
+| AC-03 | UI-02, E2E-08 |
 | AC-04 | API-03, UI-03 |
 | AC-05 | UI-04 |
 | AC-06 | UI-05, E2E-02 |
@@ -177,24 +179,38 @@ in the development database and is never touched by a test run.
 | AC-08 | API-21, UI-07 |
 | AC-09 | UNIT-01, UNIT-02, API-04, API-07, E2E-01 |
 | AC-10 | UNIT-03, API-05, UI-08 |
-| AC-11 | API-06 |
+| AC-11 | API-06, E2E-05 |
 | AC-12 | UI-09 |
-| AC-13 | UI-10 |
-| AC-14 | API-08, E2E-02 |
-| AC-15 | UNIT-04, API-09, API-10 |
-| AC-16 | UNIT-05, API-11 |
+| AC-13 | UI-10, UI-15, UI-17, UI-32, E2E-04 |
+| AC-14 | API-08, UI-18, E2E-02 |
+| AC-15 | UNIT-04, API-09, API-10, API-26, E2E-04, E2E-09 |
+| AC-16 | UNIT-05, API-11, API-22, API-24, UI-16, UI-32 |
 | AC-17 | UI-11 |
-| AC-18 | API-12, API-20, UI-12, E2E-03 |
-| AC-19 | UNIT-07, API-13, API-14, E2E-01, UI-28, UI-29, UI-30, UI-31, E2E-07 |
-| AC-20 | API-15, E2E-01 |
-| AC-21 | API-16, UI-13, E2E-01 |
+| AC-18 | API-12, API-20, API-27, API-30, UI-12, UI-19, E2E-03 |
+| AC-19 | UNIT-07, API-13, API-14, API-28, UI-20, UI-21, UI-22, UI-23, UI-28, UI-29, UI-30, UI-31, E2E-01, E2E-07 |
+| AC-20 | API-15, API-25, UI-24, E2E-01 |
+| AC-21 | API-16, API-29, UI-13, E2E-01 |
 | AC-22 | API-17, UI-14, E2E-01 |
-| AC-23 | API-18 |
+| AC-23 | API-18, API-25 |
 | AC-24 | API-19 |
-| AC-25 | STYLE-01, STYLE-02, STYLE-03, STYLE-04, STYLE-05, STYLE-06, STYLE-07, STYLE-08, RESP-01, RESP-02, RESP-03, RESP-04 |
+| AC-25 | UI-25, UI-26, UI-27, STYLE-01, STYLE-02, STYLE-03, STYLE-04, STYLE-05, STYLE-06, STYLE-07, STYLE-08, STYLE-09, STYLE-10, STYLE-11, STYLE-12, STYLE-13, STYLE-14, RESP-01, RESP-02, RESP-03, RESP-04, E2E-06 |
 
-No acceptance criterion is unmapped, and no planned test exists without a criterion to
-justify it.
+Every acceptance criterion is mapped, and every test in section 2 appears against the
+criterion it declares there — either directly, or through a business rule that the
+criterion cites in `specification.md`.
+
+Two tests have no acceptance criterion to sit under. That is a gap in the specification
+rather than in the suite:
+
+| Rule | Covered by | Why it has no criterion |
+| --- | --- | --- |
+| BR-24 — stored filenames are generated by the server, and the uploaded name is never used as a path or as an authorization input | UNIT-06 | No acceptance criterion cites BR-24. It is a security property of how files are stored rather than behaviour a Requester can observe, so no Given-When-Then was ever written for it. The test exists because the rule does. |
+| BR-33 — permitted page sizes are 10, 20 and 50, defaulting to 10 | API-23 | AC-16 covers *rejecting* an out-of-range `pageSize`, but nothing states what the permitted values are. The boundary is tested; the criterion for it was never written. |
+
+Both surfaced by generating this table from `tests.md` and `specification.md` and comparing
+it against what was here, rather than by reading it. So did the thirty-two tests the
+previous version of this table omitted: they had been written, they were passing, and the
+matrix simply never gained the rows.
 
 ---
 
@@ -246,9 +262,30 @@ Filled in as each Issue merges; completed before the release Pull Request.
 
 | Suite | Files | Tests | Passing | Recorded on |
 | --- | --- | --- | --- | --- |
-| Server (unit + API) | 11 | 213 | 213 | 2026-08-30 (Issue #18) |
-| Client (component + style) | 13 | 153 | 153 | 2026-08-30 (Issue #18) |
-| End-to-end | — | — | — | — |
+| Server (unit + API) | 14 | 349 | 349 | 2026-09-04 (Issue #21) |
+| Client (component + style) | 16 | 310 | 310 | 2026-09-04 (Issue #21) |
+| End-to-end | 3 | 60 | 60 | 2026-09-04 (Issue #21) |
+
+Nothing is skipped. 60 is 20 tests against all three viewport projects.
+
+There were two skips until this Issue, both from one test that asserted only that the
+table is hidden below 768 px and stood itself down everywhere else. That left the other
+half of the rule unwatched: no test anywhere asserted the table is *shown* at 768 px and
+above, so a media query that hid it at every width would have failed nothing. The two
+tests that do touch the table on a wide screen both guard themselves with
+`if (await …isVisible())`, which passes silently when the element is absent, so they
+would not have caught it either.
+
+RESP-02 now asserts both directions at every viewport — table visible and cards absent
+above the breakpoint, the reverse below it. It also requires a row to be on screen
+first: with an empty list neither presentation exists, and both assertions would pass
+without testing anything. That was not hypothetical — the rewrite went green 24 times
+against a database of zero tickets before the precondition was added.
+
+Counted by running the suites for this row rather than carried forward: `npm test`
+after `npm run db:test:setup`, and `npm run test:e2e`. The figures this table held
+before — 11 files/213 and 13 files/153, dated 2026-08-30 — had been true at Issue #18
+and were never updated as six further Issues added tests.
 
 ---
 
@@ -272,7 +309,7 @@ Filled in as each Issue merges; completed before the release Pull Request.
 
 ---
 
-## 6. Visual inspection checklist
+## 8. Visual inspection checklist
 
 §8.8 asks for "a short visual checklist confirming no clipping, overlap, unintended
 horizontal scrolling, inconsistent field styling, or missing states". Every line below is
@@ -288,7 +325,7 @@ scrolls sideways only once the data grows.
 | Page sits on the page background | computed `background-color` of `body` equals `rgb(245, 247, 246)` | **Pass** |
 | Primary button uses the primary green | computed on the Create Ticket button | **Pass** |
 | The list is a surface | `.tkt-list` is white above 768 px; below it the cards carry the surface and the list gives up its own | **Pass** |
-| Table header is the pale green | computed on `.tkt-table thead th`, skipped below 768 px where there is no table | **Pass** |
+| Table header is the pale green | computed on `.tkt-table thead th`, whose presence is itself asserted per viewport — present above 768 px, absent below it — rather than guarded by an `if` that passes when the element is missing for any reason | **Pass** |
 | Active navigation is not signalled by colour alone | one `[aria-current="page"]` on every screen | **Pass** |
 | Table becomes cards below 768 px | `.tkt-table` hidden and every one of the six card rows present | **Pass** |
 | Attachment filenames readable | covered by the clipping check, which includes `.tkt-attachment__name` | **Pass** |
@@ -306,16 +343,17 @@ why it passed when the test ran alone and failed in the full suite: each run of 
 test adds a ticket, and somewhere past sixty the count crossed the line. Six hundred passing
 unit tests could not see it, and neither could a screenshot taken at six pages.
 
-## 7. Screenshot paths
+## 9. Screenshot paths
 
-Written by the Playwright run into `artifacts/lab-02/screenshots/`, forty-five files, named
+Written by the Playwright run into `artifacts/lab-02/screenshots/`, seventy-five files, named
 per viewport so a rerun overwrites rather than accumulates.
 
 ```
 create-ticket/{desktop,tablet,mobile}.png
-create-ticket/{desktop,tablet,mobile}-{initial,validation-failure,invalid-attachment,success,api-failure}.png
+create-ticket/{desktop,tablet,mobile}-{initial,validation-failure,submitting,success,api-failure,invalid-attachment}.png
 my-tickets/{desktop,tablet,mobile}.png
-my-tickets/{desktop,tablet,mobile}-{search,requester-a,requester-b,empty,no-results}.png
+my-tickets/{desktop,tablet,mobile}-{empty,no-results,search,requester-a,requester-b,filters,sorting,pagination}.png
 ticket-detail/{desktop,tablet,mobile}.png
-ticket-detail/{desktop,tablet,mobile}-{initial,with-attachment,removed-attachment}.png
+ticket-detail/{desktop,tablet,mobile}-{initial,with-attachment,removed-attachment,unauthorized}.png
+requester-selection/{desktop,tablet,mobile}-{loading,initial,failure,selected}.png
 ```

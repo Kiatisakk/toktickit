@@ -10,9 +10,13 @@ import { prisma } from "../src/prisma.js";
  * server suite's ownership test, which reads every ticket its requester owns,
  * failed on summaries it never created.
  *
- * The prefix is the whole contract: `summaryFor` in
- * `e2e/lab-02/requester-ticket-flow.spec.ts` is the only writer of it, and
- * this script is the only deleter. Attachments go with their ticket through
+ * The prefixes are the whole contract, and there are two writers of them:
+ * `summaryFor` in `e2e/lab-02/requester-ticket-flow.spec.ts`, and the rows
+ * `e2e/lab-02/evidence.spec.ts` creates so that a second page of tickets
+ * exists to photograph. This script is the only deleter. A writer that
+ * invents a third prefix without adding it here will not fail — it will
+ * quietly accumulate, which is how the second one was found: 108 rows and
+ * two red assertions in the server suite. Attachments go with their ticket through
  * the schema's cascading delete — a finished journey leaves a soft-removed
  * row behind its removed file, an interrupted one leaves an active file, and
  * neither may survive into the next run.
@@ -21,15 +25,19 @@ import { prisma } from "../src/prisma.js";
  * database means rebuilding it from nothing — which is what D-11 already
  * claims.
  */
-const JOURNEY_PREFIX = "E2E journey ";
+const LEFTOVER_PREFIXES = ["E2E journey ", "Evidence row "];
 
 try {
   const { count } = await prisma.ticket.deleteMany({
-    where: { summary: { startsWith: JOURNEY_PREFIX } },
+    where: {
+      OR: LEFTOVER_PREFIXES.map((prefix) => ({
+        summary: { startsWith: prefix },
+      })),
+    },
   });
 
   console.log(
-    `Removed ${count} leftover journey ticket${count === 1 ? "" : "s"}.`
+    `Removed ${count} leftover end-to-end ticket${count === 1 ? "" : "s"}.`
   );
 } catch (error) {
   console.error(error);

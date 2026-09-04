@@ -208,110 +208,6 @@ no lint error or warning anywhere in the repository. Ten new tests hold the fixe
 
 ---
 
-## PR #33, #34, #36 and #38 — audit-driven conformance fixes
-
-**Reviewer:** Supawit Marayat (@beambeambeam). **Verdict:** approved all four, `LGTM` each
-time, no line comments on any of them.
-
-| | Opened | Approved | Gap |
-| --- | --- | --- | --- |
-| #33 — reviewer.md record of #31/#32 | 08:13 | 15:27:41 | ~7h |
-| #34 — E2E onto the test database (Issue #20), 35 files | 13:56 | 15:28:17 | ~1h32m |
-| #36 — API contract conformance (Issue #35), 8 files | 14:27 | 15:28:50 | ~1h01m |
-| #38 — UI conformance (Issue #37), 9 files | 14:30 | 15:29:22 | ~59m |
-
-All four dates 2026-09-03 UTC. Merged by @beambeambeam, in order, between 15:27:51 and
-15:30:07 — under three minutes end to end.
-
-**Recording the pattern, not just the verdict**, for the same reason this document
-recorded #31 taking 76 seconds on 21 files: three of these four PRs were approved within
-three minutes of each other, including #34 at 35 changed files. An hour's gap between
-opening and approving is a reasonable review time taken in isolation; four approvals
-landing three minutes apart reads more like one sitting at the end of that hour than four
-independent reads. I have no way to tell which from outside the review, and no finding to
-weigh it against either way — nothing here was wrong, so there is nothing to check the
-review against.
-
-**None of these four originated as a planned Issue before the code existed.** #34 grew out
-of my own audit of Issue #20's acceptance criteria; #36 and #37 came from a wider audit of
-`api-spec.md` and `ui-spec.md` against the implementation, where the fix was written before
-the Issue documenting it — the reverse of the order this project otherwise holds to. Worth
-recording here because a timestamp comparison would show it, and better said once than left
-for a reader to notice on their own.
-
----
-
-## Reviews I gave
-
-### beambeambeam/toktickit#39 — Lab 2 specification
-
-[beambeambeam/toktickit#39](https://github.com/beambeambeam/toktickit/pull/39) ·
-`feature/5-requester-create` → `lab2-staging` · linked to his Issue #35
-
-| | |
-| --- | --- |
-| Review state | **Changes requested** — 2026-08-19 07:09 UTC |
-| His fix | `356cec9`, 2026-08-22 — numbering added, plus five further documents |
-| Second review | **Approved** — 2026-08-22 17:18 UTC |
-| Merged by | @beambeambeam, 2026-08-28 |
-
-**What I asked for**
-
-> Missing numbered FR and BR. §4.3 says rules "must be numbered BR-01, BR-02, and so on"
-> and names three mandatory ones. §8.10 lists both as required sections. Part 2's evidence
-> asks for "numbered requirements, business rules, acceptance criteria, and Definition of
-> Done" — your AC and DoD are there, the other two aren't.
-
-**How I reached it.** His document is thorough — forty user stories, twenty acceptance
-criteria, and an attachment compensation ordering more careful than the handout asks for.
-The defect is structural rather than intellectual: the functional content is written as
-user stories and the rules as prose, so neither carries an identifier. §4.3 requires
-numbering and names BR-01, BR-02 and BR-03 as mandatory; §8.10 lists both as required
-sections; and Part 2 asks for them by name in the submitted evidence. Without identifiers
-the "Requirement / AC" column of the §9.1 planned-test table has nothing to cite either.
-
-**What I found but did not raise this round**, to keep the first review focused on the one
-blocking item:
-
-- The ticket number format `TKT-YYYYMMDD-XXXXXX` with a random suffix does not match either
-  labsheet figure, which show `TKT-2025-001234` and a contiguous run implying a sequence.
-
-  > **The finding stands.** Commit `19dfb1d` on `feature/my-tickets` withdrew it, claiming
-  > the handout printed only one ticket number and so could not distinguish a sequence from
-  > a random suffix. That was wrong: the My Tickets figure on page 11 prints eight
-  > contiguous values. The withdrawal never reached him — it lived in this file for one
-  > commit — and it is reversed here rather than deleted, because it was pushed to PR #27
-  > and is readable in that branch's history.
-- The `Ticket` model omits IT Priority, Ticket Owner and Resolution Summary, all three of
-  which the approved Ticket Detail illustration shows — Resolution Summary already drawn as
-  an empty italic placeholder.
-
-**He fixed it.** `specification.md` now carries 35 numbered rules including BR-01, BR-02
-and BR-03 verbatim, and the same push added `api-spec.md`, `ui-spec.md`, `tests.md`,
-`reviewer.md` and `ai-use.md` — 992 lines across six files.
-
-**Two things I noticed at merge time and did not block on.** A stray git submodule pointer
-(`reports`, mode 160000, with no `.gitmodules`) had been committed, which contradicts his
-own Pull Request description saying that directory was intentionally uncommitted. And the
-merge itself was impossible for several days: the `lab*-staging` ruleset on his repository
-required a linear history while permitting only merge commits, so no merge method
-satisfied both. He removed the linear-history rule and merged it himself.
-
----
-
-## Still to record
-
-Entries are added by the Pull Request they describe:
-
-- [x] Issue #18 — My Tickets
-- [x] Issue #19 — Ticket Detail and attachments
-- [x] Issue #20 — End-to-end and visual evidence
-- [ ] Issue #21 — Report and submission
-- [ ] Release Pull Request into `main`
-- [ ] Further reviews given on the partner's repository
-
----
-
 ## PR #27 — My Tickets (Issue #18)
 
 **Reviewer:** Supawit Marayat (@beambeambeam). **Verdict:** Comment, sixteen line findings,
@@ -503,6 +399,39 @@ standing. No test failed, because no test could reach the case.
 
 ---
 
+## PR #33, #34, #36 and #38 — audit-driven conformance fixes
+
+**Reviewer:** Supawit Marayat (@beambeambeam). **Verdict:** approved all four, `LGTM` each
+time, no line comments on any of them.
+
+| | Opened | Approved | Gap |
+| --- | --- | --- | --- |
+| #33 — reviewer.md record of #31/#32 | 08:13 | 15:27:41 | ~7h |
+| #34 — E2E onto the test database (Issue #20), 35 files | 13:56 | 15:28:17 | ~1h32m |
+| #36 — API contract conformance (Issue #35), 8 files | 14:27 | 15:28:50 | ~1h01m |
+| #38 — UI conformance (Issue #37), 9 files | 14:30 | 15:29:22 | ~59m |
+
+All four dates 2026-09-03 UTC. Merged by @beambeambeam, in order, between 15:27:51 and
+15:30:07 — under three minutes end to end.
+
+**Recording the pattern, not just the verdict**, for the same reason this document
+recorded #31 taking 76 seconds on 21 files: three of these four PRs were approved within
+three minutes of each other, including #34 at 35 changed files. An hour's gap between
+opening and approving is a reasonable review time taken in isolation; four approvals
+landing three minutes apart reads more like one sitting at the end of that hour than four
+independent reads. I have no way to tell which from outside the review, and no finding to
+weigh it against either way — nothing here was wrong, so there is nothing to check the
+review against.
+
+**None of these four originated as a planned Issue before the code existed.** #34 grew out
+of my own audit of Issue #20's acceptance criteria; #36 and #37 came from a wider audit of
+`api-spec.md` and `ui-spec.md` against the implementation, where the fix was written before
+the Issue documenting it — the reverse of the order this project otherwise holds to. Worth
+recording here because a timestamp comparison would show it, and better said once than left
+for a reader to notice on their own.
+
+---
+
 ## PR #41 — Create Ticket accepts attachments, FR-17 (Issue #40)
 
 **Reviewer:** Supawit Marayat (@beambeambeam). **Verdict:** approved, `LGTM`, no line
@@ -529,17 +458,19 @@ the Pull Request opened and placed straight into PR Review, the link already con
 the Development panel. And the Issue was closed by hand after the merge, since a merge into
 `lab2-staging` closes nothing on its own. The card is Done.
 
-One honest caveat on what the approval covers. E2E-07 is recorded as **Planned** in
-`tests.md`: the capture code is in the journey spec on all three viewport projects, but no
-full E2E run has produced the three screenshots yet. Flipping that row to Pass is one word,
-still owed.
+One honest caveat on what the approval covered, since settled. E2E-07 was recorded as
+**Planned** when this entry was written: the capture code was in the journey spec on all
+three viewport projects, but no full run had produced the three screenshots. It flipped to
+**Pass** in PR #43, once a run had been watched go green and the three
+`create-ticket/{viewport}-invalid-attachment.png` files were on disk.
 
 ---
 
 ## PR #42 — audit leftovers (no Issue)
 
-**Status at writing:** open, awaiting review. 7 files, `fix/lab2-audit-followups` →
-`lab2-staging`, +93/−5.
+**Reviewer:** Supawit Marayat (@beambeambeam). **Verdict:** approved, `LGTM`, no line
+comments. Opened 2026-09-03 16:58 UTC, approved 2026-09-04 03:12:02, merged 03:12:17 —
+five commits and 58 files by the time it closed, having opened at seven.
 
 No Issue covers it, said in one line in the description as the workflow guide requires for
 exactly this case: two audit leftovers (T3-17 prose, T3-23(d) API test) too small for their
@@ -551,3 +482,227 @@ PowerShell's `>` redirect encodes that way by default — and the replacement lo
 non-ASCII character to `???` on the way through `gh` on Windows. Both descriptions are now
 ASCII-only and byte-verified. Rule adopted: files for `gh` go through the write tool only,
 never through a shell redirect.
+
+**Two more commits landed before it was reviewed, and one of them was the point of the
+whole PR in hindsight.** The tablet end-to-end run had been failing on and off for two days
+on `expectNoHorizontalScroll` — 234 px one day, 97 px the next. It was written off as
+data-dependent flake once. On the second appearance it got diagnosed instead:
+`.tkt-table-scroll` carried `overflow-x: auto` on a `position: static` box, and overflow
+only clips descendants whose containing block lies inside the overflowing box. The
+`.tkt-visually-hidden` spans in the Ticket Owner and IT Priority cells — the last two of
+nine columns — escaped to the initial containing block, sat past the right edge of an
+834 px viewport, and widened the document. The table was scrolling correctly inside its own
+box the whole time; it was the page that scrolled, which is the one thing §8.7 forbids.
+Intermittent because whether those two cells land past the edge depends on how wide the
+data makes the seven columns before them.
+
+Measured on the live page before committing to a fix — 344 px of page overflow with the box
+`static`, none with it `relative` — and `visual.spec.ts` now asserts the containing block
+directly, since `expectNoHorizontalScroll` only catches it when the data cooperates.
+
+Each of the three pushes after opening was announced on the PR with what changed and why,
+rather than left for the reviewer to diff. That is the least an author owes a reviewer whose
+target keeps moving, and it is not a substitute for not moving it.
+
+---
+
+## PR #43 — report and submission audit (Issue #21)
+
+[Kiatisakk/toktickit#43](https://github.com/Kiatisakk/toktickit/pull/43) ·
+`docs/lab2-report` → `lab2-staging` · opened 2026-09-04 08:40 UTC.
+
+**Status at writing:** open, awaiting review. The last Issue of the sprint, and the one
+that was never supposed to require writing — its job was to audit six living documents
+against the repository and find where they had stopped being true. It found more than
+expected.
+
+| What the audit found | Where |
+| --- | --- |
+| The traceability matrix cited 61 of 93 tests. Thirty-two were written, passing, and had never gained a row, and the section closed by claiming no test existed without a criterion | `tests.md` §3 |
+| Two tests have no acceptance criterion at all — UNIT-06 covers BR-24 and API-23 covers BR-33, and no AC cites either rule. A gap in the specification, now recorded as one | `tests.md` §3 |
+| `UI-14` named two different tests in two files, so the matrix could only ever cite one of them | `tests.md` §2 |
+| Sections 6 and 7 each existed twice, from appending without renumbering | `tests.md` |
+| Final Results was two Issues stale and its End-to-end row was three em dashes, in a table whose own header says it is completed before the release Pull Request | `tests.md` §6 |
+| §10 named a screenshot set that differed from the files on disk in four ways, including two files that did not exist | `ui-spec.md` |
+| The document still described the repository as holding Lab 1, named `lab1-staging` as the integration branch, and documented six of the eleven API endpoints | `README.md` |
+| §12 names four client test files as the minimum structure and two did not exist under those names | `client/tests/lab-02/` |
+
+**Two of those were closed by producing evidence rather than by weakening the claim.**
+`ui-spec.md` had promised a screenshot of the cross-Requester refusal and never captured
+one, though E2E-03 asserted the behaviour — an assertion inside a spec file is not something
+a reader of the report can see, and §14 Part 8 asks to see it. And `submitting` was struck
+from the list on the reasoning that the busy state is too short to photograph, which was
+wrong twice: Part 6 names it among the six required states, and holding the *response*
+rather than the request makes it trivially capturable.
+
+**What the audit got wrong, kept in the record.** Rebuilding the traceability matrix by
+generating it from both documents produced something worse than what it replaced, because
+it deleted judgement the existing rows encoded. A substring search for `| AC-11 | `
+overwrote nine rows of §2, because a planned-test row carries its criterion in its second
+column and contains that exact text. And a markdown formatter's work was swept into a
+staged commit unnoticed, deleting the line breaks between the Thai prompts and their English
+renderings.
+
+**Also recorded here for the first time:** the three reviews given on the partner's
+repository — his #42, #43 and #44 — which had been given on GitHub and never written down.
+Part 9 asks for evidence in both directions and this file was carrying one direction and a
+quarter.
+
+**Then a second pass against §14 itself, rather than against the documents.** Reading Part 6
+and Part 7 line by line found evidence neither the suite nor the checklist had noticed was
+missing: no screenshot of the Development Requester Selection screen existed at all, though
+Part 5 folds its marks into Part 6 and Part 6 names its dropdown, selected-user display,
+Change Requester action, loading state and failure state. Part 7 asks for pagination,
+sorting and filters and had none of the three — and could not have had pagination, because
+the test database holds reference data only and a list of three tickets renders no page
+control. `evidence.spec.ts` now sets those states up deliberately: the twelve rows it needs
+are created through the same API the screen reads, not by seeding, because the demonstration
+seed belongs to the development database and putting it in the test one broke four server
+assertions when it was tried (D-11). Seventy-five screenshots.
+
+**That immediately reintroduced the defect D-11 exists for.** The new rows carried a summary
+prefix `wipe-journey.ts` did not know about, so they survived every rebuild and accumulated
+to 108 before the server suite was next run, where the ownership and pagination assertions
+failed on tickets no test had created. The wipe covers both writers now, and its comment
+says what happens to a third that forgets to register itself — the previous version claimed
+there was only one writer, which is exactly why the second one went unnoticed.
+
+**And a question about the suite's own design turned out to be worth asking.** Two tests were
+being skipped, both from one test that asserted the table is hidden below 768px and stood
+itself down everywhere else — so nothing anywhere asserted the table is *shown* above the
+breakpoint, and the two tests that touch it on a wide screen both opened with
+`if (await …isVisible())`, which passes silently when the element is absent. A media query
+that hid the table at every width would have failed nothing. All three assert presence per
+viewport now, 60 tests pass and none are skipped. The rewrite went green 24 times against a
+database of zero tickets first, because an empty list renders neither presentation — the
+same defect, recreated while fixing it, and caught by checking why it passed rather than
+that it passed.
+
+---
+
+## PR #28 and PR #30 — the two short ones
+
+Both belong in this file for completeness rather than for what they contain, and an audit
+of the file's own coverage claim is what found them missing.
+
+**[#30](https://github.com/Kiatisakk/toktickit/pull/30) — the review record of PR #29, no
+Issue.** One file, `reviewer.md`, carrying the entry for the Pull Request before it.
+**Approved** with `LGTM`, no comments, merged by @beambeambeam on 2026-09-02. The pattern
+this file follows — a review recorded by the Pull Request that follows it — is the reason
+it exists, and it is the same pattern PR #33 later repeated.
+
+**[#28](https://github.com/Kiatisakk/toktickit/pull/28) — the figure audit. Closed without
+merging**, which makes it the only Pull Request of the sprint with no review to record and
+no merge to report. It added a `figure-audit.md` and a script that extracted the three
+labsheet illustrations so the screens could be compared against them. The decision to close
+it was mine: the labsheet asks for a visual comparison inside `ui-spec.md`, not for a
+separate audit document, and shipping a fourth document nobody asked for would have been
+work for its own sake. What it established about the figures went into `ui-spec.md` and into
+D-02 and D-14 instead.
+
+---
+
+## Reviews I gave
+
+Four Pull Requests on his repository, in order. §14 Part 9 asks for review evidence in both
+directions, and until Issue #21 audited this file only the first of the four was written
+down — the three that followed had been given on GitHub and never recorded here.
+
+| Pull Request | Files | What I did | Outcome |
+| --- | --- | --- | --- |
+| [#39](https://github.com/beambeambeam/toktickit/pull/39) — Lab 2 specification | — | **Changes requested** 2026-08-19, then **approved** 2026-08-22 | Merged 2026-08-28 |
+| [#42](https://github.com/beambeambeam/toktickit/pull/42) — requester ticketing flow | 100 | **Changes requested** 2026-09-02 11:42, nine numbered findings, two of them blocking; **approved** 13:25 after both were fixed | Merged |
+| [#43](https://github.com/beambeambeam/toktickit/pull/43) — My Tickets discovery and ownership | 27 | **Comment** 2026-09-02 16:54, three line comments, no verdict | Merged |
+| [#44](https://github.com/beambeambeam/toktickit/pull/44) — Ticket Detail, attachments, evidence | 50 | **Comment** 2026-09-03 08:10, five line comments; **approved** 12:43 | Merged |
+
+Details of #39 below; the three later ones are summarised rather than transcribed, since
+the threads are readable on his repository and the findings that mattered are named here.
+
+**#42's two blocking findings**, both about Part 8 evidence proving less than it claimed:
+the end-to-end test asserted that another Requester's ticket *link* was absent from the
+list, which proves nothing about access — the case that matters is the URL typed in
+directly. And a removed attachment was asserted by its badge reading `Removed` rather than
+by its download URL refusing. In both, the UI hiding a control is the convenience and the
+server refusing is the security; Part 8 asks for the second. He fixed both.
+
+**#44's five** were about the evidence set rather than the code: two screenshots named as
+separate states were byte-identical files produced by two consecutive `page.screenshot()`
+calls with no interaction between them, verified by comparing their blob SHAs; the
+visual-comparison document's baseline images were cited from a directory his own PR
+description said was intentionally uncommitted; and its checklist recorded `Pass` against
+rows for checks the suite does not perform — no `getComputedStyle`, no `scrollWidth`
+anywhere in it — above a closing line saying human visual approval was still pending.
+
+**On #43 I raised a mobile touch-target rule of his own that his CSS did not meet**, and
+described how this repository had solved the same problem by raising a shared token inside
+the mobile breakpoint rather than writing the number into each rule. Issue #37 later found
+four controls here that were never wired to that token. The advice was right and this
+repository was not following it at the time I gave it.
+
+### beambeambeam/toktickit#39 — Lab 2 specification
+
+[beambeambeam/toktickit#39](https://github.com/beambeambeam/toktickit/pull/39) ·
+`feature/5-requester-create` → `lab2-staging` · linked to his Issue #35
+
+| | |
+| --- | --- |
+| Review state | **Changes requested** — 2026-08-19 07:09 UTC |
+| His fix | `356cec9`, 2026-08-22 — numbering added, plus five further documents |
+| Second review | **Approved** — 2026-08-22 17:18 UTC |
+| Merged by | @beambeambeam, 2026-08-28 |
+
+**What I asked for**
+
+> Missing numbered FR and BR. §4.3 says rules "must be numbered BR-01, BR-02, and so on"
+> and names three mandatory ones. §8.10 lists both as required sections. Part 2's evidence
+> asks for "numbered requirements, business rules, acceptance criteria, and Definition of
+> Done" — your AC and DoD are there, the other two aren't.
+
+**How I reached it.** His document is thorough — forty user stories, twenty acceptance
+criteria, and an attachment compensation ordering more careful than the handout asks for.
+The defect is structural rather than intellectual: the functional content is written as
+user stories and the rules as prose, so neither carries an identifier. §4.3 requires
+numbering and names BR-01, BR-02 and BR-03 as mandatory; §8.10 lists both as required
+sections; and Part 2 asks for them by name in the submitted evidence. Without identifiers
+the "Requirement / AC" column of the §9.1 planned-test table has nothing to cite either.
+
+**What I found but did not raise this round**, to keep the first review focused on the one
+blocking item:
+
+- The ticket number format `TKT-YYYYMMDD-XXXXXX` with a random suffix does not match either
+  labsheet figure, which show `TKT-2025-001234` and a contiguous run implying a sequence.
+
+  > **The finding stands.** Commit `19dfb1d` on `feature/my-tickets` withdrew it, claiming
+  > the handout printed only one ticket number and so could not distinguish a sequence from
+  > a random suffix. That was wrong: the My Tickets figure on page 11 prints eight
+  > contiguous values. The withdrawal never reached him — it lived in this file for one
+  > commit — and it is reversed here rather than deleted, because it was pushed to PR #27
+  > and is readable in that branch's history.
+- The `Ticket` model omits IT Priority, Ticket Owner and Resolution Summary, all three of
+  which the approved Ticket Detail illustration shows — Resolution Summary already drawn as
+  an empty italic placeholder.
+
+**He fixed it.** `specification.md` now carries 35 numbered rules including BR-01, BR-02
+and BR-03 verbatim, and the same push added `api-spec.md`, `ui-spec.md`, `tests.md`,
+`reviewer.md` and `ai-use.md` — 992 lines across six files.
+
+**Two things I noticed at merge time and did not block on.** A stray git submodule pointer
+(`reports`, mode 160000, with no `.gitmodules`) had been committed, which contradicts his
+own Pull Request description saying that directory was intentionally uncommitted. And the
+merge itself was impossible for several days: the `lab*-staging` ruleset on his repository
+required a linear history while permitting only merge commits, so no merge method
+satisfied both. He removed the linear-history rule and merged it himself.
+
+---
+
+## Coverage
+
+Every Pull Request opened against `lab2-staging` this sprint has an entry above —
+nineteen of them, counting the one that was closed without merging — along with the four
+reviews given on the partner's repository. That was checked by listing the Pull Requests
+from GitHub and searching this file for each number, rather than by reading down the page,
+which is how #28 and #30 turned out to be missing after the rest had been written.
+
+One entry is still to come. The release Pull Request from `lab2-staging` into `main` has not
+been opened yet, so there is no review of it to record; it is added here when it merges,
+which is the rule every other entry in this file followed.

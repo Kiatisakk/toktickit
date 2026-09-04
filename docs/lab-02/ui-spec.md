@@ -521,11 +521,40 @@ specifies the attachment section alone and no tab strip at all.
 Written by the Playwright run into `artifacts/lab-02/screenshots/`, with stable filenames
 so a re-run updates rather than accumulates.
 
+Every file carries its viewport as a prefix, because the three projects write the same
+states and a bare state name would have them overwrite each other.
+
 ```
 create-ticket/{desktop,tablet,mobile}.png
-create-ticket/{validation-failure,submitting,success,api-failure,invalid-attachment}.png
+create-ticket/{desktop,tablet,mobile}-{initial,validation-failure,submitting,success,api-failure,invalid-attachment}.png
 my-tickets/{desktop,tablet,mobile}.png
-my-tickets/{empty,no-results,requester-a,requester-b}.png
+my-tickets/{desktop,tablet,mobile}-{empty,no-results,search,requester-a,requester-b,filters,sorting,pagination}.png
 ticket-detail/{desktop,tablet,mobile}.png
-ticket-detail/{attachment-active,attachment-removed,unauthorized}.png
+ticket-detail/{desktop,tablet,mobile}-{initial,with-attachment,removed-attachment,unauthorized}.png
+requester-selection/{desktop,tablet,mobile}-{loading,initial,failure,selected}.png
 ```
+
+Seventy-five files: 21, 27, 15 and 12. This list is the one a reader checks the evidence against,
+so it is worth saying what it looked like before Issue #21 audited it, and what the audit
+got wrong on its first pass.
+
+It named `attachment-active` and `attachment-removed` for files actually written as
+`with-attachment` and `removed-attachment`. It omitted `initial` on two screens and
+`search` on My Tickets, all three of which existed.
+
+It also named two files that did not exist, `unauthorized` and `submitting`, and the first
+attempt at this section resolved them in opposite directions: `unauthorized` was captured,
+and `submitting` was struck out on the reasoning that the busy state lasts one local API
+call and photographing it would be a race. That reasoning was wrong twice over. §14 Part 6
+names `submitting` among the six Create Ticket states it requires, so the promise was not
+the document's to withdraw. And it is not a race: the test holds the *response* rather than
+the request, so the real `POST` is issued, the ticket really is created, and the screen sits
+on its busy button until the answer is handed back. Nothing in the application was changed
+to make the picture possible, which is the only thing that would have made it worthless.
+
+The last twenty-one came from the same audit noticing what the journey never walks
+past: the Selection screen has no place in a flow that starts beyond it, and a list of
+three tickets never grows a second page. `evidence.spec.ts` photographs those states
+deliberately — the four Selection states under `requester-selection/`, and `filters`,
+`sorting` and `pagination` beside the rest of My Tickets — with twelve tickets created
+through the API so the page control genuinely exists.

@@ -43,7 +43,11 @@ export const ZEN_GREEN = {
  */
 export const shoot = async (
   page: Page,
-  screen: "create-ticket" | "my-tickets" | "ticket-detail",
+  screen:
+    | "create-ticket"
+    | "my-tickets"
+    | "ticket-detail"
+    | "requester-selection",
   name: string
 ): Promise<void> => {
   await page.screenshot({

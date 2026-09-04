@@ -3,19 +3,29 @@
 An IT service desk application for Account and Access, Hardware, Software, and
 Network requests.
 
-This repository holds **Lab 1**: a full-stack vertical slice that proves every
-layer of the stack works as one integrated system. Opening the app shows the
-product name and a **Check System** button; clicking it reports the system
-status and lists the supported request categories loaded from PostgreSQL.
+This repository holds **Lab 2**: the Requester side of the service desk, end to
+end. A Requester is chosen on a development selection screen — there is no
+authentication until Lab 3 — and can then raise a ticket with attachments,
+receive a backend-issued ticket number, find that ticket again through search,
+filters, sorting and pagination, open it, and add or remove attachments. Each
+Requester sees only their own tickets: a ticket belonging to someone else is
+indistinguishable from one that does not exist, whether it is missing from a
+list or requested by its own URL.
+
+**Lab 1** — the vertical slice that proved the stack connects, with the
+**Check System** button and the category list — is on `main` and documented in
+[docs/lab-01/](./docs/lab-01/).
 
 ```
 React + Vite + Bootstrap  →  Express REST API  →  Prisma ORM  →  PostgreSQL
         (client)                  (server)
 ```
 
-See [CONTEXT.md](./CONTEXT.md) for the domain vocabulary and
-[docs/lab-01/](./docs/lab-01/) for the Lab 1 test list, reviewer record, and
-AI-use log.
+See [CONTEXT.md](./CONTEXT.md) for the domain vocabulary. The Lab 2 sprint
+documents are in [docs/lab-02/](./docs/lab-02/): the specification with its
+numbered requirements, rules, acceptance criteria and recorded decisions, the
+API and UI contracts, the test plan and results, the peer review record, and
+the AI-use log.
 
 ## Prerequisites
 
@@ -96,11 +106,20 @@ This runs both workspaces:
   never contact a real backend.
 
 jsdom has no layout engine, so anything about rendered colour, clipping or
-horizontal overflow is checked with Playwright instead. That suite arrives with
-the end-to-end Issue.
+horizontal overflow is checked with Playwright instead:
 
-The test plans are in [docs/lab-01/tests.md](./docs/lab-01/tests.md) and
-[docs/lab-02/tests.md](./docs/lab-02/tests.md).
+```bash
+npm run test:e2e
+```
+
+That rebuilds `toktickit_test` first, then drives a real browser at three
+viewport widths, and writes the report screenshots into
+`artifacts/lab-02/screenshots/`. It starts its own server against the test
+database rather than reusing one already running, because a suite that silently
+tests the development database looks exactly like a suite that passes.
+
+The test plans and results are in [docs/lab-01/tests.md](./docs/lab-01/tests.md)
+and [docs/lab-02/tests.md](./docs/lab-02/tests.md).
 
 ## API
 
@@ -134,6 +153,36 @@ An unrecognised or out-of-range value is an error rather than a silent default.
 ### `POST /api/tickets`
 
 Creates one ticket for the current requester and issues its official number.
+JSON only — attachments are added afterwards, one request per file, so that a
+ticket is never half-created because a file failed.
+
+### `GET /api/tickets/:id`
+
+One ticket the current requester owns, with its attachment metadata. A ticket
+belonging to someone else answers exactly as a ticket that does not exist does,
+down to the response body: a `403` would confirm it is real.
+
+### `POST /api/tickets/:id/attachments`
+
+Adds one file to an owned ticket. JPG, PNG, WEBP or PDF, up to 5 MB, up to five
+active files per ticket — the count is taken under a row lock, so two uploads
+racing cannot both see four.
+
+### `GET /api/tickets/:id/attachments`
+
+Attachment metadata for an owned ticket, removed ones included. Removal keeps
+the record and the reason; it is not a delete.
+
+### `GET /api/attachments/:id/download`
+
+The stored file, for an active attachment on an owned ticket. Always sent as a
+download and never rendered inline, which is what keeps an uploaded file from
+executing in the browser as page content.
+
+### `DELETE /api/attachments/:id`
+
+Removes an attachment with a reason of 3 to 500 characters. The metadata and the
+reason stay visible afterwards; the file itself stops being downloadable.
 
 ### `GET /api/requesters`
 
@@ -171,16 +220,30 @@ toktickit/
 
 ## Git workflow
 
-`main` is the stable release branch and `lab1-staging` is the Lab 1 integration
-branch. No work happens directly on either — every Issue is developed on its own
-feature branch and merged through a peer-reviewed Pull Request.
+`main` is the stable release branch; each lab integrates on its own staging
+branch — `lab1-staging`, then `lab2-staging` — and reaches `main` through a
+single release Pull Request at the end of the lab. No work happens directly on
+any of the three. Every Issue is developed on its own feature branch and merged
+through a Pull Request the peer reviewer approves and merges; the author never
+clicks Merge on their own work.
+
+Lab 2's Issues, in dependency order:
 
 | Issue | Feature branch | Pull Request target |
 | --- | --- | --- |
-| 1. Project Foundation | `feature/1-project-foundation` | `lab1-staging` |
-| 2. API Health Check | `feature/2-health-check` | `lab1-staging` |
-| 3. Create and Seed Categories | `feature/3-category-seed` | `lab1-staging` |
-| 4. Display Category List | `feature/4-category-list` | `lab1-staging` |
+| 14. Sprint specification and test plan | `docs/lab2-specification` | `lab2-staging` |
+| 15. Zen Green UI foundation and shell | `feature/zen-green-foundation` | `lab2-staging` |
+| 16. Development Requester context | `feature/requester-context` | `lab2-staging` |
+| 17. Ticket creation | `feature/ticket-creation` | `lab2-staging` |
+| 18. My Tickets discovery and ownership | `feature/my-tickets` | `lab2-staging` |
+| 19. Ticket Detail and attachment lifecycle | `feature/ticket-detail-attachments` | `lab2-staging` |
+| 20. End-to-end and visual evidence | `feature/e2e-visual-evidence` | `lab2-staging` |
+| 40. Attachments during ticket creation | `feature/create-ticket-attachments` | `lab2-staging` |
+| 21. Report and submission evidence | `docs/lab2-report` | `lab2-staging` |
+
+Issues 35 and 37 were opened mid-sprint from an audit that compared the six
+sprint documents against the code, and their branches follow the same rule.
+Lab 1's four Issues are listed in [docs/lab-01/](./docs/lab-01/).
 
 ## Troubleshooting
 
