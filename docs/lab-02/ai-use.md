@@ -69,26 +69,33 @@ labsheet names.
 
 ## 3. My reflection
 
-> **To be written by me before Issue #21 closes.** §14 Part 4 asks for a brief personal
-> reflection on the AI-use experience. It has to be in my own words, so it is deliberately
-> left blank rather than generated — the AI cannot write my opinion of working with it.
+Written by me, in Thai, with an English rendering underneath — the same way the prompts are
+recorded in this document.
+
+> ในงานนี้มีเนื้อหาที่ต้องทำเยอะมาก ๆ Material ที่ให้มาก็ยาวมาก ๆ ผมก็เลยเริ่มจาการทำ
+> grill-with-docs เพื่อสรุปเนื้อหาคร่าว ๆ ออกมาและก็เขียน spec ต่อ ตรงนี้ค่อนข้างที่จะยากเลย
+> เพราะผมไม่มีพื้นฐานทางด้านการ software developement แบบเป็นระบบ ทำให้หลาย ๆ ครั้งเขียน
+> spec ไม่เคลียร์ แต่ก็ค่อย ๆ Improve ไปเรื่อย ๆ และก็ตอนให้ AI เริ่ม Implementation
+> ก็ออกมาพอได้ แต่บางทีก็อาจจะไม่ทำไม่ครบกับ spec ที่ค้าง อาจจะต้องปรับเรื่อย ๆ
+> และก็การ Spawn SubAgent ในงานที่ CodeBase ใหญ่ มันจะช่วยให้ทำงานได้เร็วมากขึ้น
+> และ Context ไม่ปนกันมั่ว แต่ก็แลกมากับมูลค่า Token ที่เสียมากขึ้น
 >
-> Points worth reflecting on, from what actually happened:
-> - Being interrogated for four rounds before any code existed, and whether thirty settled
->   decisions up front was worth the delay.
-> - That seven of my eight selected prompts are me overruling or questioning the AI, and
->   that the results were better each time.
-> - What it means that the AI drafted a review of a classmate's work but I decided what to
->   send.
-> - That the peer reviewer found things the AI's own tests did not — thirty-nine findings
->   across five Pull Requests, several of them the AI's own specification going
->   unimplemented.
-> - That opening the application found three defects in one session that six hundred tests
->   could not, and what that says about what a passing suite is evidence of — and then that
->   the browser suite built to close that gap found a fourth on its first run.
-> - That two rows left marked `Planned` in tests.md turned out to be a rule never
->   implemented (BR-09) and a rule never provable (BR-30), and that the honest column was
->   what surfaced both.
-> - That the AI twice stated a labsheet figure did not exist, having listed the pages that
->   carried images and then not opened the one that mattered — and that a review comment to
->   a classmate was withdrawn on the strength of it before being reinstated.
+> ในมุมมองผมในปัจจุบัน AI ช่วยได้ทุกอย่าง สิ่งสำคัญคือการที่เราต้องเข้าใจว่าเราต้องการจะทำอะไร
+> และเราจะบอกมันอย่างไรให้เข้าใจในสิ่งที่เราทำผ่าน Spec ซึ่งมันจะช่วยให้ลดปริมาณการใช้ Token
+> ลงได้มากหากเราสามารถบอกมันมันทำได้ตรงจุด
+
+There was a great deal to do in this lab and the material given to us was very long, so I
+started with `grill-with-docs` to get a rough summary out of it and then wrote the
+specification from there. That part was genuinely hard, because I have no systematic
+background in software development — a lot of the time what I wrote was not clear, and I
+improved it gradually instead. When I then had the AI start implementing, the output was
+decent, but sometimes it did not cover everything the specification still had outstanding,
+so it needed adjusting as I went.
+
+Spawning sub-agents on a large codebase made the work much faster and kept the contexts
+from getting mixed up with each other, but the trade is a higher token cost.
+
+The way I see it now, AI can help with anything. What matters is understanding what you
+actually want to do, and how to tell it what you want through the specification. That is
+also what brings the token cost down — if you can tell it precisely, it does the right
+thing the first time.
