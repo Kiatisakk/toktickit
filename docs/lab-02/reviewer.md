@@ -458,10 +458,11 @@ the Pull Request opened and placed straight into PR Review, the link already con
 the Development panel. And the Issue was closed by hand after the merge, since a merge into
 `lab2-staging` closes nothing on its own. The card is Done.
 
-One honest caveat on what the approval covers. E2E-07 is recorded as **Planned** in
-`tests.md`: the capture code is in the journey spec on all three viewport projects, but no
-full E2E run has produced the three screenshots yet. Flipping that row to Pass is one word,
-still owed.
+One honest caveat on what the approval covered, since settled. E2E-07 was recorded as
+**Planned** when this entry was written: the capture code was in the journey spec on all
+three viewport projects, but no full run had produced the three screenshots. It flipped to
+**Pass** in PR #43, once a run had been watched go green and the three
+`create-ticket/{viewport}-invalid-attachment.png` files were on disk.
 
 ---
 
@@ -532,7 +533,7 @@ one, though E2E-03 asserted the behaviour — an assertion inside a spec file is
 a reader of the report can see, and §14 Part 8 asks to see it. And `submitting` was struck
 from the list on the reasoning that the busy state is too short to photograph, which was
 wrong twice: Part 6 names it among the six required states, and holding the *response*
-rather than the request makes it trivially capturable. Fifty-four screenshots now.
+rather than the request makes it trivially capturable.
 
 **What the audit got wrong, kept in the record.** Rebuilding the traceability matrix by
 generating it from both documents produced something worse than what it replaced, because
@@ -546,6 +547,36 @@ renderings.
 repository — his #42, #43 and #44 — which had been given on GitHub and never written down.
 Part 9 asks for evidence in both directions and this file was carrying one direction and a
 quarter.
+
+**Then a second pass against §14 itself, rather than against the documents.** Reading Part 6
+and Part 7 line by line found evidence neither the suite nor the checklist had noticed was
+missing: no screenshot of the Development Requester Selection screen existed at all, though
+Part 5 folds its marks into Part 6 and Part 6 names its dropdown, selected-user display,
+Change Requester action, loading state and failure state. Part 7 asks for pagination,
+sorting and filters and had none of the three — and could not have had pagination, because
+the test database holds reference data only and a list of three tickets renders no page
+control. `evidence.spec.ts` now sets those states up deliberately: the twelve rows it needs
+are created through the same API the screen reads, not by seeding, because the demonstration
+seed belongs to the development database and putting it in the test one broke four server
+assertions when it was tried (D-11). Seventy-five screenshots.
+
+**That immediately reintroduced the defect D-11 exists for.** The new rows carried a summary
+prefix `wipe-journey.ts` did not know about, so they survived every rebuild and accumulated
+to 108 before the server suite was next run, where the ownership and pagination assertions
+failed on tickets no test had created. The wipe covers both writers now, and its comment
+says what happens to a third that forgets to register itself — the previous version claimed
+there was only one writer, which is exactly why the second one went unnoticed.
+
+**And a question about the suite's own design turned out to be worth asking.** Two tests were
+being skipped, both from one test that asserted the table is hidden below 768px and stood
+itself down everywhere else — so nothing anywhere asserted the table is *shown* above the
+breakpoint, and the two tests that touch it on a wide screen both opened with
+`if (await …isVisible())`, which passes silently when the element is absent. A media query
+that hid the table at every width would have failed nothing. All three assert presence per
+viewport now, 60 tests pass and none are skipped. The rewrite went green 24 times against a
+database of zero tickets first, because an empty list renders neither presentation — the
+same defect, recreated while fixing it, and caught by checking why it passed rather than
+that it passed.
 
 ---
 
