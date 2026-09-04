@@ -6,19 +6,16 @@ reconstructed at the end of the sprint from memory.
 ## 1. Which AI I used
 
 **Claude Code** in the terminal, with access to the repository and to the `gh` command line
-tool. Mostly **Claude Opus 5**, with **Claude Sonnet 5** on some of the later sessions —
-126 commits on `lab2-staging` carry an Opus 5 co-author trailer and 9 carry Sonnet 5.
+tool. Mostly **Claude Opus 5**, with **Claude Sonnet 5** on the later sessions and on the
+parallel sub-agent work — the API-conformance and UI-conformance fixes of Issues #35 and
+#37 were each handed to one, in its own git worktree, so the two could not edit the same
+file at the same time.
 
-**Muse Spark 1.3** finished Issue #40 after the Claude sub-agent working on it hit a
-session rate limit mid-run, taking over the same git worktree and the same brief. Its two
-commits (`6e485d0`, `a68e7ac`) carry a Claude Sonnet 5 trailer regardless, because the
-brief specified that trailer verbatim and the brief was what it continued from. So the
-history under-reports on exactly those two commits, and this paragraph is the correction —
-counting trailers is a good check on a claim like the one above it, but not a complete one.
-
-Sonnet was also the model given the parallel sub-agent work — the API-conformance and
-UI-conformance fixes of Issues #35 and #37 were each handed to one, in its own git
-worktree, so the two could not edit the same file at the same time.
+**Muse Spark 1.3** finished Issue #40, taking over the same worktree and the same brief
+after the Claude sub-agent working on it hit a session rate limit mid-run. Its commits
+carry a Claude Sonnet 5 co-author trailer anyway, because the brief specified that trailer
+verbatim and the brief is what it continued from — so the history under-reports there, and
+this sentence is the correction.
 
 **Antigravity CLI (Gemini 3.8 Flash)** ran the post-sprint conformance audit across five
 dimensions, with five parallel research sub-agents (S7–S11 below). Its report is not
