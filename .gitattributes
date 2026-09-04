@@ -1,0 +1,20 @@
+# Line endings.
+#
+# Git for Windows defaults to core.autocrlf=true, which rewrites every file to
+# CRLF on checkout. Oxfmt only accepts LF, so on a Windows machine the two fight
+# each other: `ultracite fix` writes LF, git writes CRLF back, and
+# `ultracite check` reports every file in the repository as unformatted forever.
+#
+# `eol=lf` settles it. Attributes outrank config, so the working tree gets LF on
+# every machine regardless of how anyone's git is set up, and the check means
+# something again.
+* text=auto eol=lf
+
+# Binaries must never be line-ending normalised. The PDFs are course handouts and
+# submitted evidence; rewriting a byte in one would corrupt it silently.
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary

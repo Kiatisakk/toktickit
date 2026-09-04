@@ -2,31 +2,37 @@
   "name": "server",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "description": "TokTickIT Express REST API",
+  "type": "module",
   "scripts": {
     "dev": "node --import tsx --watch src/server.ts",
+    "dev:test": "dotenv -e .env.test -- node --import tsx src/server.ts",
     "build": "tsc -b",
     "start": "node dist/server.js",
     "test": "vitest run",
     "db:migrate": "prisma migrate deploy && prisma generate",
     "db:migrate:dev": "prisma migrate dev && prisma generate",
     "db:seed": "prisma db seed",
+    "db:seed:demo": "tsx prisma/seed-demo.ts",
     "db:generate": "prisma generate",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "db:test:setup": "dotenv -e .env.test -- tsx prisma/wipe-journey.ts && dotenv -e .env.test -- prisma migrate deploy && dotenv -e .env.test -- prisma db seed"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "cors": "^2.8.6",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "multer": "^2.3.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/multer": "^2.2.0",
     "@types/node": "^24.13.3",
     "@types/supertest": "^7.2.1",
     "dotenv": "^17.4.2",
+    "dotenv-cli": "^11.0.0",
     "prisma": "^7.9.1",
     "supertest": "^7.2.2",
     "tsx": "^4.23.5",

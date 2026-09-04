@@ -19,6 +19,7 @@ server/src/generated/prisma/
 .env
 .env.*
 !.env.example
+!.env.test.example
 *.local
 
 # Logs
@@ -33,6 +34,10 @@ coverage/
 .vite/
 .vitest/
 
+# Agent configuration written by tooling — CLAUDE.md at the root is tracked,
+# but the .claude/ directory holds machine-local state.
+.claude/
+
 # Editor / OS
 .vscode/*
 !.vscode/extensions.json
@@ -40,3 +45,12 @@ coverage/
 .DS_Store
 Thumbs.db
 *.sw?
+
+# Uploaded attachments. Generated names, real user content — never in git.
+server/uploads/
+
+# Playwright — run output and its HTML report. The curated screenshots under
+# artifacts/ are committed; these two are regenerated on every run.
+test-results/
+playwright-report/
+.playwright/

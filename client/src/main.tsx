@@ -1,14 +1,26 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { RouterProvider } from "react-router";
 
-// Bootstrap comes first so index.css can override it where needed.
-import 'bootstrap/dist/css/bootstrap.min.css'
-import './index.css'
+// Bootstrap first, then our token layer, then the components that consume it.
+import "bootstrap/dist/css/bootstrap.min.css";
+import "./styles/tokens.css";
+import "./styles/components.css";
+import "./index.css";
 
-import App from './App.tsx'
+import { RequesterProvider } from "./context/RequesterContext";
+import { router } from "./routes/router";
 
-createRoot(document.getElementById('root')!).render(
+const container = document.getElementById("root");
+
+if (!container) {
+  throw new Error("Root element #root is missing from index.html");
+}
+
+createRoot(container).render(
   <StrictMode>
-    <App />
-  </StrictMode>,
-)
+    <RequesterProvider>
+      <RouterProvider router={router} />
+    </RequesterProvider>
+  </StrictMode>
+);

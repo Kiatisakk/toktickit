@@ -1,0 +1,122 @@
+/*
+ * Zen Green design tokens.
+ *
+ * Every colour, size and spacing value in the application resolves to one of
+ * these. Components never write a literal colour — see docs/lab-02/ui-spec.md §1.
+ *
+ * The second block remaps Bootstrap's own custom properties onto ours, so the
+ * framework's buttons, form controls and grid inherit the palette instead of
+ * each one being restyled by hand. Bootstrap's breakpoints already sit at
+ * 768px and 992px, which is exactly where §8.7 of the labsheet puts them.
+ */
+
+:root {
+  /* Greens — fixed by §7 of the labsheet, do not change */
+  --tkt-green: #006b3c;
+  --tkt-green-accent: #0b7a46;
+  --tkt-green-pale: #eaf6ef;
+
+  /* Surfaces */
+  --tkt-page: #f5f7f6;
+  --tkt-surface: #ffffff;
+  --tkt-border: #dde3e0;
+  --tkt-readonly: #eef1ef;
+
+  /* Hover fill for rows and list items.
+
+     The palette had no such token, so the pale green was borrowed for it — and
+     the pale green means "selected". A row that looks selected whenever the
+     pointer crosses it has spent the word on nothing. Neutral, one step off the
+     surface, and distinct from both selection and the page behind. */
+  --tkt-hover: #e8ecea;
+
+  /* Text — charcoal-green, never pure black */
+  --tkt-text: #1f2a24;
+  --tkt-text-muted: #5b6b62;
+  --tkt-text-inverse: #ffffff;
+
+  /* Feedback */
+  --tkt-error: #a4262c;
+  --tkt-error-pale: #fdf3f4;
+  --tkt-warning: #b4690e;
+  --tkt-warning-pale: #fdf6ec;
+  --tkt-success: #0b7a46;
+
+  /* Blue for a live, neutral state. §7 fixes the greens and says nothing about
+     this; the page 11 illustration draws Open in blue, and the status column
+     needs a colour that is neither "good", "bad" nor "waiting". */
+  --tkt-info: #1b5e9e;
+  --tkt-info-pale: #eaf1f8;
+
+  /* Spacing — a 4px scale */
+  --tkt-space-1: 0.25rem;
+  --tkt-space-2: 0.5rem;
+  --tkt-space-3: 0.75rem;
+  --tkt-space-4: 1rem;
+  --tkt-space-6: 1.5rem;
+  --tkt-space-8: 2rem;
+  --tkt-space-12: 3rem;
+
+  /* Type */
+  --tkt-font-page-title: 1.75rem;
+  --tkt-font-section: 1.25rem;
+  --tkt-font-body: 1rem;
+  --tkt-font-label: 0.875rem;
+  --tkt-font-small: 0.8125rem;
+
+  /* Shape */
+  --tkt-radius: 0.5rem;
+  --tkt-radius-sm: 0.375rem;
+  --tkt-control-height: 2.5rem;
+  --tkt-touch-target: 2.75rem;
+  --tkt-shadow: 0 1px 2px rgb(31 42 36 / 6%), 0 1px 3px rgb(31 42 36 / 4%);
+
+  /* Layout */
+  /* Nine columns on one line each need the room. §8.7 asks for "a sensible
+     maximum width", not a narrow one — below this the table scrolls on displays
+     that could have shown it whole. */
+  --tkt-content-max: 90rem;
+}
+
+/* Bootstrap inherits the palette rather than being overridden per component. */
+:root {
+  --bs-primary: var(--tkt-green);
+  --bs-primary-rgb: 0, 107, 60;
+  --bs-body-bg: var(--tkt-page);
+  --bs-body-color: var(--tkt-text);
+  --bs-border-color: var(--tkt-border);
+  --bs-link-color: var(--tkt-green-accent);
+  --bs-link-hover-color: var(--tkt-green);
+  --bs-danger: var(--tkt-error);
+  --bs-warning: var(--tkt-warning);
+  --bs-success: var(--tkt-success);
+  --bs-focus-ring-color: rgb(11 122 70 / 25%);
+  --bs-border-radius: var(--tkt-radius);
+}
+
+body {
+  background-color: var(--tkt-page);
+  color: var(--tkt-text);
+  min-height: 100vh;
+}
+
+/*
+ * One focus treatment for the whole application. §8.3 requires focus to stay
+ * visible for keyboard users, and a single rule is easier to keep true than a
+ * per-component one.
+ */
+:focus-visible {
+  outline: 2px solid var(--tkt-green-accent);
+  outline-offset: 2px;
+}
+
+/* Respect a reduced-motion preference rather than assuming animation is welcome. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
