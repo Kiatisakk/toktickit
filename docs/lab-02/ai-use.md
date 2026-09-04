@@ -5,8 +5,14 @@ reconstructed at the end of the sprint from memory.
 
 ## 1. Which AI I used
 
-**Claude Code** running **Claude Opus 5**, in the terminal, with access to the repository
-and to the `gh` command line tool.
+**Claude Code** in the terminal, with access to the repository and to the `gh` command line
+tool. Mostly **Claude Opus 5**, with **Claude Sonnet 5** on some of the later sessions —
+126 commits on `lab2-staging` carry an Opus 5 co-author trailer and 9 carry Sonnet 5, so
+the split is recorded in the history rather than only claimed here.
+
+Sonnet was also the model given the parallel sub-agent work — the API-conformance and
+UI-conformance fixes of Issues #35 and #37 were each handed to one, in its own git
+worktree, so the two could not edit the same file at the same time.
 
 It was used as a specification agent first and a coding agent second, in the order §11 of
 the labsheet sets out: the engineering contract was written, reviewed and merged before any
