@@ -24,7 +24,9 @@ The eight below are the ones that **changed what happened**, rather than asking 
 that was going to be done anyway. Seven of the eight are me overruling, narrowing or
 questioning the AI's own proposal.
 
-The full log follows in §2b — nothing has been discarded, only sorted.
+The full log follows in §2b — nothing has been discarded, only sorted. §2c holds the briefs
+the main agent wrote to its own sub-agents, which are not my prompts and are kept apart from
+them for that reason.
 
 | # | Prompt | What it changed | Issue |
 | --- | --- | --- | --- |
@@ -81,6 +83,30 @@ minor are often the ones that stopped something going wrong.
 | 38 | *"อัพเดทให้เป็นปัจจุบันเลย ๆ"*<br>"Bring them up to date." | One of the four §10 mismatches was a promised `unauthorized` screenshot that had never been captured, though E2E-03 asserted the behaviour. The choice was to weaken the document or produce the evidence; Part 8 asks for that evidence, so the capture was added to the existing test and the file now exists at all three viewports. |
 
 <!-- Prompts from later Issues are appended to §2b by the Pull Request that used them. -->
+
+## 2c. Sub-agent briefs
+
+A different kind of prompt, kept separate on purpose: these were written by the main agent
+to another agent, not by me. They are recorded because they are how a third of this sprint's
+work was actually carried out, and a log that showed only what I typed would not explain
+where it came from. None of them was written by me, and none should be read as one of the
+6–10 selected prompts §14 Part 4 asks for.
+
+Each ran as its own Claude Sonnet 5 session. The implementation ones were given their own
+git worktree, so two agents editing the repository at once could not land on the same file.
+
+| # | Brief | Why it was delegated | What came back |
+| --- | --- | --- | --- |
+| S1 | **Verify nine UI and accessibility claims.** Adjudicate each as TRUE, FALSE or PARTLY TRUE against `ui-spec.md`, locating the real line numbers rather than trusting the ones in the claim; report a fabricated citation as a result in its own right. | An external review had produced a list of findings, and the expensive part was not fixing them but establishing which were real. Verification is separable work with a clear pass mark. | Six TRUE, one PARTLY TRUE. The partly-true one mattered: `role="region"` was genuinely absent, but no specification or test ever required it, so the claim overstated. It also found a scroll rule the prose described as banded and the CSS applied unconditionally. |
+| S2 | **Verify five test-coverage claims and audit `tests.md` itself.** Check every row's file exists and contains the test it describes; report any row naming a file that does not exist. | Same reason, different axis — and the instruction to check the document against the filesystem is what later surfaced the traceability gap. | All five coverage claims TRUE; the named files all existed, so the "fabricated filename" suspicion was wrong and said so. Found the duplicate `UI-14`, the duplicated section numbers, and the stale counts. |
+| S3 | **Audit `api-spec.md` against `server/src`.** Trace ownership on every endpoint that touches a ticket or attachment, and say for each whether the requester id is in the query predicate or compared after fetching. | The one area nobody had checked end to end, and the one where being wrong is a security defect rather than a documentation defect. | Ownership clean on all four — `where` clauses throughout, no fetch-then-compare, and a relational filter on the attachment routes. It also found the oversized-body path answering 500 where the contract says 413, and the documented upload-check order being the reverse of the code's. |
+| S4 | **Implement Issue #35 — API contract conformance.** Four named fixes with the decision already made for each, including one instruction to change the document rather than the code. | Server-only work with no overlap with the client, so it could run beside S5. | 347 server tests passing, four commits. It also caught a stale comment inside `attachments.ts` describing the same wrong order as the document — something the brief had not anticipated. |
+| S5 | **Implement Issue #37 — UI conformance.** Eleven fixes, with an explicit instruction not to write `44px` into four separate rules but to wire the four controls to the shared token, because that is the failure `ui-spec.md` itself warns about one sentence later. | Client-only, and it could run beside S4 without either touching the other's files. | 296 client tests passing, five commits, and a reasoned decision on the one question left open — whether data cells keep `nowrap` — rather than a silent choice. |
+| S6 | **Implement Issue #40 — attachments during ticket creation.** The whole Issue as one contract: picker position from `ui-spec.md`, client-side validation mirroring `server/src/attachments/rules.ts` rather than restating its numbers, the two-step upload, D-17 for the partial-failure case, tests, the missing E2E screenshot, and the documents. | The largest remaining piece of work, and one where the tempting shortcut — a multipart creation endpoint — had to be forbidden up front with the three things it would break named. | The feature, PR #41, merged. Nothing was built and thrown away. |
+
+Four earlier verification agents were launched on Claude Opus 5 and all four died on a rate
+limit mid-run, which is why the work above was re-issued on Sonnet. The failure is recorded
+because it is the reason the model changed, not because it produced anything.
 
 ## 3. My reflection
 
