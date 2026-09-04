@@ -32,33 +32,50 @@ implementation began.
 
 ## 2. Selected key prompts
 
-The eight below are the ones that **changed what happened**, rather than asking for work
-that was going to be done anyway. Seven of the eight are me overruling, narrowing or
-questioning the AI's own proposal.
+Ten, which is the top of the six-to-ten §14 Part 4 asks for. The test for getting in was
+not whether a prompt produced a lot of work — most did — but whether the sprint would have
+gone differently without it. Eight of the ten are me stopping, questioning or overruling the
+AI rather than directing it, and three are me catching it being wrong.
 
-The full log follows in §2b — nothing has been discarded, only sorted. §2c holds the briefs
-the main agent wrote to its own sub-agents, which are not my prompts and are kept apart from
-them for that reason.
+They keep the numbers they have in the full log below, so the two can be read against each
+other. The selection was made once the log was complete rather than as the sprint went,
+which is why it is not simply the first ten.
 
-| # | Prompt | What it changed | Issue |
+| Log # | Prompt | What it changed | Issue |
 | --- | --- | --- | --- |
 | 1 | `/grill-with-docs @material/UTF-8_Lab_02_labsheet-1.pdf read instruction in this lab2` | Asked to be interrogated rather than given a plan. Four rounds and thirty settled decisions before a line of anything was written. | #14 |
 | 2 | *"9 ทำอัน 2 ก่อนได้ไหมค่อยทำ tooling รวมกับพวก feature"*<br>"For question 9 — can we do item 2 first, then fold the tooling in with the features?" | Reordered the sprint so the specification became the first Pull Request into `lab2-staging`. The commit graph now proves the specification preceded the code, which is what Part 2 asks for. The AI's ordering put tooling first and would have made that evidence weaker. | #14 |
 | 3 | *"Lab 2 report and submission evidence คืออยากให้ทำและอัพเดทเรื่อย ๆ"*<br>"Lab 2 report and submission evidence — I want this done and updated continuously." | Changed the shape of the whole sprint. `reviewer.md`, `ai-use.md` and `tests.md` became living documents updated by every Pull Request, and the final Issue became an audit rather than a writing exercise. | #15 |
-| 4 | *"รอบีมตรวจ pr 23 ก่อนค่อยทำอะไรก็ตาม"*<br>"Wait for Beam to review PR 23 before doing anything at all." | Stopped work rather than starting the next Issue in parallel. That Issue created the `User` table, which locks a naming decision the reviewer had not yet commented on — building it first would have meant a migration to undo. | #15 |
-| 5 | *"แล้ว 5 อันที่นายจงใจทำไว้แก้ยังนะ"*<br>"What about the five things you deliberately flagged for him to challenge?" | Checked whether the review had engaged with the flagged decisions. It had not — three real findings, none of them on the ten decisions raised across two Pull Requests. Comparing the two specifications then showed the partner had independently chosen the opposite on three of them, so they are genuinely contested rather than obvious. | #15 |
-| 6 | *"เล่าปัญหาให้ฟังหน่อย"*<br>"Tell me about the problem." | Asked for the explanation rather than the fix. Writing it out from first principles surfaced that a claim made minutes earlier — that hiding whitespace would show an empty diff — was wrong, and that a predicted sixty-five-file diff was in fact sixteen. | PR #25 |
-| 7 | *"tdd น่าใช้ไหม"*<br>"Is TDD actually worth using?" | Refused to adopt a practice because a skill file recommended it. The answer had to weigh what §9 requires against what Part 3 actually evidences, and the outcome was to use the red-green loop only for the query parser and the API contract — where the rules come as a list — and not for layout work, where writing assertions before seeing the screen is guessing. | #18 |
-| 8 | *"review contract ตอนนี้มันจะได้อะไร implement มาขนาดนี้แล้วนะ"*<br>"What would a Review Contract achieve now? We have implemented this much already." | Rejected a ceremony step the AI proposed. §11.2's Review Contract prompt is written for the start of a sprint; four Issues in, the ambiguities it would surface had already been resolved by building them. What survived was a two-minute mechanical traceability check, which found a real problem: the AC-to-test matrix used ranges a script cannot expand. | #18 |
+| 10 | *"รีวิวให้หน่อยเดะเอาไปตอบบีมเอง"*<br>"Review it for me, I will take it and reply to Beam myself." | Drew the line between analysis and action, and it held for the rest of the sprint: the AI read the partner's work and produced findings, and every review that reached his repository was posted on my say-so. | Partner PR |
+| 16 | *"ทำไมหน้า My Ticket ไม่มี Table"*<br>"Why is there no table on the My Tickets page?" | Opened the running application, which no test in this repository can do. The table had no background and was invisible against the page. Three defects were found this way in one session, none of which six hundred passing tests could see. | #18 |
+| 17 | *"มีหน้า 11 ไงแล้วทำไม col Ticket Owner หายไปด้วย"*<br>"There *is* a page 11 — so why is the Ticket Owner column missing?" | Caught the AI asserting a labsheet figure did not exist. It had listed the pages carrying images, opened three of them, and not the fourth. The figure was on page 11, the column was real, and a review finding already sent to the peer reviewer had been withdrawn on the strength of the mistake. It was reinstated. | #18 |
+| 18 | *"งงแล้วเทสผ่านได้ไงแอบโกงหรือป่าว"*<br>"I'm confused — how did the tests pass? Are you cheating?" | Refused a green suite as an answer. The tests were honest, but every mock in `MyTickets.test.tsx` returned two tickets, so `totalPages` was always 1 and no test on the screen itself ever rendered the page controls. A passing suite was evidence of less than it appeared to be. | #18 |
+| 19 | *"มันอยู่ใน Scope ที่แลปให้ทำไหมนะ"*<br>"Is that even in the scope the lab asks for?" | Asked after three fields had already been added to Create Ticket from Figure 1. Three of the five did not belong: IT Priority, Ticket Owner and Resolution Summary are set by work §4.2 excludes, so on a creation form they would be permanently empty boxes. Copying a figure is not the same as reading the scope. | #19 |
+| 22 | *"ครั้งหน้าแยกเปนข้อ ๆ เหมือนที่บีมรีวิวให้เราได้มะแบบทีละ comment"*<br>"Next time split it into separate items, one comment at a time, the way Beam reviews mine." | Corrected an asymmetry I had not noticed I was creating. His reviews arrive as line comments I can answer and resolve one at a time; mine were going back as a single block of prose, leaving the author to map findings onto locations by hand with nowhere to reply per finding. | Partner PR |
+| 37 | *"มี doc อะไรที่ต้องอัพเดทอีกมั้ย"*<br>"Any other docs that need updating?" | Asked at the point where the answer was still cheap, and found three: `ui-spec.md` §10 named a screenshot set that differed from the files on disk in four ways, `ai-use.md` had stopped logging eight prompts earlier, and `README.md` still described the repository as holding Lab 1. No test in this repository can fail because a document is out of date. | #21 |
+
+Five prompts from an earlier version of this table were dropped when the log was complete
+enough to choose from properly — among them the two that refused a practice the AI proposed
+(TDD everywhere, and a Review Contract four Issues into the sprint). They were real
+decisions and they are still in §2b at 7 and 8; they lost their place to prompts that
+caught something wrong rather than declined something unnecessary.
 
 ## 2b. Full prompt log
 
-Every prompt worth recording, including the eight above. Kept complete because a prompt
+Every prompt worth recording, the ten selected above included. Kept complete because a prompt
 cannot be recovered accurately weeks after it was typed, and because the ones that look
 minor are often the ones that stopped something going wrong.
 
 | # | Prompt | What it produced |
 | --- | --- | --- |
+| 1 | `/grill-with-docs @material/UTF-8_Lab_02_labsheet-1.pdf read instruction in this lab2` | Asked to be interrogated rather than given a plan. Four rounds and thirty settled decisions before a line of anything was written. |
+| 2 | *"9 ทำอัน 2 ก่อนได้ไหมค่อยทำ tooling รวมกับพวก feature"*<br>"For question 9 — can we do item 2 first, then fold the tooling in with the features?" | Reordered the sprint so the specification became the first Pull Request into `lab2-staging`, which is the evidence Part 2 asks for. |
+| 3 | *"Lab 2 report and submission evidence คืออยากให้ทำและอัพเดทเรื่อย ๆ"*<br>"Lab 2 report and submission evidence — I want this done and updated continuously." | Made `reviewer.md`, `ai-use.md` and `tests.md` living documents updated by every Pull Request, and turned the final Issue into an audit rather than a writing exercise. |
+| 4 | *"รอบีมตรวจ pr 23 ก่อนค่อยทำอะไรก็ตาม"*<br>"Wait for Beam to review PR 23 before doing anything at all." | Stopped work rather than starting the next Issue in parallel. That Issue created the `User` table, which locks a naming decision the reviewer had not yet commented on — building it first would have meant a migration to undo. |
+| 5 | *"แล้ว 5 อันที่นายจงใจทำไว้แก้ยังนะ"*<br>"What about the five things you deliberately flagged for him to challenge?" | Checked whether the review had engaged with the flagged decisions. It had not — three real findings, none of them on the ten decisions raised across two Pull Requests. Comparing the two specifications then showed the partner had independently chosen the opposite on three of them, so they are genuinely contested rather than obvious. |
+| 6 | *"เล่าปัญหาให้ฟังหน่อย"*<br>"Tell me about the problem." | Asked for the explanation rather than the fix. Writing it out from first principles surfaced that a claim made minutes earlier — that hiding whitespace would show an empty diff — was wrong, and that a predicted sixty-five-file diff was in fact sixteen. |
+| 7 | *"tdd น่าใช้ไหม"*<br>"Is TDD actually worth using?" | Refused to adopt a practice because a skill file recommended it. The outcome was to use the red-green loop only for the query parser and the API contract — where the rules come as a list — and not for layout work, where writing assertions before seeing the screen is guessing. |
+| 8 | *"review contract ตอนนี้มันจะได้อะไร implement มาขนาดนี้แล้วนะ"*<br>"What would a Review Contract achieve now? We have implemented this much already." | Rejected a ceremony step the AI proposed. §11.2's Review Contract prompt is written for the start of a sprint; four Issues in, the ambiguities it would surface had already been resolved by building them. What survived was a two-minute mechanical traceability check, which found a real problem: the AC-to-test matrix used ranges a script cannot expand. |
 | 9 | *"16 ไม่ต้องเปิด Issue ใช่มะ"*<br>"For 16 — no Issue needed, right?" | Corrected an over-application of process. Cleaning up Lab 1 lint findings is not sprint scope under §10, so it became a Pull Request with no Issue and a one-line explanation in its description, which the workflow guide explicitly allows. |
 | 10 | *"รีวิวให้หน่อยเดะเอาไปตอบบีมเอง"*<br>"Review it for me, I will take it and reply to Beam myself." | Drew the line between analysis and action. The AI read the partner's specification and produced the findings; posting the review stayed with me. |
 | 11 | *"ขอแบบสรุป ๆ ง่าย ๆ"*<br>"Give me a short simple version." | Cut a long review down to its one blocking point. What was posted was a single paragraph rather than three tiers of findings. |
