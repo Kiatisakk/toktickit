@@ -76,6 +76,29 @@ test.describe("the complete Requester journey", () => {
       .getByLabel(/^Description/u)
       .fill("Raised by the end-to-end suite to prove the journey joins up.");
 
+    // §14 Part 6 asks for the submitting state among the six it names. It lasts
+    // one local API call, which is too short to photograph by racing it — so the
+    // response is held instead of the request. The real POST is issued by
+    // `route.fetch`, the ticket really is created, and the screen stays on its
+    // busy button until `route.fulfill` hands the answer back. Nothing about the
+    // application is changed to make the screenshot possible, which is what
+    // would have made the screenshot worth nothing.
+    await page.route("**/api/tickets", async (route) => {
+      if (route.request().method() !== "POST") {
+        await route.continue();
+        return;
+      }
+
+      const response = await route.fetch();
+
+      await expect(
+        page.getByRole("button", { name: "Creating…" })
+      ).toBeVisible();
+      await shoot(page, "create-ticket", `${info.project.name}-submitting`);
+
+      await route.fulfill({ response });
+    });
+
     await page.getByRole("button", { name: "Create Ticket" }).click();
 
     // --- the backend-generated Ticket Number --------------------------------
