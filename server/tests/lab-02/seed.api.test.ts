@@ -80,6 +80,44 @@ describe("retiring a row that is no longer listed", () => {
   }, 60_000);
 });
 
+describe("clearing the previous end-to-end run", () => {
+  // Every journey the Playwright suite runs creates a ticket it never deletes
+  // afterwards. Left in place, those rows accumulate on the first requester and
+  // break the ownership assertions, which read every ticket their requester
+  // owns — nine of them did exactly that after one evening of reruns.
+  it("removes tickets a previous run left behind", async () => {
+    const requester = await prisma.user.findFirstOrThrow({
+      where: { role: "REQUESTER", isActive: true },
+    });
+    const category = await prisma.category.findFirstOrThrow({
+      where: { isActive: true },
+    });
+    const system = await prisma.relatedSystem.findFirstOrThrow({
+      where: { isActive: true },
+    });
+
+    await prisma.ticket.create({
+      data: {
+        ticketNumber: `TKT-3100-${String(Date.now()).slice(-6)}`,
+        requesterId: requester.id,
+        categoryId: category.id,
+        relatedSystemId: system.id,
+        summary: "E2E journey wipe proof",
+        description: "Created by the seed test, removed by the setup.",
+        requestedPriority: "MEDIUM",
+      },
+    });
+
+    runSeed();
+
+    await expect(
+      prisma.ticket.count({
+        where: { summary: { startsWith: "E2E journey " } },
+      })
+    ).resolves.toBe(0);
+  }, 60_000);
+});
+
 describe("reference seed", () => {
   it("contains exactly the four required categories, in order", async () => {
     const categories = await prisma.category.findMany({

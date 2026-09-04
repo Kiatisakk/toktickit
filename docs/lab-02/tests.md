@@ -159,7 +159,7 @@ in the development database and is never touched by a test run.
 | E2E-04 | AC-13, AC-15 | The states Part 6 and 7 ask for | The empty state from a requester with no tickets and the no-results state from a search that matches nothing, captured as distinct screens | `e2e/lab-02/requester-ticket-flow.spec.ts` | **Pass** |
 | E2E-05 | AC-11 | A failed submission keeps what was typed | The create request is failed at the browser; the alert appears and Summary and Description still hold their text | `e2e/lab-02/requester-ticket-flow.spec.ts` | **Pass** |
 | E2E-06 | AC-25 | The table scrolls, not the page | `.tkt-table-scroll` carries `overflow-x: auto` and `tabindex=0`, so the far columns are reachable without a pointer | `e2e/lab-02/visual.spec.ts` | **Pass** |
-| E2E-07 | AC-19, FR-17 | Create Ticket's invalid-attachment state, in a real browser | An oversized file chosen on Create Ticket shows its inline rejection reason; captured at all three viewports as `create-ticket/{viewport}-invalid-attachment.png`, the file `ui-spec.md` §10 names | `e2e/lab-02/requester-ticket-flow.spec.ts` | Planned |
+| E2E-07 | AC-19, FR-17 | Create Ticket's invalid-attachment state, in a real browser | An oversized file chosen on Create Ticket shows its inline rejection reason; captured at all three viewports as `create-ticket/{viewport}-invalid-attachment.png`, the file `ui-spec.md` §10 names | `e2e/lab-02/requester-ticket-flow.spec.ts` | **Pass** |
 
 ---
 
@@ -218,7 +218,7 @@ docker compose up -d              # PostgreSQL on host port 5433
 npm run db:migrate                # migrate, then generate the Prisma client
 npm run db:seed                   # reference data — idempotent
 npm run db:seed:demo              # demonstration tickets (development database only)
-npm run db:test:setup             # migrate + reference seed into toktickit_test
+npm run db:test:setup             # wipe E2E leftovers, migrate + reference seed
 
 npm test                          # unit, API, UI component, UI style
 npm run test:e2e                  # runs e2e:prepare first, then Playwright
@@ -228,7 +228,10 @@ npm exec -- ultracite check       # lint and format
 `npm run test:e2e` no longer assumes the test database is already in the state the suite
 needs: it runs `npm run e2e:prepare` (`db:test:setup`) first, every time, so a rerun
 starts from the same rebuilt reference-only data rather than from whatever the previous
-run left behind. Before this, the suite's `webServer` pointed at the *development*
+run left behind. The setup wipes first: any ticket whose summary starts with
+`E2E journey ` — the only rows an E2E run writes and never removes — is deleted
+(attachments cascade) before migrate and seed run, so the ownership assertions,
+which read every ticket their requester owns, never trip over another run's rows. Before this, the suite's `webServer` pointed at the *development*
 database, which the suite itself then grew on every run — see the note appended to D-11 in
 `specification.md`, which also records why the demonstration seed does **not** run before
 E2E: no spec in this suite needs it, and it broke four `vitest` server assertions the one

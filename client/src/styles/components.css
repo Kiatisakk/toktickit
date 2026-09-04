@@ -662,12 +662,31 @@
 /* ---------------------------------------------------------- table -- */
 
 /* Between 768px and 991px the table is still the presentation and nine columns
-   of real data are wider than the viewport. §8.7 forbids the *page* scrolling
+   of real data are wider than the viewport — the band where this rule bites.
+   The declaration itself stays unconditional: `auto` only takes effect where
+   the table overflows its box, so a wider-than-expected table can never spill
+   onto the page at desktop either. §8.7 forbids the *page* scrolling
    sideways; a table scrolling inside its own box is the standard way to obey
    that. Focusable, or the columns past the edge are reachable with a pointer
    and by no other means. */
 .tkt-table-scroll {
   overflow-x: auto;
+  /* Load-bearing, and not for layout — do not remove it as redundant.
+     `overflow` only clips descendants whose containing block is inside the
+     overflowing box, and an absolutely positioned element's containing block is
+     its nearest *positioned* ancestor. While this box was `static`, the
+     `.tkt-visually-hidden` spans in the Ticket Owner and IT Priority cells —
+     the eighth and ninth of nine columns — escaped to the initial containing
+     block, sat at their static position past the right edge of the viewport,
+     and widened the document itself. The page then scrolled sideways, which is
+     the one thing §8.7 forbids, while the table scrolled correctly inside its
+     own box.
+
+     It surfaced as an intermittent E2E failure rather than a steady one because
+     whether those cells land past the edge depends on how wide the data makes
+     the columns before them. Measured at 834px: 344px of page overflow with
+     this box `static`, none with it `relative`. */
+  position: relative;
 }
 
 .tkt-table-scroll:focus-visible {
