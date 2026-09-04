@@ -549,6 +549,28 @@ quarter.
 
 ---
 
+## PR #28 and PR #30 — the two short ones
+
+Both belong in this file for completeness rather than for what they contain, and an audit
+of the file's own coverage claim is what found them missing.
+
+**[#30](https://github.com/Kiatisakk/toktickit/pull/30) — the review record of PR #29, no
+Issue.** One file, `reviewer.md`, carrying the entry for the Pull Request before it.
+**Approved** with `LGTM`, no comments, merged by @beambeambeam on 2026-09-02. The pattern
+this file follows — a review recorded by the Pull Request that follows it — is the reason
+it exists, and it is the same pattern PR #33 later repeated.
+
+**[#28](https://github.com/Kiatisakk/toktickit/pull/28) — the figure audit. Closed without
+merging**, which makes it the only Pull Request of the sprint with no review to record and
+no merge to report. It added a `figure-audit.md` and a script that extracted the three
+labsheet illustrations so the screens could be compared against them. The decision to close
+it was mine: the labsheet asks for a visual comparison inside `ui-spec.md`, not for a
+separate audit document, and shipping a fourth document nobody asked for would have been
+work for its own sake. What it established about the figures went into `ui-spec.md` and into
+D-02 and D-14 instead.
+
+---
+
 ## Reviews I gave
 
 Four Pull Requests on his repository, in order. §14 Part 9 asks for review evidence in both
@@ -642,14 +664,14 @@ satisfied both. He removed the linear-history rule and merged it himself.
 
 ---
 
-## Still to record
+## Coverage
 
-Entries are added by the Pull Request they describe:
+Every Pull Request opened against `lab2-staging` this sprint has an entry above —
+nineteen of them, counting the one that was closed without merging — along with the four
+reviews given on the partner's repository. That was checked by listing the Pull Requests
+from GitHub and searching this file for each number, rather than by reading down the page,
+which is how #28 and #30 turned out to be missing after the rest had been written.
 
-- [x] Issue #18 — My Tickets
-- [x] Issue #19 — Ticket Detail and attachments
-- [x] Issue #20 — End-to-end and visual evidence
-- [x] Issue #21 — Report and submission
-- [ ] Release Pull Request into `main` — the only entry that cannot be written
-      before it happens, since it has no review to record yet
-- [x] Further reviews given on the partner's repository
+One entry is still to come. The release Pull Request from `lab2-staging` into `main` has not
+been opened yet, so there is no review of it to record; it is added here when it merges,
+which is the rule every other entry in this file followed.
