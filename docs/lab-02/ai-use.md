@@ -48,7 +48,7 @@ of the briefs are in [`ai-use-log.md`](./ai-use-log.md), under these same number
 
 ## 2b. The full log, and the sub-agent briefs
 
-Both live in [`ai-use-log.md`](./ai-use-log.md): every prompt I typed, numbered 1 to 41 with
+Both live in [`ai-use-log.md`](./ai-use-log.md): every prompt I typed, numbered 1 to 46 with
 the ten above among them, and the eleven briefs the main agent wrote to its own sub-agents.
 
 They are a separate file rather than a deleted one. §14 asks for a concise PDF and this
