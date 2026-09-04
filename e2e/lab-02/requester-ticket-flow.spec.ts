@@ -221,7 +221,7 @@ test.describe("requester isolation", () => {
    * that cannot be demonstrated by clicking — every link on screen already
    * points somewhere allowed.
    */
-  test("another Requester's ticket URL is refused", async ({ page }) => {
+  test("another Requester's ticket URL is refused", async ({ page }, info) => {
     await signInAs(page, REQUESTER_A);
 
     const link = firstTicketLink(page);
@@ -241,6 +241,12 @@ test.describe("requester isolation", () => {
         "This ticket does not exist, or it belongs to another requester."
       )
     ).toBeVisible();
+
+    // Part 8 asks for evidence that direct access to another Requester's ticket
+    // is refused, and an assertion in a test file is not something a reader of
+    // the report can see. `ui-spec.md` §10 has named this file all along; it
+    // had never been written, because nothing captured it.
+    await shoot(page, "ticket-detail", `${info.project.name}-unauthorized`);
   });
 });
 

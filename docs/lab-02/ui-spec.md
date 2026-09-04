@@ -521,11 +521,25 @@ specifies the attachment section alone and no tab strip at all.
 Written by the Playwright run into `artifacts/lab-02/screenshots/`, with stable filenames
 so a re-run updates rather than accumulates.
 
+Every file carries its viewport as a prefix, because the three projects write the same
+states and a bare state name would have them overwrite each other.
+
 ```
 create-ticket/{desktop,tablet,mobile}.png
-create-ticket/{validation-failure,submitting,success,api-failure,invalid-attachment}.png
+create-ticket/{desktop,tablet,mobile}-{initial,validation-failure,success,api-failure,invalid-attachment}.png
 my-tickets/{desktop,tablet,mobile}.png
-my-tickets/{empty,no-results,requester-a,requester-b}.png
+my-tickets/{desktop,tablet,mobile}-{empty,no-results,search,requester-a,requester-b}.png
 ticket-detail/{desktop,tablet,mobile}.png
-ticket-detail/{attachment-active,attachment-removed,unauthorized}.png
+ticket-detail/{desktop,tablet,mobile}-{initial,with-attachment,removed-attachment,unauthorized}.png
 ```
+
+Fifty-one files: 18, 18 and 15. This list is the one a reader checks the evidence against,
+so it is worth saying what it looked like before Issue #21 audited it. It named
+`submitting`, which no test captures — the busy state lasts as long as one local API call
+and a screenshot of it would be a race, so §5.2's disabled-button rule is asserted in
+`CreateTicket.test.tsx` instead. It named `attachment-active` and `attachment-removed` for
+files actually written as `with-attachment` and `removed-attachment`. It omitted `initial`
+on two screens and `search` on My Tickets, all three of which existed. And it named
+`unauthorized`, which did not exist: the cross-Requester refusal was asserted in E2E-03 and
+never captured, so the file Part 8 would be checked against was missing. That one was
+fixed by capturing it rather than by dropping the promise.
