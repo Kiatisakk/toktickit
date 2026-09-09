@@ -170,12 +170,13 @@ appears nowhere in this table: they set no status at all.
 | Closed | Reopened |
 | Reopened | In Progress, Waiting for Requester, Resolved, Cancelled |
 | Cancelled | *(terminal)* |
-- **BR-04** Public Comments are visible to the Requester, IT Staff, and Administrator. Internal Notes are visible only to IT Staff and Administrator.
+
 - **BR-05** A Requester may indicate the problem appears resolved, but cannot formally set the Ticket to Resolved or Closed.
 - **BR-27** A Requester's indication that the problem appears resolved is recorded as a timestamp on the ticket, not as a status. It is set once and may be cleared only by the ticket leaving a resolved-or-closed state.
 
 ### Comments and notes
 
+- **BR-04** Public Comments are visible to the Requester, IT Staff, and Administrator. Internal Notes are visible only to IT Staff and Administrator.
 - **BR-28** Public Comments and Internal Notes are append-only. Neither can be edited or deleted this sprint.
 - **BR-29** Each entry records its author and its creation time from the server. Neither is accepted from the client.
 - **BR-30** Content is 1 to 5000 characters after trimming. Whitespace-only content is rejected.
@@ -210,7 +211,8 @@ Every protected operation, and what each role may do with it. `—` means refuse
 | Create ticket | Yes | Yes | Yes |
 | List own tickets | Own only | Own only | Own only |
 | Read ticket detail | Own only | Any | Any |
-| Add, download, remove own attachment | Own ticket | Any ticket | Any ticket |
+| Add or remove an attachment | Own ticket | Own ticket | Own ticket |
+| Download an attachment | Own ticket | Any ticket | Any ticket |
 | Read the staff Ticket Queue | — | Yes | Yes |
 | Claim or reassign ticket ownership | — | Yes | Yes |
 | Set IT Priority | — | Yes | Yes |
@@ -276,7 +278,9 @@ The existing index on requester and creation date is retained for My Tickets. Th
 
 ### Migration strategy
 
-One migration adds the two user columns, the ticket column, the two message tables and the session table, and alters the status enumeration. Existing rows are untouched apart from receiving the new nullable columns. Because Lab 2 named the model `User` rather than `RequesterUser` and defined all three roles up front, no identifier changes and no foreign key is rewritten.
+One migration adds the two user columns, the ticket column, the two message tables and the session table, and alters the status enumeration.
+
+Two existing-row changes follow from it, and neither is a no-op. Every ticket currently in `PENDING` is rewritten to `WAITING_FOR_REQUESTER`. And the password hash column is added `NOT NULL` with no default, so the same migration backfills every existing account with a hash of its seeded starting password and sets the must-change flag — an account that could sign in with a null hash would be an account with no password. Because Lab 2 named the model `User` rather than `RequesterUser` and defined all three roles up front, no identifier changes and no foreign key is rewritten.
 
 ### Seed
 
@@ -309,7 +313,7 @@ The queue reuses the existing ticket-query parser rather than introducing a seco
 | `200` / `201` / `204` | Success |
 | `400` | Malformed input, or an invalid query parameter |
 | `401` | No session, an expired session, or invalid sign-in credentials |
-| `403` | Authenticated, but the role or the outstanding password change forbids this |
+| `403` | The role forbids this, a password change is outstanding, or the credentials were correct but the account is deactivated |
 | `404` | Resource absent, or outside the caller's ownership scope |
 | `409` | Duplicate email, last active Administrator, self-deactivation |
 | `413` | Request body too large |
@@ -418,7 +422,7 @@ The sprint is complete when every item below holds on `main`.
 
 - **D-08 Role-derived query scope is a single named helper.** It maps the current user to a query fragment: for a Requester, a constraint that the ticket is theirs; for IT Staff and Administrators, no constraint. *Why:* it keeps ownership resolved inside the query as BR-19 requires, keeps the decision in one testable place, and makes the `403`/`404` split fall out automatically rather than being restated per handler.
 
-- **D-09 Public Comments and Internal Notes are separate tables.** Recorded at §8. The one-table design is smaller; it is rejected because it makes a leak a matter of remembering a filter.
+- **D-09 Public Comments and Internal Notes are separate tables.** Recorded at §7. The one-table design is smaller; it is rejected because it makes a leak a matter of remembering a filter.
 
 - **D-10 "The problem appears resolved" is a timestamp, not a status.** BR-05 forbids a Requester setting Resolved or Closed, so it cannot be a status value. A timestamp is filterable, records when, and cannot be confused with the lifecycle.
 

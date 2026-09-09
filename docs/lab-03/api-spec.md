@@ -68,7 +68,7 @@ Companion to [specification.md](specification.md). Paths, shapes, status codes a
 
 `REQUESTER_CONTEXT_REQUIRED` · `REQUESTER_CONTEXT_INVALID` · `REQUESTER_CONTEXT_UNKNOWN` · `REQUESTER_CONTEXT_INACTIVE`
 
-All four answered `400` and described a header that no longer exists. Their situations are now `401 UNAUTHENTICATED`. They are deleted rather than aliased, so that this document does not describe responses nothing produces (D-06 rationale; see specification.md §8).
+All four answered `400` and described a header that no longer exists. Their situations are now `401 UNAUTHENTICATED`. They are deleted rather than aliased, so that this document does not describe responses nothing produces (see specification.md §8, and D-06 for the 403/404 split these codes sit inside).
 
 ---
 
@@ -169,12 +169,14 @@ Paths, request shapes, response shapes and status codes are **unchanged from Lab
 | `GET /api/tickets/:id` | Any authenticated | Requester: own only. IT Staff and Administrator: any |
 | `GET /api/tickets/:id/attachments` | Any authenticated | Same scope as ticket detail |
 | `POST /api/tickets/:id/attachments` | Any authenticated | Requester: own only. Staff: any |
-| `GET /api/attachments/:id/download` | Any authenticated | Same scope |
-| `DELETE /api/attachments/:id` | Any authenticated | Same scope |
+| `GET /api/attachments/:id/download` | Any authenticated | Requester: own only. Staff: any |
+| `DELETE /api/attachments/:id` | Any authenticated | **Own only, every role** — see below |
 
 **Scope is applied inside the database query, never by fetching a row and comparing afterwards** (BR-19). A single helper maps the caller's role to a query fragment — a constraint that the ticket is theirs for a Requester, no constraint for IT Staff and Administrators (D-08).
 
 A Requester requesting a ticket that belongs to someone else therefore matches nothing and receives `404 TICKET_NOT_FOUND` — the same bytes as a ticket that does not exist (BR-18, AC-12).
+
+Attachment **removal** stays scoped to the ticket's requester for every role, including staff. FR-29 grants IT Staff only to view and download; letting them soft-remove a requester's evidence is a destructive capability no requirement asks for, and it would arrive by way of a table cell rather than a decision.
 
 `GET /api/tickets` is deliberately scoped to the caller for every role, including staff: it is "my tickets", and staff raise tickets too (FR-30, D-07). The all-tickets view is §7.
 
@@ -189,7 +191,7 @@ Unchanged from Lab 2 and reused by the staff queue (D-12).
 | `requestedPriority` | `LOW` \| `MEDIUM` \| `HIGH` | Treated as absent |
 | `itPriority` | `LOW` \| `MEDIUM` \| `HIGH` | Treated as absent |
 | `status` | A `TicketStatus` value | Treated as absent |
-| `sort` | `createdAt` \| `updatedAt` \| `ticketNumber` \| `requestedPriority` | **Rejected** |
+| `sort` | `ticketNumber` \| `createdAt` \| `updatedAt` \| `summary` \| `requestedPriority` | **Rejected** |
 | `order` | `asc` \| `desc` | **Rejected** |
 | `page` | Positive integer | **Rejected** |
 | `pageSize` | `10` \| `20` \| `50` | **Rejected** |
@@ -219,6 +221,8 @@ The queue. Same query contract as §6, with additional filters:
 | `requesterId` | Positive integer — tickets raised by that user |
 
 `ownerId` and `unassigned` are mutually exclusive; sending both answers `400 INVALID_QUERY_PARAMETER`.
+
+The queue also accepts three sort fields the Requester list does not: `itPriority`, `currentStatus` and `ticketOwner`. They are added to the shared parser's allowlist rather than parsed separately, which is what D-12 means by extending it — a Requester sending them is refused, because they are not in the Requester scope's allowlist.
 
 Each item carries the ticket's requester, owner (or `null`), both priorities, status, and the "problem appears resolved" timestamp (or `null`).
 
@@ -288,7 +292,7 @@ Sending it twice is idempotent. There is no endpoint by which a Requester can se
 
 ## 9. Administrator user management
 
-All of §9 is Administrator only. Every other role, authenticated or not, receives `403 FORBIDDEN` (AC-14, and the last row of §11).
+All of §9 is Administrator only. An unauthenticated request receives `401 UNAUTHENTICATED`; an authenticated Requester or IT Staff receives `403 FORBIDDEN` (AC-14, and the last row of §11).
 
 ### `GET /api/admin/users`
 
@@ -323,9 +327,11 @@ Exactly one role. There is no array and no second role field (BR-16).
 | Condition | Status | Code |
 | --- | --- | --- |
 | Email already held by another account | 409 | `EMAIL_ALREADY_EXISTS` |
-| Deactivating or demoting the caller's own account | 409 | `CANNOT_DEACTIVATE_SELF` |
+| Deactivating the caller's own account | 409 | `CANNOT_DEACTIVATE_SELF` |
 | The change would leave no active Administrator | 409 | `LAST_ACTIVE_ADMIN` |
 | User absent | 404 | `USER_NOT_FOUND` |
+
+Self-*demotion* is deliberately **not** caught by the self-check: FR-38 and BR-34 forbid deactivating your own account and say nothing about your own role. A sole Administrator demoting themselves is refused by the last-Administrator check instead, which is what makes `LAST_ACTIVE_ADMIN` reachable outside a race and AC-32 testable at all.
 
 The last-Administrator check counts and writes inside one transaction that locks the Administrator rows, so two Administrators submitting mutually deactivating changes cannot both observe a safe count and both proceed (BR-35, D-14, AC-33).
 

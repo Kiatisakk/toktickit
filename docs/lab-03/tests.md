@@ -82,7 +82,7 @@ Eight levels, each answering a question the level above it cannot.
 | API-34 | AC-30 | Duplicate email on create and on edit | 409 `EMAIL_ALREADY_EXISTS` | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
 | API-35 | FR-35 | Editing name, email, role and state | Each persists; one role only | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
 | API-36 | AC-31 | Self-deactivation | 409 `CANNOT_DEACTIVATE_SELF`; account still active | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
-| API-37 | AC-32 | Last active Administrator | Deactivating or demoting the only one 409 `LAST_ACTIVE_ADMIN` | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
+| API-37 | AC-32 | Last active Administrator | The sole Administrator demoting themselves 409 `LAST_ACTIVE_ADMIN` — reachable precisely because self-demotion is not caught by the self-check | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
 | API-38 | AC-33 | Two Administrators deactivating each other at once | At least one refused; an active Administrator remains | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
 | API-39 | BR-37 | Setting a new initial password | 204; flag set; the user's sessions ended; sign-in with the new password requires a change | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
 | API-40 | BR-20 | Error bodies leak nothing | No stack trace, path or database message on any failure path | `server/tests/lab-03/auth.api.test.ts` | Planned |
@@ -94,7 +94,7 @@ Every test here calls the API directly with a session of the wrong kind. None dr
 
 | ID | AC | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
-| SEC-01 | FR-09 | Every protected endpoint without a session | 401 `UNAUTHENTICATED`, enumerated across the whole route table | `server/tests/lab-03/authorization.api.test.ts` | Planned |
+| SEC-01 | FR-09 | Every protected endpoint without a session | 401 `UNAUTHENTICATED`, enumerated across the whole route table, excepting `POST /api/auth/logout` which is idempotent and answers 204 | `server/tests/lab-03/authorization.api.test.ts` | Planned |
 | SEC-02 | FR-10 | Every role-restricted endpoint with each wrong role | 403 `FORBIDDEN`, enumerated | `server/tests/lab-03/authorization.api.test.ts` | Planned |
 | SEC-03 | AC-03 | Requester supplying another `requesterId` | Authenticated identity applied; no other requester's data returned | `server/tests/lab-03/authorization.api.test.ts` | Planned |
 | SEC-04 | AC-12 | Requester reading another's ticket | 404, byte-identical to a ticket that does not exist | `server/tests/lab-03/authorization.api.test.ts` | Planned |
@@ -147,7 +147,7 @@ Every test here calls the API directly with a session of the wrong kind. None dr
 | STYLE-03 | AC-34 | Active navigation marking | Marked by class and `aria-current`, not colour alone | `client/tests/lab-03/style/shell.test.tsx` | Planned |
 | STYLE-04 | §10 | Password toggle accessibility | A button whose accessible name changes between Show and Hide | `client/tests/lab-03/style/fields.test.tsx` | Planned |
 | STYLE-05 | §10 | Rules panel semantics | A list; each rule's state conveyed by text or accessible name | `client/tests/lab-03/style/fields.test.tsx` | Planned |
-| STYLE-06 | §10 | Queue header sorting | `aria-sort` present on every sortable column, `none` when inactive | `client/tests/lab-03/style/queue.test.tsx` | Planned |
+| STYLE-06 | §10 | Queue header sorting | `aria-sort` present on every column the API can sort by, `none` when inactive, and absent on Category which it cannot | `client/tests/lab-03/style/queue.test.tsx` | Planned |
 | STYLE-07 | BR-04 | Note section restriction is textual | The restriction is stated in text, not conveyed by tint alone | `client/tests/lab-03/style/messages.test.tsx` | Planned |
 | STYLE-08 | §10 | Labels bind to controls | Every new field has a real label bound to a real control; read-only values carry none | `client/tests/lab-03/style/fields.test.tsx` | Planned |
 | STYLE-09 | §1 | Editable versus read-only | Staff detail marks operational fields editable and the rest read-only | `client/tests/lab-03/style/fields.test.tsx` | Planned |
@@ -161,7 +161,7 @@ Every test here calls the API directly with a session of the wrong kind. None dr
 | RESP-02 | AC-35 | Nothing clipped | No text clipped at any viewport, screen-reader-only text excepted | `e2e/lab-03/visual.spec.ts` | Planned |
 | RESP-03 | AC-35 | Queue becomes cards below 768 px | Table absent and cards present on mobile; the reverse above; asserted from both sides | `e2e/lab-03/visual.spec.ts` | Planned |
 | RESP-04 | AC-35 | Sorting reachable on mobile | The sort control is present once the table is gone | `e2e/lab-03/visual.spec.ts` | Planned |
-| RESP-05 | §1 | Zen Green palette | Header, primary buttons and active navigation read the §7 greens from the live browser | `e2e/lab-03/visual.spec.ts` | Planned |
+| RESP-05 | §1 | Zen Green palette | Header, primary buttons and active navigation read the handout §7 greens from the live browser | `e2e/lab-03/visual.spec.ts` | Planned |
 | RESP-06 | §10 | Touch targets | Interactive targets at least 44 px in the mobile band | `e2e/lab-03/visual.spec.ts` | Planned |
 
 ### Migration and regression
@@ -236,7 +236,7 @@ Every criterion in specification.md §9, and the planned tests that cover it. A 
 | AC-35 | RESP-01, RESP-02, RESP-03, RESP-04 |
 | AC-36 | UI-05, UI-19 |
 
-**Tests with no acceptance criterion.** UNIT-01, UNIT-04, UNIT-05, API-04, API-05, API-13, API-16, API-17, API-19, API-23, API-26, API-29, API-39, API-40, API-41, SEC-01, SEC-02, SEC-10, SEC-11, SEC-12, SEC-14, UI-01, UI-06, UI-10, UI-11, UI-12, UI-14, UI-15, UI-17, STYLE-01, STYLE-02, STYLE-04 to STYLE-10, RESP-05, RESP-06, MIG-01, MIG-02, MIG-03, MIG-05, MIG-06, MIG-07 cover business rules or handout requirements that no criterion names. That is a gap in the criteria rather than in the suite, and it is recorded here rather than resolved by attaching a test to an unrelated criterion.
+**Tests with no acceptance criterion.** UNIT-01, UNIT-04, UNIT-05, API-04, API-05, API-13, API-16, API-17, API-19, API-23, API-26, API-29, API-35, API-39, API-40, API-41, SEC-01, SEC-02, SEC-10, SEC-11, SEC-12, SEC-14, UI-01, UI-06, UI-10, UI-11, UI-12, UI-14, UI-15, UI-17, STYLE-01, STYLE-02, STYLE-04 to STYLE-10, RESP-05, RESP-06, MIG-01, MIG-02, MIG-03, MIG-05, MIG-06, MIG-07 cover business rules or handout requirements that no criterion names. That is a gap in the criteria rather than in the suite, and it is recorded here rather than resolved by attaching a test to an unrelated criterion.
 
 ---
 

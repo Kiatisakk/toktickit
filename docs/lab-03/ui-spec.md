@@ -63,7 +63,9 @@ The invalid-credentials message is identical for an unknown address and a wrong 
 
 ## 4. Change Password (mandatory)
 
-Reached automatically after signing in with an initial password, and not otherwise reachable. The shell shows the user's name and role but **no navigation** — there is nowhere else they may go yet (BR-02).
+Reached automatically after signing in with an initial password, and not otherwise reachable. The shell shows the user's name and role, and **Logout**, but no navigation — there is nowhere else they may go yet (BR-02).
+
+Logout is present deliberately. Someone who signs in on a shared machine, or who mistypes a temporary password they were read over the phone, otherwise has no way out of this screen without clearing their cookies. The endpoint permits it during the gate, so the interface should too.
 
 **Fields.** Current (temporary) password, New password, Confirm new password — each with a show/hide toggle.
 
@@ -92,7 +94,7 @@ The queue is the working screen of the sprint. It reuses the ticket list surface
 
 Nine columns is the ceiling. Anything further belongs on the detail screen. Owner renders as a name, or as an explicit *Unassigned* — never as an empty cell, which reads as missing data rather than as a fact.
 
-**Sorting.** Ticket No., Created Date, Req. Priority, IT Priority, Status and Last Updated are sortable. Below 768 px the table becomes cards and sorting moves into the filter bar as a field-and-direction pair, exactly as My Tickets does — a sort control that lives only in a table header is unreachable once the table is gone.
+**Sorting.** Ticket No., Created Date, Last Updated, Summary, Req. Priority, IT Priority, Status and Owner are sortable — the five fields the Requester list already sorts by, plus the three the queue adds. Category is not sortable, because the API does not accept it and a header that answers `400` is worse than one that does not invite the click. Below 768 px the table becomes cards and sorting moves into the filter bar as a field-and-direction pair, exactly as My Tickets does — a sort control that lives only in a table header is unreachable once the table is gone.
 
 **Modes**
 
@@ -228,6 +230,8 @@ Captured by the end-to-end suite into `artifacts/lab-03/screenshots/`, at all th
 
 **`staff-ticket-detail/`** — `initial` · `claim` · `assigned` · `it-priority` · `status-change` · `invalid-transition` · `public-comment` · `internal-note` · `attachments` · `requester-resolved-indication`
 
+**`requester-ticket-detail/`** — `comments` · `comment-composer-invalid` · `resolved-indication-available` · `resolved-indication-recorded` · `no-notes-section`
+
 **`user-management/`** — `list` · `search` · `role-filter` · `create` · `duplicate-email` · `edit` · `new-initial-password` · `self-deactivation-refused` · `last-admin-refused` · `forbidden-for-non-admin`
 
 Filenames are stable and overwritten on each run, so the committed set always reflects the latest passing run rather than accumulating stale evidence.
@@ -240,7 +244,7 @@ Asserted by the automated suite rather than looked at, because a person reviewin
 
 | Check | Where asserted |
 | --- | --- |
-| Header, primary buttons and active navigation use the §7 greens, read from the live browser | Browser |
+| Header, primary buttons and active navigation use the handout §7 greens, read from the live browser | Browser |
 | New screens sit on the page background; cards and tables are surfaces | Browser |
 | Role, status and both priorities render through the one badge component | Component |
 | Editable, read-only, invalid, disabled and busy controls each remain distinct | Component |
