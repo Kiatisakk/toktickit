@@ -180,26 +180,36 @@ If a card is in the wrong column, the board is wrong, not merely stale.
 
 This is the thing that gets checked. Linking a _branch_ is not the same thing and does not count.
 
-**A closing keyword in the PR description does link it, and it links from the command line.** Put `Closes #<issue>` in the body when the PR is created and the Development panel fills in by itself — no clicking required:
+**A keyword alone does not link anything here, and no command can do it either.** `Closes #18` / `Resolves #18` / `Fixes #18` create a closing reference only when the PR targets the repository's default branch. Ours target `<lab>-staging`, so GitHub downgrades them to a plain mention. Type one anyway for readability, then link by hand:
 
-```bash
-gh pr create --base <lab>-staging --title "…" --body-file body.md   # body contains "Closes #<issue>"
-```
+1. Open the PR, find **Development** in the right sidebar, click the gear, pick the Issue.
+2. Do it right after creating the PR, not days later.
+3. The panel must read _"Successfully merging this pull request may close these issues"_. If it still says **None yet**, the Issue is not linked.
+4. Only move the card to **PR Review** after the link is confirmed. The card then shows the PR number.
 
-Verify it rather than assuming, because a mistyped number fails silently:
+**There is no API for this step.** GitHub exposes no mutation that adds a closing reference to a PR; `createLinkedBranch` links a *branch*, which is a different thing and does not count, and `addSubIssue` joins two Issues. Checking the mutation list is faster than searching for a workaround that does not exist.
+
+Verify from the command line rather than trusting the panel from memory:
 
 ```bash
 gh api graphql -f query='{repository(owner:"Kiatisakk",name:"toktickit"){
   pullRequest(number:<pr>){closingIssuesReferences(first:5){nodes{number}}}}}'
 ```
 
-An empty result means it is not linked. **Give it a few seconds first** — the reference is not queryable the instant the PR is created, and an empty answer read too early looks exactly like a failure. Checking immediately after `gh pr create` and believing the result is how this rule came to say the opposite for a whole lab.
+An empty result means it is not linked, and it will stay empty until somebody clicks.
 
-Failing that, open the PR, find **Development** in the right sidebar, click the gear and pick the Issue. Either route is fine; the panel must end up reading _"Successfully merging this pull request may close these issues"_.
+**Because the merge lands in `<lab>-staging` and not the default branch, GitHub will not close the Issue either.** After the merge, **close the Issue by hand** and drag the card to Done.
 
-Only move the card to **PR Review** once the link is confirmed. The card then shows the PR number.
-
-**The keyword links the Issue but does not close it.** Closing on merge only happens when the base is the repository's default branch, and ours is `<lab>-staging`. So after the merge, **close the Issue by hand** and drag the card to Done.
+> This rule was rewritten to say the opposite, and then rewritten back. The mistake is worth keeping because it was not a careless one: a PR was observed carrying only the keyword and showing a closing reference, and the keyword got the credit. It had been linked by hand a minute earlier, by the person who asked for it.
+>
+> The next PR settled it — identical keyword, identical base, no link after ten minutes. What would have settled it the first time is one query, because the answer was already recorded:
+>
+> ```bash
+> gh api repos/<owner>/<repo>/issues/<n>/timeline --paginate \
+>   -q '.[] | select(.event=="connected") | "\(.actor.login) \(.created_at)"'
+> ```
+>
+> **Seeing the state you hoped for is not evidence that you caused it.** Before crediting a mechanism, find the event that created the state and read who fired it.
 
 ## Every PR asks Beam for review, and carries the lab label
 
