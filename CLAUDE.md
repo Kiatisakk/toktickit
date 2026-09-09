@@ -151,18 +151,53 @@ Six columns in this exact order, on the **TokTickIT Individual Sprints** project
 - Fixing goes back to **PR Review** once the corrections are pushed.
 - Add Issues with **Create new issue**, never **Create a draft**: a draft cannot be linked to a PR.
 
+**Move the card at the moment the thing happens, not in a catch-up pass at the end.** The board is graded on its final state, but the final state is the only part of it that can be faked, and a board updated in one sitting the night before looks exactly like one that was. Each of these is the moment:
+
+| The moment | The move |
+| --- | --- |
+| Finished reading the Issue and its acceptance criteria | Backlog → Specified |
+| First commit on the feature branch | Specified → Started |
+| PR opened, reviewer requested, Issue link confirmed | Started → PR Review |
+| Beam requests changes, or a check fails | PR Review → Fixing |
+| Corrections pushed and replied to on the thread | Fixing → PR Review |
+| Beam merges, and the Issue is closed by hand | PR Review → Done |
+
+This is the one part of the workflow no command can do — the project board has no `gh` equivalent that covers it, so it is a browser task after every one of those moments. If a card is in the wrong column, the board is wrong, not merely stale.
+
 ## Linking a PR to its Issue
 
 This is the thing that gets checked. Linking a _branch_ is not the same thing and does not count.
 
-1. Open the PR, find **Development** in the right sidebar, click the gear, pick the Issue.
-2. Do it right after creating the PR, not days later.
-3. Verify: the sidebar must read _"Successfully merging this pull request may close these issues"_. If it still says **None yet**, the Issue is not linked.
-4. Only move the card to **PR Review** after the link is confirmed. The card then shows the PR number.
+**A closing keyword in the PR description does link it, and it links from the command line.** Put `Closes #<issue>` in the body when the PR is created and the Development panel fills in by itself — no clicking required:
 
-**A keyword alone does not link anything here.** `Closes #18` / `Resolves #18` / `Fixes #18` only link when the PR targets the repository's default branch. Ours target `<lab>-staging`, so GitHub downgrades them to a plain mention. Type one for readability if you like, then still link through the Development panel.
+```bash
+gh pr create --base <lab>-staging --title "…" --body-file body.md   # body contains "Closes #<issue>"
+```
 
-Because the merge lands in `<lab>-staging` and not the default branch, GitHub will not close the Issue. **Close the Issue by hand** and drag the card to Done.
+Verify it rather than assuming, because a mistyped number fails silently:
+
+```bash
+gh api graphql -f query='{repository(owner:"Kiatisakk",name:"toktickit"){
+  pullRequest(number:<pr>){closingIssuesReferences(first:5){nodes{number}}}}}'
+```
+
+An empty result means it is not linked. **Give it a few seconds first** — the reference is not queryable the instant the PR is created, and an empty answer read too early looks exactly like a failure. Checking immediately after `gh pr create` and believing the result is how this rule came to say the opposite for a whole lab.
+
+Failing that, open the PR, find **Development** in the right sidebar, click the gear and pick the Issue. Either route is fine; the panel must end up reading _"Successfully merging this pull request may close these issues"_.
+
+Only move the card to **PR Review** once the link is confirmed. The card then shows the PR number.
+
+**The keyword links the Issue but does not close it.** Closing on merge only happens when the base is the repository's default branch, and ours is `<lab>-staging`. So after the merge, **close the Issue by hand** and drag the card to Done.
+
+## Every PR asks Beam for review, and carries the lab label
+
+Both are one command each, both are checked, and a PR with neither is a PR nobody is expecting:
+
+```bash
+gh pr edit <pr> --add-reviewer beambeambeam --add-label lab-<NN>
+```
+
+Do it at creation time, not when chasing the review later. The reviewer request is what puts the PR in his queue; the label — `lab-02`, `lab-03`, and so on for whichever lab is current — is what keeps the board screenshot for Part 1 from mixing two labs together.
 
 Linking the _branch_ at the Started stage is optional, signals only that work has begun, and never replaces linking the PR.
 
@@ -172,6 +207,23 @@ Linking the _branch_ at the Started stage is optional, signals only that work ha
 - Docs while the Issue's code is still in progress: edit them on the **same feature branch**, ship them in the **same PR**. Do not open a second branch.
 - Docs after the code is merged, when the change is substantial: open `docs/<lab>-<topic>` (e.g. `docs/lab2-report`) and a PR for it. A typo or broken link gets the same treatment, just as a fast lane.
 - If a docs PR belongs to an Issue, link it as usual; if there is no Issue, say so in one line in the PR description.
+
+## Living documents — updated by the PR that makes them true
+
+Four documents under `docs/<lab>/` are part of the submission and are graded directly. None of them is written at the end of the sprint. Each is updated **in the same Pull Request as the work it describes**, while the work is still in front of you.
+
+| Document | Updated by every PR that… | Graded as |
+| --- | --- | --- |
+| `reviewer.md` | receives a review — record the reviewer, the comments, your replies, and the approval | Part 1 |
+| `tests.md` | adds or changes a test — a row's Result stops reading `Planned` in the PR that makes it pass | Part 3 |
+| `ai-use.md` | used AI in a way worth keeping — the prompt log grows as you go | Part 4 |
+| `specification.md` | changes behaviour the spec describes — including `api-spec.md` and `ui-spec.md` | Part 2 |
+
+**Why it has to be this way, from experience.** Lab 1 wrote `reviewer.md` at the end and it meant reopening every PR and expanding collapsed threads one at a time — slow, and it silently missed two PRs that were only found later by listing every PR from GitHub and searching the file for each number. Writing the entry while the conversation is still open is both faster and more accurate.
+
+**A row that still reads `Planned` at submission is a defect**, not a to-do. Either the test exists and the row is stale, or the test does not exist and the plan is a wish.
+
+**The specification is not allowed to describe behaviour the code does not have.** If a PR changes what the product does, the spec changes in the same PR. Discovering at report time that the documents and the code disagree is how a sprint ends up spending days on an audit instead of on the report.
 
 ## Reviewing (when I am the reviewer)
 
