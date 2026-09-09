@@ -3,11 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  RequesterContext,
-  type RequesterContextValue,
-} from "../../src/context/requesterContextValue";
+import { RequesterContext } from "../../src/context/requesterContextValue";
 import { MyTickets } from "../../src/routes/MyTickets";
+import { CONTEXT, jsonResponse } from "../support/requester";
 
 /**
  * UI-11 — an empty list and a query that matched nothing are different states.
@@ -35,21 +33,6 @@ const ticket = (id: number) => ({
   relatedSystem: { id: 7, name: "Corporate Laptop" },
   ticketOwner: null,
 });
-
-const CONTEXT: RequesterContextValue = {
-  status: "selected",
-  requester: {
-    id: 1,
-    name: "Jennifer Anderson",
-    email: "jennifer.anderson@example.ac.th",
-  },
-  generation: 0,
-  select: () => undefined,
-  clear: () => undefined,
-};
-
-const jsonResponse = (body: unknown, status = 200) =>
-  ({ ok: status < 400, status, json: async () => body }) as Response;
 
 /** Answers the category call, and the ticket list from whatever is supplied. */
 const listFetch = (

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RequesterProvider } from "../../src/context/RequesterContext";
 import { useRequester } from "../../src/context/useRequester";
+import { jsonResponse } from "../support/requester";
 
 /**
  * UI-04 — the selection survives a reload.
@@ -21,9 +22,6 @@ const REQUESTERS = [
 ];
 
 const STORAGE_KEY = "toktickit.developmentRequesterId";
-
-const jsonResponse = (body: unknown) =>
-  ({ ok: true, status: 200, json: async () => body }) as Response;
 
 /** Reports what the context holds, so a test can read it out of the DOM. */
 const Probe = () => {
