@@ -162,7 +162,19 @@ Six columns in this exact order, on the **TokTickIT Individual Sprints** project
 | Corrections pushed and replied to on the thread | Fixing → PR Review |
 | Beam merges, and the Issue is closed by hand | PR Review → Done |
 
-This is the one part of the workflow no command can do — the project board has no `gh` equivalent that covers it, so it is a browser task after every one of those moments. If a card is in the wrong column, the board is wrong, not merely stale.
+The board is scriptable, so there is no excuse for letting it drift. Adding a card and moving it are one command each:
+
+```bash
+gh project item-add <project> --owner <user> --url <issue-url> --format json
+gh project item-edit --id <item> --project-id <project-id> \
+  --field-id <status-field> --single-select-option-id <option>
+```
+
+The field and option identifiers are opaque strings; read them once with `gh project field-list <project> --owner <user> --format json` and reuse them. The token needs the `project` scope — `gh auth status` shows whether it has it.
+
+`gh project item-add` does not detect a card that is already there, so list the existing items first and match on issue number, or a second run silently duplicates every card.
+
+If a card is in the wrong column, the board is wrong, not merely stale.
 
 ## Linking a PR to its Issue
 
