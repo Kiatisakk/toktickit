@@ -150,7 +150,7 @@ Excluded by this specification, though not forbidden by the handout:
 
 - **BR-21** A ticket has at most one owner, who must be an active IT Staff or Administrator user. A ticket may be unowned.
 - **BR-22** Requested Priority is set by the Requester at creation and is never altered afterwards.
-- **BR-23** IT Priority is initially unset and may be set or changed only by IT Staff or an Administrator. It is independent of Requested Priority.
+- **BR-23** IT Priority is set at creation to a copy of Requested Priority, as §4.5 requires. From then on the two are independent: only IT Staff or an Administrator may change IT Priority, and changing it never alters Requested Priority. Existing tickets receive the same copy during the migration, so no ticket is left without one.
 - **BR-24** The ticket statuses are New, Open, In Progress, Waiting for Requester, Resolved, Closed, Reopened and Cancelled.
 - **BR-25** Only IT Staff and Administrators change a ticket's status, and only along a permitted transition. §5 records the matrix.
 - **BR-26** `Cancelled` is terminal. A cancelled ticket does not move again.
@@ -280,7 +280,7 @@ The existing index on requester and creation date is retained for My Tickets. Th
 
 One migration adds the two user columns, the ticket column, the two message tables and the session table, and alters the status enumeration.
 
-Two existing-row changes follow from it, and neither is a no-op. Every ticket currently in `PENDING` is rewritten to `WAITING_FOR_REQUESTER`. And the password hash column is added `NOT NULL` with no default, so the same migration backfills every existing account with a hash of its seeded starting password and sets the must-change flag — an account that could sign in with a null hash would be an account with no password. Because Lab 2 named the model `User` rather than `RequesterUser` and defined all three roles up front, no identifier changes and no foreign key is rewritten.
+Two existing-row changes follow from it, and neither is a no-op. Every ticket currently in `PENDING` is rewritten to `WAITING_FOR_REQUESTER`. And the password hash arrives in three steps rather than one, because a single `NOT NULL` column cannot be added to populated rows and SQL cannot derive a `scrypt` hash anyway — the hashing lives in Node. So: add the column nullable; run a bootstrap step that hashes each existing account's issued starting password and sets the must-change flag on it; then alter the column to `NOT NULL` once no row is left null. The middle step is application code, not SQL, and the third step is what proves the second one finished. An account able to sign in with a null hash would be an account with no password, which is why the constraint is not simply left off. Because Lab 2 named the model `User` rather than `RequesterUser` and defined all three roles up front, no identifier changes and no foreign key is rewritten.
 
 ### Seed
 

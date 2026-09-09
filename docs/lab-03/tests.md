@@ -87,6 +87,10 @@ Eight levels, each answering a question the level above it cannot.
 | API-39 | BR-37 | Setting a new initial password | 204; flag set; the user's sessions ended; sign-in with the new password requires a change | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
 | API-40 | BR-20 | Error bodies leak nothing | No stack trace, path or database message on any failure path | `server/tests/lab-03/auth.api.test.ts` | Planned |
 | API-41 | §5 | Reference data now requires a session | Categories and related systems 401 without one; health stays public | `server/tests/lab-03/authorization.api.test.ts` | Planned |
+| API-42 | BR-23 | IT Priority at creation | A new ticket's IT Priority equals its Requested Priority; changing one afterwards never moves the other | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
+| API-43 | FR-35 | User edit validation | Empty name, malformed email, invalid role and non-boolean active each 400 with the field named in `details` | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
+| API-44 | BR-37 | Reset password validation | A starting password failing the rules 400 with `details.initialPassword`; the user's existing credential unchanged | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
+| API-45 | §8 | Lab 2 list envelope preserved | The ticket list answers `data` and `meta` with `totalItems`, exactly as Lab 2 documents | `server/tests/lab-03/migration.api.test.ts` | Planned |
 
 ### Security / authorization
 
@@ -108,6 +112,7 @@ Every test here calls the API directly with a session of the wrong kind. None dr
 | SEC-12 | BR-06 | No endpoint returns a credential | No password hash in any user-bearing response | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
 | SEC-13 | AC-11 | Role change mid-session | A user demoted from IT Staff is refused staff endpoints on the next request | `server/tests/lab-03/authorization.api.test.ts` | Planned |
 | SEC-14 | BR-41 | The retired header has no effect | Sending `X-Development-Requester-Id` changes nothing; no route reads it | `server/tests/lab-03/authorization.api.test.ts` | Planned |
+| SEC-15 | FR-29 | Staff cannot write another's attachments | IT Staff uploading to, or removing from, a ticket they did not raise answers 404; downloading the same ticket's attachment succeeds | `server/tests/lab-03/authorization.api.test.ts` | Planned |
 
 ### UI component
 
@@ -137,6 +142,7 @@ Every test here calls the API directly with a session of the wrong kind. None dr
 | UI-22 | AC-29 | Create form | One role as a select; rules panel on the initial password | `client/tests/lab-03/UserManagement.test.tsx` | Planned |
 | UI-23 | AC-30 | Duplicate email presentation | Message against the Email field | `client/tests/lab-03/UserManagement.test.tsx` | Planned |
 | UI-24 | AC-31, AC-32 | Refusal presentation | Toggle springs back; the row does not update optimistically; each refusal has its own message | `client/tests/lab-03/UserManagement.test.tsx` | Planned |
+| UI-25 | §8.3 | Opening a ticket from the queue | Every row and every card exposes the ticket number as a link to the detail, reachable by keyboard | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Planned |
 
 ### UI style
 
@@ -174,7 +180,17 @@ Every test here calls the API directly with a session of the wrong kind. None dr
 | MIG-04 | AC-27 | Existing attachments still reachable | By their owner, and now by staff | `server/tests/lab-03/migration.api.test.ts` | Planned |
 | MIG-05 | BR-43 | The seed restores credentials | Running it twice returns a consumed must-change flag to its seeded state | `server/tests/lab-03/seed.api.test.ts` | Planned |
 | MIG-06 | BR-41 | Nothing client-supplied remains | No route, module or stored value accepts a client-supplied identity | `server/tests/lab-03/authorization.api.test.ts` | Planned |
-| MIG-07 | Lab 2 suite | The Lab 2 suites still pass | Every Lab 2 test passes unchanged except where identity setup moved to sign-in | `server/tests/lab-02/`, `client/tests/lab-02/` | Planned |
+| MIG-08 | §7 | Password hash backfill | After migration no account has a null hash, and every migrated account is flagged to change it at next sign-in | `server/tests/lab-03/migration.api.test.ts` | Planned |
+| MIG-07 | Lab 2 suite | The Lab 2 suites still pass, after the four changes below | Behaviour assertions are untouched; only setup and the renamed value change | `server/tests/lab-02/`, `client/tests/lab-02/`, `e2e/lab-02/` | Planned |
+
+**What changes in the Lab 2 suites, and what does not.** Four things force an edit, and none of them is an assertion about behaviour:
+
+1. **Identity setup.** Every server test that set the development header signs in instead; every browser test that drove the selector signs in instead.
+2. **The renamed status.** Any fixture or assertion naming `PENDING` becomes `WAITING_FOR_REQUESTER`.
+3. **Reference data now needs a session.** Tests that fetched categories or related systems unauthenticated must authenticate first.
+4. **The selector's own tests.** The suites covering the selection screen and the stored requester context describe a screen that no longer exists. They are deleted, and the ownership and recovery intent they carried is preserved by the Lab 3 authorization tests rather than lost.
+
+Everything else stays: the assertions about what the product does are exactly the point of a regression suite, and an assertion edited to make a suite pass is not evidence of anything.
 
 ### End-to-end
 
@@ -236,7 +252,7 @@ Every criterion in specification.md §9, and the planned tests that cover it. A 
 | AC-35 | RESP-01, RESP-02, RESP-03, RESP-04 |
 | AC-36 | UI-05, UI-19 |
 
-**Tests with no acceptance criterion.** UNIT-01, UNIT-04, UNIT-05, API-04, API-05, API-13, API-16, API-17, API-19, API-23, API-26, API-29, API-35, API-39, API-40, API-41, SEC-01, SEC-02, SEC-10, SEC-11, SEC-12, SEC-14, UI-01, UI-06, UI-10, UI-11, UI-12, UI-14, UI-15, UI-17, STYLE-01, STYLE-02, STYLE-04 to STYLE-10, RESP-05, RESP-06, MIG-01, MIG-02, MIG-03, MIG-05, MIG-06, MIG-07 cover business rules or handout requirements that no criterion names. That is a gap in the criteria rather than in the suite, and it is recorded here rather than resolved by attaching a test to an unrelated criterion.
+**Tests with no acceptance criterion.** UNIT-01, UNIT-04, UNIT-05, API-04, API-05, API-13, API-16, API-17, API-19, API-23, API-26, API-29, API-35, API-39, API-40, API-41, API-42, API-43, API-44, API-45, SEC-01, SEC-02, SEC-10, SEC-11, SEC-12, SEC-14, SEC-15, UI-01, UI-06, UI-10, UI-11, UI-12, UI-14, UI-15, UI-17, UI-25, STYLE-01, STYLE-02, STYLE-04 to STYLE-10, RESP-05, RESP-06, MIG-01, MIG-02, MIG-03, MIG-05, MIG-06, MIG-07, MIG-08 cover business rules or handout requirements that no criterion names. That is a gap in the criteria rather than in the suite, and it is recorded here rather than resolved by attaching a test to an unrelated criterion.
 
 ---
 

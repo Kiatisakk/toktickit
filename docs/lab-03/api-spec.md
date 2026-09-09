@@ -24,6 +24,8 @@ Companion to [specification.md](specification.md). Paths, shapes, status codes a
 
 **Content type** is `application/json` for every endpoint except attachment upload (`multipart/form-data`) and attachment download (the file's own type).
 
+**The client and the API are different origins in development** — the browser is served from one port and the API listens on another — so a cookie does not travel by default. Both sides must opt in. Every request from the client sends `credentials: "include"`, and the API answers with `Access-Control-Allow-Credentials: true` and an `Access-Control-Allow-Origin` naming the client's exact origin. A wildcard origin is not permitted alongside credentials and the browser will reject the pair. Preflight must allow the methods and headers the mutating endpoints use. Getting this wrong produces a request that succeeds in isolation and fails from the application with no cookie attached, which is a confusing way to spend an afternoon.
+
 ---
 
 ## 2. Status codes
@@ -168,7 +170,7 @@ Paths, request shapes, response shapes and status codes are **unchanged from Lab
 | `GET /api/tickets` | Any authenticated | The caller's own tickets only, whatever their role |
 | `GET /api/tickets/:id` | Any authenticated | Requester: own only. IT Staff and Administrator: any |
 | `GET /api/tickets/:id/attachments` | Any authenticated | Same scope as ticket detail |
-| `POST /api/tickets/:id/attachments` | Any authenticated | Requester: own only. Staff: any |
+| `POST /api/tickets/:id/attachments` | Any authenticated | **Own only, every role** — see below |
 | `GET /api/attachments/:id/download` | Any authenticated | Requester: own only. Staff: any |
 | `DELETE /api/attachments/:id` | Any authenticated | **Own only, every role** — see below |
 
@@ -176,7 +178,7 @@ Paths, request shapes, response shapes and status codes are **unchanged from Lab
 
 A Requester requesting a ticket that belongs to someone else therefore matches nothing and receives `404 TICKET_NOT_FOUND` — the same bytes as a ticket that does not exist (BR-18, AC-12).
 
-Attachment **removal** stays scoped to the ticket's requester for every role, including staff. FR-29 grants IT Staff only to view and download; letting them soft-remove a requester's evidence is a destructive capability no requirement asks for, and it would arrive by way of a table cell rather than a decision.
+Attachment **upload and removal** both stay scoped to the ticket's requester for every role, including staff. FR-29 grants IT Staff only to view and download. Letting them soft-remove a requester's evidence is a destructive capability no requirement asks for; letting them add to someone else's ticket puts a file under a requester's name that the requester never attached. Both would have arrived by way of a table cell rather than a decision.
 
 `GET /api/tickets` is deliberately scoped to the caller for every role, including staff: it is "my tickets", and staff raise tickets too (FR-30, D-07). The all-tickets view is §7.
 
@@ -202,7 +204,14 @@ Default order is `createdAt desc`, with `id desc` as a secondary key so that pag
 
 Invalid values answer `400 INVALID_QUERY_PARAMETER` with `details` naming each offending parameter.
 
-**Response** — `{ "items": [...], "page": n, "pageSize": n, "total": n, "totalPages": n }`
+**Response** — the Lab 2 envelope, unchanged:
+
+```json
+{ "data": [ /* tickets */ ],
+  "meta": { "page": 1, "pageSize": 10, "totalItems": 25, "totalPages": 3 } }
+```
+
+BR-40 promises the Lab 2 endpoints keep their shape, and this is one of them. Renaming `data` to `items` or flattening `meta` would break every existing client call and every list assertion in the Lab 2 suite, for no gain.
 
 ---
 
@@ -239,6 +248,15 @@ Each item carries the ticket's requester, owner (or `null`), both priorities, st
 
 Reassignment is permitted regardless of who currently owns the ticket; there is no "only the owner may hand it on" rule this sprint (BR-21, AC-17, AC-18).
 
+**All three staff `PATCH` endpoints answer `200` with the updated ticket** in the same shape `GET /api/tickets/:id` returns, so the client refreshes from the response instead of refetching. All three share these failures on top of the ones listed with each:
+
+| Condition | Status | Code |
+| --- | --- | --- |
+| Body missing, empty, or carrying an unexpected field | 400 | `VALIDATION_FAILED` |
+| The named field has the wrong type or an invalid value | 400 | `VALIDATION_FAILED` with the field named in `details` |
+| Ticket absent | 404 | `TICKET_NOT_FOUND` |
+| Caller is a Requester | 403 | `FORBIDDEN` |
+
 ### `PATCH /api/staff/tickets/:id/it-priority`
 
 **Request** — `{ "itPriority": "LOW" | "MEDIUM" | "HIGH" | null }`
@@ -266,7 +284,23 @@ Two separate resources on two separate tables, so that a requester-facing query 
 
 Any authenticated user, scoped exactly like ticket detail: a Requester on their own ticket, staff on any.
 
-**POST request** — `{ "body": string }` · **201** returns the created comment with its author and creation time.
+**`GET` response `200`** — oldest first, so a conversation reads downward:
+
+```json
+{ "data": [ { "id": 7, "body": "…",
+              "author": { "id": 3, "name": "…", "role": "IT_STAFF" },
+              "createdAt": "2026-09-09T11:24:21.000Z" } ] }
+```
+
+**`POST` request** — `{ "body": string }` · **`201`** returns the single created entry in the same object shape.
+
+| Condition | Status | Code |
+| --- | --- | --- |
+| `body` missing, empty, or whitespace-only | 400 | `VALIDATION_FAILED` with `details.body` |
+| `body` longer than 5000 characters after trimming | 400 | `VALIDATION_FAILED` with `details.body` |
+| Ticket absent, or outside the caller's scope | 404 | `TICKET_NOT_FOUND` |
+
+Internal Notes use the identical two shapes and the identical failures, on their own paths. The list envelope is `data`, matching every other collection in this API.
 
 Author and timestamp are taken from the session and the server clock; both are ignored if supplied (BR-29).
 
@@ -276,7 +310,7 @@ Body is 1–5000 characters after trimming; whitespace-only is refused with `400
 
 **IT Staff and Administrator only.**
 
-A Requester receives `403 FORBIDDEN` with no body content and no indication of whether the ticket has notes — including when the ticket is their own, and including when it has none (BR-32, AC-04, AC-25).
+A Requester receives `403 FORBIDDEN` carrying the standard error envelope and nothing else: no note content, no count, no field derived from a note, and no timestamp that would reveal whether any exist. The response is byte-identical whether the ticket has notes or none, and whether or not the ticket is theirs (BR-32, AC-04, AC-25). It is an envelope like every other failure — §1 admits no exception — the point is what the envelope does not contain.
 
 Same body rules as comments. Both resources are append-only: there is no `PATCH` and no `DELETE` (BR-28).
 
@@ -326,10 +360,21 @@ Exactly one role. There is no array and no second role field (BR-16).
 
 | Condition | Status | Code |
 | --- | --- | --- |
+**200** — the updated user, in the same shape the list returns, never including a credential.
+
+| Condition | Status | Code |
+| --- | --- | --- |
+| Empty body, or a field outside the four | 400 | `VALIDATION_FAILED` |
+| `name` empty, whitespace-only, or over its limit | 400 | `VALIDATION_FAILED` with `details.name` |
+| `email` malformed or over its limit | 400 | `VALIDATION_FAILED` with `details.email` |
+| `role` not one of the three | 400 | `VALIDATION_FAILED` with `details.role` |
+| `isActive` not a boolean | 400 | `VALIDATION_FAILED` with `details.isActive` |
 | Email already held by another account | 409 | `EMAIL_ALREADY_EXISTS` |
 | Deactivating the caller's own account | 409 | `CANNOT_DEACTIVATE_SELF` |
 | The change would leave no active Administrator | 409 | `LAST_ACTIVE_ADMIN` |
 | User absent | 404 | `USER_NOT_FOUND` |
+
+§8.5 of the handout asks for invalid role values to be prevented by name, so that row is a requirement rather than an inference. Validation runs before the conflict checks, so a request that is both malformed and conflicting is answered as malformed.
 
 Self-*demotion* is deliberately **not** caught by the self-check: FR-38 and BR-34 forbid deactivating your own account and say nothing about your own role. A sole Administrator demoting themselves is refused by the last-Administrator check instead, which is what makes `LAST_ACTIVE_ADMIN` reachable outside a race and AC-32 testable at all.
 
@@ -342,6 +387,15 @@ Deactivating a user takes effect on that user's next request, because the sessio
 **Request** — `{ "initialPassword": string }`
 
 **204** — replaces the user's password hash, sets the must-change flag, and deletes all of that user's sessions.
+
+| Condition | Status | Code |
+| --- | --- | --- |
+| `initialPassword` missing or empty | 400 | `VALIDATION_FAILED` with `details.initialPassword` |
+| `initialPassword` fails length or composition | 400 | `VALIDATION_FAILED` with `details.initialPassword` |
+| User absent | 404 | `USER_NOT_FOUND` |
+| The caller is not an Administrator | 403 | `FORBIDDEN` |
+
+The password rules are BR-07's, the same ones the user will face when they replace it. An Administrator issuing a password that the rules would later reject is a trap, not a convenience.
 
 An Administrator never learns an existing password; this endpoint only overwrites (BR-37, AC-29).
 

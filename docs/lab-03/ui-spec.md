@@ -92,6 +92,8 @@ The queue is the working screen of the sprint. It reuses the ticket list surface
 
 **Columns (desktop).** Ticket No. · Created Date · Summary · Category · Req. Priority · IT Priority · Status · Owner · Last Updated.
 
+**Opening a ticket.** The Ticket No. cell is a link to that ticket's detail, in every row and in every card below 768 px. §8.3 asks for an action that opens Ticket Detail, and a link carries it: it is reachable by keyboard, it announces itself as a link, and it can be opened in a new tab, which none of a row-wide click handler manages. The row is not clickable as a whole — a click target that large swallows text selection and gives assistive technology nothing to name.
+
 Nine columns is the ceiling. Anything further belongs on the detail screen. Owner renders as a name, or as an explicit *Unassigned* — never as an empty cell, which reads as missing data rather than as a fact.
 
 **Sorting.** Ticket No., Created Date, Last Updated, Summary, Req. Priority, IT Priority, Status and Owner are sortable — the five fields the Requester list already sorts by, plus the three the queue adds. Category is not sortable, because the API does not accept it and a header that answers `400` is worse than one that does not invite the click. Below 768 px the table becomes cards and sorting moves into the filter bar as a field-and-direction pair, exactly as My Tickets does — a sort control that lives only in a table header is unreachable once the table is gone.
