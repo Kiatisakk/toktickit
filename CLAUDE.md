@@ -240,10 +240,38 @@ Four documents under `docs/<lab>/` are part of the submission and are graded dir
 ## Reviewing (when I am the reviewer)
 
 1. Read the **Files changed** tab against the acceptance criteria on the Issue — not merely whether the code runs.
-2. Leave line comments with the blue plus, then **Start a review**.
-3. Finish with **Review changes** and pick one: **Comment** (questions, no verdict), **Approve** (meets the acceptance criteria), or **Request changes** (say exactly what to fix).
+2. **One finding per line, all in one review.** A finding attached to the line it is about can be answered and resolved on its own; the same findings in one long comment cannot be tracked or closed individually.
+3. Pick one verdict: **Comment** (questions, no verdict), **Approve** (meets the acceptance criteria), or **Request changes** (say exactly what to fix).
 4. **If I approve, I am the one who clicks "Merge pull request"** — never leave it to the author.
 5. If I request changes, tell the author so they know to start fixing.
+6. **Never resolve my own findings.** Resolving is the author's move after fixing, and a thread resolved the moment it is raised is a finding deleted.
+
+### Submitting a review from the command line
+
+Line comments and the verdict go in **one** request. Write the body to a file and post it:
+
+```bash
+gh api repos/<owner>/<repo>/pulls/<pr>/reviews --method POST --input review.json
+```
+
+```json
+{
+  "event": "REQUEST_CHANGES",
+  "body": "the summary — what must change, what merely needs recording",
+  "comments": [
+    { "path": "docs/<lab>/specification.md", "line": 66, "side": "RIGHT",
+      "body": "the finding, and why it matters" }
+  ]
+}
+```
+
+`event` is `COMMENT`, `APPROVE` or `REQUEST_CHANGES`. `line` is the line number in the file's **new** state, which is why `side` is `RIGHT`; on a newly added file every line is commentable. Confirm they landed with `gh api repos/<owner>/<repo>/pulls/<pr>/comments`.
+
+Posting the findings and the verdict as two separate reviews works, but leaves two entries in the PR's history for one act of reviewing. Prefer the single call.
+
+### The automated reviewer does not read prose
+
+`/code-review` looks for correctness defects in code. Pointed at a documentation-only PR it reports nothing at all — not "no issues found" in any meaningful sense, simply that no runtime code changed. Since the largest PRs of a sprint are the contract and the report, **a docs PR is reviewed by reading it**, and the useful checks are the mechanical ones a script can do: are the identifiers complete and free of gaps, is every acceptance criterion referenced by a test, does every citation resolve to something that exists, does a claim about the code match the code.
 
 ## Authoring (when the PR is mine)
 
