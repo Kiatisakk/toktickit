@@ -35,7 +35,7 @@ The remaining five were undefined behaviour rather than wrong behaviour: staff `
 
 ### PR #57 — Client test fixtures and workflow rules (Issue #46)
 
-[PR #57](https://github.com/Kiatisakk/toktickit/pull/57) · reviewed 2026-09-10 · **1 finding**, verdict **Comment**.
+[PR #57](https://github.com/Kiatisakk/toktickit/pull/57) · reviewed 2026-09-10 · **1 finding**, verdict **Comment**, then **Approved** and merged into `lab3-staging` as `285c613` by @beambeambeam.
 
 He challenged a claim in `CLAUDE.md` that GitHub exposes no API for linking a Pull Request to its Issue, and named `addCloseIssueReferences`.
 
@@ -44,6 +44,10 @@ He was right. I verified it by running it rather than by re-reading the schema: 
 The claim came from searching the mutation list for `link|closing|subissue`. The mutation is spelled `Close`, not `closing`, so the search could never have matched — and I recorded the empty result as a fact about GitHub rather than a fact about my search. It also hangs off the Issue rather than the Pull Request, so looking from the PR side was never going to find it.
 
 Fixed in `c546262`. I took his intent rather than his suggested wording, and said so: once the mutation is written into the rule, hedging about "no one-step PR-only API" explains less than showing the call. He also noted the fixture consolidation as mechanical and low risk.
+
+**What the review found that the finding did not say.** Reviewing the rules is what exposed that they were not being followed. `docs/lab-03/` held four of the six files §12 asks for; this file and `ai-use.md` did not exist, five Pull Requests into the sprint — and the rule requiring them had been added by this very branch, three commits earlier. Both were written in `8592bae` and backfilled from `gh api` rather than from notes, which is the reconstruction the rule exists to prevent. `CLAUDE.md` gained the half of the rule that was missing: the two files are created in the first Pull Request that targets a new `<lab>-staging`.
+
+He approved with `LGTM` at 15:47:23Z and merged eleven seconds later. Issue #46 was closed by hand, because the base is not the default branch.
 
 ---
 
@@ -88,10 +92,10 @@ I said plainly that BR-07 is the better rule — composition requirements are wh
 | Pull Request | Direction | Findings | Verdict | State |
 | --- | --- | --- | --- | --- |
 | [#56](https://github.com/Kiatisakk/toktickit/pull/56) | received | 12 | Changes requested → Approved | Merged |
-| [#57](https://github.com/Kiatisakk/toktickit/pull/57) | received | 1 | Comment | Open |
+| [#57](https://github.com/Kiatisakk/toktickit/pull/57) | received | 1 | Comment → Approved | Merged |
 | [beambeambeam#59](https://github.com/beambeambeam/toktickit/pull/59) | given | 3 | Changes requested → Approved | Merged |
 | [beambeambeam#60](https://github.com/beambeambeam/toktickit/pull/60) | given | 6 | Changes requested → Approved | Merged |
 
 Checked by listing the Pull Requests from GitHub and searching this file for each number, rather than by reading down the page — which is how two were found missing in Lab 2.
 
-Pull Requests #58 and #61 onward are not yet open. This file is updated by the Pull Request that receives or gives the review, not at the end of the sprint.
+No Pull Request past #57 is open in this repository yet. This file is updated by the Pull Request that receives or gives the review, not at the end of the sprint.
