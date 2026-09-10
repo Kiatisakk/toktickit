@@ -180,36 +180,46 @@ If a card is in the wrong column, the board is wrong, not merely stale.
 
 This is the thing that gets checked. Linking a _branch_ is not the same thing and does not count.
 
-**A keyword alone does not link anything here, and no command can do it either.** `Closes #18` / `Resolves #18` / `Fixes #18` create a closing reference only when the PR targets the repository's default branch. Ours target `<lab>-staging`, so GitHub downgrades them to a plain mention. Type one anyway for readability, then link by hand:
+**A closing keyword does not link it.** `Closes #18` / `Resolves #18` / `Fixes #18` were observed on 2026-09-09 to create no closing reference against a `<lab>-staging` base — two Pull Requests, identical bodies, one linked by a person and one left alone for ten minutes. Write the keyword anyway for readability, then link it yourself.
 
-1. Open the PR, find **Development** in the right sidebar, click the gear, pick the Issue.
-2. Do it right after creating the PR, not days later.
-3. The panel must read _"Successfully merging this pull request may close these issues"_. If it still says **None yet**, the Issue is not linked.
-4. Only move the card to **PR Review** after the link is confirmed. The card then shows the PR number.
+**Link it from the command line.** The mutation lives on the *Issue*, which is why looking for it on the Pull Request finds nothing:
 
-**There is no API for this step.** GitHub exposes no mutation that adds a closing reference to a PR; `createLinkedBranch` links a *branch*, which is a different thing and does not count, and `addSubIssue` joins two Issues. Checking the mutation list is faster than searching for a workaround that does not exist.
+```bash
+gh api graphql -f query='mutation($i:ID!,$p:[ID!]!){
+  addCloseIssueReferences(input:{issueId:$i, pullRequestIds:$p}){clientMutationId}}' \
+  -f i=<issue node id> -f 'p[]=<pr node id>'
+```
 
-Verify from the command line rather than trusting the panel from memory:
+Node ids come from the same query that verifies the result:
 
 ```bash
 gh api graphql -f query='{repository(owner:"Kiatisakk",name:"toktickit"){
-  pullRequest(number:<pr>){closingIssuesReferences(first:5){nodes{number}}}}}'
+  issue(number:<n>){id}
+  pullRequest(number:<pr>){id closingIssuesReferences(first:10){nodes{number}}}}}'
 ```
 
-An empty result means it is not linked, and it will stay empty until somebody clicks.
+An empty `closingIssuesReferences` means it is not linked. `removeCloseIssueReferences` takes the same arguments and undoes it, so this is safe to try.
+
+The **Development** panel in the PR's right sidebar does the same thing by hand — gear, pick the Issue, and it must end up reading _"Successfully merging this pull request may close these issues"_. Either way, only move the card to **PR Review** once the query comes back with the Issue number.
 
 **Because the merge lands in `<lab>-staging` and not the default branch, GitHub will not close the Issue either.** After the merge, **close the Issue by hand** and drag the card to Done.
 
-> This rule was rewritten to say the opposite, and then rewritten back. The mistake is worth keeping because it was not a careless one: a PR was observed carrying only the keyword and showing a closing reference, and the keyword got the credit. It had been linked by hand a minute earlier, by the person who asked for it.
+> This rule has been wrong twice, in opposite directions, and both mistakes are worth keeping.
 >
-> The next PR settled it — identical keyword, identical base, no link after ten minutes. What would have settled it the first time is one query, because the answer was already recorded:
+> **First: the keyword was credited for a link a person had made.** A PR carried only `Closes #45` and showed a closing reference, so the rule was rewritten to say keywords work. They do not — the next PR, identical in every way, sat unlinked. The answer had been recorded the whole time:
 >
 > ```bash
 > gh api repos/<owner>/<repo>/issues/<n>/timeline --paginate \
 >   -q '.[] | select(.event=="connected") | "\(.actor.login) \(.created_at)"'
 > ```
 >
-> **Seeing the state you hoped for is not evidence that you caused it.** Before crediting a mechanism, find the event that created the state and read who fired it.
+> *Seeing the state you hoped for is not evidence that you caused it.* Find the event that created it and read who fired it.
+>
+> **Second: this file claimed no API existed for the link.** It does — `addCloseIssueReferences`, raised in review by @beambeambeam. The mutation list had been searched, but for `link|closing|subissue`, and the mutation is spelled `Close`, not `closing`. The search missed it and the miss was reported as a fact about GitHub.
+>
+> *A search returning nothing is not evidence that nothing is there.* Before concluding something does not exist, check that the query could have found it — the same defect as a file filter that silently skipped a file whose name contained its own exclusion pattern.
+>
+> The claim is now backed by a run, not a grep: linking Issue #47 to PR #57 moved `closingIssuesReferences` from `[46]` to `[46, 47]`, and `removeCloseIssueReferences` put it back.
 
 ## Every PR asks Beam for review, and carries the lab label
 
