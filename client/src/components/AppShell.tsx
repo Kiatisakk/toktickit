@@ -1,6 +1,7 @@
 import { type ReactNode, useContext, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 
+import { AuthContext } from "../context/authContextValue";
 import { RequesterContext } from "../context/requesterContextValue";
 import { Breadcrumb, type Crumb } from "./Breadcrumb";
 import { Icon, type IconName } from "./Icon";
@@ -19,6 +20,13 @@ const NAV_ITEMS: { to: string; label: string; icon: IconName }[] = [
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   isActive ? "tkt-nav-link tkt-nav-link--active" : "tkt-nav-link";
+
+/** What a role is called on screen. The enum values are not for reading. */
+const ROLE_LABELS: Record<string, string> = {
+  REQUESTER: "Requester",
+  IT_STAFF: "IT Staff",
+  ADMIN: "Administrator",
+};
 
 /**
  * The application shell.
@@ -41,6 +49,11 @@ export const AppShell = ({
 
   const context = useContext(RequesterContext);
   const requester = context?.requester ?? null;
+
+  // Optional for the same reason the requester context is: the sign-in screen
+  // and the Lab 1 status page render outside the provider.
+  const auth = useContext(AuthContext);
+  const signedInUser = auth?.user ?? null;
 
   const changeRequester = requester
     ? () => {
@@ -88,11 +101,34 @@ export const AppShell = ({
 
           {/* Whose data is on screen stays visible even when the navigation is
               collapsed. On a phone this is the one thing the header must say. */}
+          {/* Whose data is on screen stays visible even when the navigation
+              is collapsed. On a phone this is the one thing the header must
+              say. While both identity mechanisms coexist, the authenticated
+              user is named first and the selected requester second — they can
+              genuinely be two different people this sprint, and hiding that
+              would make the incoherence invisible rather than temporary. */}
           <div className="tkt-identity">
             <Icon name="user" />
-            <span className="tkt-identity__name">
-              {requester?.name ?? "No requester selected"}
-            </span>
+
+            {signedInUser ? (
+              <>
+                <span className="tkt-identity__name">{signedInUser.name}</span>
+                <span className="tkt-identity__role">
+                  {ROLE_LABELS[signedInUser.role] ?? signedInUser.role}
+                </span>
+              </>
+            ) : (
+              <span className="tkt-identity__name">
+                {requester?.name ?? "No requester selected"}
+              </span>
+            )}
+
+            {signedInUser && requester && requester.id !== signedInUser.id ? (
+              <span className="tkt-identity__acting">
+                acting as {requester.name}
+              </span>
+            ) : null}
+
             {changeRequester ? (
               <button
                 className="tkt-btn tkt-btn--secondary"
@@ -100,6 +136,31 @@ export const AppShell = ({
                 type="button"
               >
                 Change Requester
+              </button>
+            ) : null}
+
+            {/* Without this the sign-in screen is reachable only by typing its
+                URL: during the expand half, nothing else routes to it. It is a
+                link rather than a redirect on purpose — redirecting would break
+                the Lab 2 screens, which are still the working product. */}
+            {auth && !signedInUser ? (
+              <Link className="tkt-btn tkt-btn--secondary" to="/login">
+                Sign In
+              </Link>
+            ) : null}
+
+            {auth && signedInUser ? (
+              <button
+                className="tkt-btn tkt-btn--secondary"
+                onClick={() => {
+                  void auth
+                    .signOut()
+                    .then(() => navigate("/login", { replace: true }));
+                }}
+                type="button"
+              >
+                <Icon name="logout" />
+                Logout
               </button>
             ) : null}
           </div>

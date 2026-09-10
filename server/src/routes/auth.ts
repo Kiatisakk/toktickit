@@ -11,8 +11,8 @@ import {
   openSession,
   rotateSessionAndEndOthers,
   SESSION_COOKIE,
-  type SessionUser,
 } from "../auth/session.js";
+import type { SessionUser } from "../auth/session.js";
 import { ErrorCode, sendError, sendInternalError } from "../http/errors.js";
 import { currentSession, requireSession } from "../middleware/session.js";
 import { prisma } from "../prisma.js";
@@ -68,6 +68,7 @@ const asRecord = (value: unknown): Record<string, unknown> =>
 const asNonBlankString = (value: unknown): string | null =>
   typeof value === "string" && value.trim() !== "" ? value : null;
 
+// oxlint-disable-next-line oxc/no-async-endpoint-handlers
 authRouter.post("/auth/login", async (req, res) => {
   const body = asRecord(req.body);
   const email = asNonBlankString(body["email"]);
@@ -172,6 +173,7 @@ authRouter.post("/auth/login", async (req, res) => {
  * live, which is the one thing sign-out must not do. It therefore does not
  * mount `requireSession`.
  */
+// oxlint-disable-next-line oxc/no-async-endpoint-handlers
 authRouter.post("/auth/logout", async (req, res) => {
   const token = (req.cookies as Record<string, string> | undefined)?.[
     SESSION_COOKIE
@@ -205,6 +207,7 @@ authRouter.get("/auth/me", requireSession, (_req, res) => {
  *
  * Reachable while the gate is up, for the same reason.
  */
+// oxlint-disable-next-line oxc/no-async-endpoint-handlers
 authRouter.post("/auth/password", requireSession, async (req, res) => {
   const { user } = currentSession(res);
   const body = asRecord(req.body);

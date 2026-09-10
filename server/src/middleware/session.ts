@@ -1,11 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 
-import {
-  type LiveSession,
-  resolveSession,
-  SESSION_COOKIE,
-  type SessionUser,
-} from "../auth/session.js";
+import { resolveSession, SESSION_COOKIE } from "../auth/session.js";
+import type { LiveSession, SessionUser } from "../auth/session.js";
 import { ErrorCode, sendError, sendInternalError } from "../http/errors.js";
 
 /**
@@ -23,12 +19,7 @@ import { ErrorCode, sendError, sendInternalError } from "../http/errors.js";
 
 /** Sends the one refusal every "not signed in" reason shares (BR-13). */
 const refuseUnauthenticated = (res: Response): void => {
-  sendError(
-    res,
-    401,
-    ErrorCode.unauthenticated,
-    "Sign in to continue."
-  );
+  sendError(res, 401, ErrorCode.unauthenticated, "Sign in to continue.");
 };
 
 /**
@@ -75,6 +66,28 @@ export const requireSession = async (
 };
 
 /**
+ * Reads the session the guard put on the response.
+ *
+ * Throws rather than returning undefined: reaching a handler without a session
+ * means `requireSession` was not mounted, and returning undefined would let a
+ * query run unscoped.
+ */
+export const currentSession = (res: Response): LiveSession => {
+  const session = res.locals["session"] as LiveSession | undefined;
+
+  if (!session) {
+    throw new Error(
+      "No session on the response. Mount requireSession on this route."
+    );
+  }
+
+  return session;
+};
+
+export const currentUser = (res: Response): SessionUser =>
+  currentSession(res).user;
+
+/**
  * Refuses while a password change is outstanding (BR-02, FR-11, AC-02).
  *
  * Mounted after `requireSession`, so reaching it without a session is a wiring
@@ -98,25 +111,3 @@ export const requirePasswordChangeSatisfied = (
 
   next();
 };
-
-/**
- * Reads the session the guard put on the response.
- *
- * Throws rather than returning undefined: reaching a handler without a session
- * means `requireSession` was not mounted, and returning undefined would let a
- * query run unscoped.
- */
-export const currentSession = (res: Response): LiveSession => {
-  const session = res.locals["session"] as LiveSession | undefined;
-
-  if (!session) {
-    throw new Error(
-      "No session on the response. Mount requireSession on this route."
-    );
-  }
-
-  return session;
-};
-
-export const currentUser = (res: Response): SessionUser =>
-  currentSession(res).user;

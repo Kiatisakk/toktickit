@@ -100,7 +100,9 @@ Public. Establishes a session.
 | Known email, wrong password | 401 | `INVALID_CREDENTIALS` |
 | Correct password, deactivated account | 403 | `ACCOUNT_INACTIVE` |
 
-The first two are byte-for-byte identical, so the form cannot be used to discover which addresses have accounts (BR-08, AC-05). The third is reachable only after the password has verified, so an attacker who does not know the password cannot distinguish a deactivated account from an absent one (BR-09, D-04).
+The first two are byte-for-byte identical, so the form cannot be used to discover which addresses have accounts (BR-08, AC-05). They also take the same time: a miss pays for one key derivation against a fixed hash, so the endpoint cannot be timed into the oracle its wording refuses to be. The third is reachable only after the password has verified, so an attacker who does not know the password cannot distinguish a deactivated account from an absent one (BR-09, D-04).
+
+The address is matched without regard to case (D-17). The password is not trimmed — leading and trailing spaces are legitimate characters, and removing them would refuse a correct password.
 
 Signing in does not disturb sessions already open (BR-12).
 

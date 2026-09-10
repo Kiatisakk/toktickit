@@ -1,6 +1,6 @@
 import { hashPassword } from "../src/auth/password.js";
 import { prisma } from "../src/prisma.js";
-import { REQUESTER_ACCOUNTS } from "./accounts.js";
+import { SEED_ACCOUNTS } from "./accounts.js";
 
 /**
  * Reference data for TokTickIT.
@@ -149,7 +149,7 @@ const seedRelatedSystems = async (tx: Tx) => {
 };
 
 /**
- * Requesters are keyed on email, which is what makes a rerun idempotent: a
+ * Accounts are keyed on email, which is what makes a rerun idempotent: a
  * changed display name updates the existing row rather than creating a second
  * identity for the same person.
  *
@@ -161,13 +161,18 @@ const seedRelatedSystems = async (tx: Tx) => {
  * demonstrates it — a create-if-absent seed would make that test pass once and
  * fail on every run afterwards.
  *
+ * The role is written on update as well as on create. Lab 2 left the IT Staff
+ * rows to the demonstration seed; now that they are reference data, a database
+ * seeded under the old arrangement has to be corrected rather than left with
+ * whatever role it happens to hold.
+ *
  * Hashing happens before the transaction opens. scrypt is deliberately slow and
- * memory-hard, and six of them inside a transaction would hold it open for no
- * reason.
+ * memory-hard, and eleven of them inside a transaction would hold it open for
+ * no reason.
  */
-const seedRequesters = async (tx: Tx, hashes: Map<string, string>) => {
+const seedAccounts = async (tx: Tx, hashes: Map<string, string>) => {
   await Promise.all(
-    REQUESTER_ACCOUNTS.map((account) => {
+    SEED_ACCOUNTS.map((account) => {
       const passwordHash = hashes.get(account.email);
 
       if (!passwordHash) {
@@ -178,6 +183,7 @@ const seedRequesters = async (tx: Tx, hashes: Map<string, string>) => {
         where: { email: account.email },
         update: {
           name: account.name,
+          role: account.role,
           isActive: account.isActive,
           passwordHash,
           mustChangePassword: account.mustChangePassword,
@@ -185,8 +191,8 @@ const seedRequesters = async (tx: Tx, hashes: Map<string, string>) => {
         create: {
           email: account.email,
           name: account.name,
+          role: account.role,
           isActive: account.isActive,
-          role: "REQUESTER",
           passwordHash,
           mustChangePassword: account.mustChangePassword,
         },
@@ -198,7 +204,7 @@ const seedRequesters = async (tx: Tx, hashes: Map<string, string>) => {
 const seed = async () => {
   const hashes = new Map(
     await Promise.all(
-      REQUESTER_ACCOUNTS.map(
+      SEED_ACCOUNTS.map(
         async (account) =>
           [account.email, await hashPassword(account.password)] as const
       )
@@ -209,7 +215,7 @@ const seed = async () => {
     async (tx) => {
       const categories = await seedCategories(tx);
       const systems = await seedRelatedSystems(tx);
-      await seedRequesters(tx, hashes);
+      await seedAccounts(tx, hashes);
 
       return { retiredCategories: categories, retiredSystems: systems };
     }
@@ -218,13 +224,23 @@ const seed = async () => {
   // Assertions rather than logs: a seed that silently produced the wrong number
   // of rows would break the tests that count them, several files away from the
   // cause.
-  const [categories, systems, activeRequesters, inactiveRequesters] =
-    await Promise.all([
-      prisma.category.count({ where: { isActive: true } }),
-      prisma.relatedSystem.count({ where: { isActive: true } }),
-      prisma.user.count({ where: { role: "REQUESTER", isActive: true } }),
-      prisma.user.count({ where: { role: "REQUESTER", isActive: false } }),
-    ]);
+  const [
+    categories,
+    systems,
+    activeRequesters,
+    inactiveRequesters,
+    activeStaff,
+    inactiveStaff,
+    activeAdmins,
+  ] = await Promise.all([
+    prisma.category.count({ where: { isActive: true } }),
+    prisma.relatedSystem.count({ where: { isActive: true } }),
+    prisma.user.count({ where: { role: "REQUESTER", isActive: true } }),
+    prisma.user.count({ where: { role: "REQUESTER", isActive: false } }),
+    prisma.user.count({ where: { role: "IT_STAFF", isActive: true } }),
+    prisma.user.count({ where: { role: "IT_STAFF", isActive: false } }),
+    prisma.user.count({ where: { role: "ADMIN", isActive: true } }),
+  ]);
 
   if (categories !== CATEGORY_NAMES.length) {
     throw new Error(
@@ -247,6 +263,24 @@ const seed = async () => {
   if (inactiveRequesters < 1) {
     throw new Error(
       `§5.3 requires at least one inactive Development Requester, found ${inactiveRequesters}.`
+    );
+  }
+
+  if (activeStaff < 3) {
+    throw new Error(
+      `§7 requires at least three active IT Staff, found ${activeStaff}.`
+    );
+  }
+
+  if (inactiveStaff < 1) {
+    throw new Error(
+      `§7 requires at least one inactive IT Staff, found ${inactiveStaff}.`
+    );
+  }
+
+  if (activeAdmins < 1) {
+    throw new Error(
+      `§7 requires at least one active Administrator, found ${activeAdmins}.`
     );
   }
 
@@ -281,7 +315,7 @@ const seed = async () => {
   const retired = retiredCategories + retiredSystems;
 
   console.log(
-    `Seeded ${categories} categories, ${systems} related systems, ${activeRequesters} active and ${inactiveRequesters} inactive requesters${
+    `Seeded ${categories} categories, ${systems} related systems, ${activeRequesters} active and ${inactiveRequesters} inactive requesters, ${activeStaff} active and ${inactiveStaff} inactive IT staff, ${activeAdmins} administrator(s)${
       retired > 0 ? `, retired ${retired} no longer listed` : ""
     }.`
   );

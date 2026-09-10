@@ -54,15 +54,15 @@ describe("UNIT-03 password rules", () => {
     { id: "lowercase", password: "CORRECT1!" },
     { id: "digit", password: "Correctt!" },
     { id: "special", password: "Correct11" },
-  ])("names the $id rule when only that class is missing", ({
-    id,
-    password,
-  }) => {
-    const failure = firstUnsatisfiedRule(password);
+  ])(
+    "names the $id rule when only that class is missing",
+    ({ id, password }) => {
+      const failure = firstUnsatisfiedRule(password);
 
-    expect(failure?.id).toBe(id);
-    expect(failure?.message).not.toContain(password);
-  });
+      expect(failure?.id).toBe(id);
+      expect(failure?.message).not.toContain(password);
+    }
+  );
 
   it("names a rule rather than echoing the password", () => {
     const secret = "hunter2hunter2";

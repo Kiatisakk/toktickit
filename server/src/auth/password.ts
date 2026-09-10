@@ -1,9 +1,5 @@
-import {
-  randomBytes,
-  scrypt,
-  type ScryptOptions,
-  timingSafeEqual,
-} from "node:crypto";
+import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
+import type { ScryptOptions } from "node:crypto";
 import { promisify } from "node:util";
 
 /**

@@ -8,6 +8,7 @@ import "./styles/tokens.css";
 import "./styles/components.css";
 import "./index.css";
 
+import { AuthProvider } from "./context/AuthContext";
 import { RequesterProvider } from "./context/RequesterContext";
 import { router } from "./routes/router";
 
@@ -19,8 +20,12 @@ if (!container) {
 
 createRoot(container).render(
   <StrictMode>
-    <RequesterProvider>
-      <RouterProvider router={router} />
-    </RequesterProvider>
+    {/* Auth outside Requester: the sign-in screen renders before any
+        requester exists, and the selector is on its way out. */}
+    <AuthProvider>
+      <RequesterProvider>
+        <RouterProvider router={router} />
+      </RequesterProvider>
+    </AuthProvider>
   </StrictMode>
 );

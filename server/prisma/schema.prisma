@@ -49,13 +49,16 @@ model User {
 
   /// The scrypt hash of the account's password, never the password (BR-06).
   ///
-  /// Nullable only for the length of the migration that introduces it. The
-  /// bootstrap step hashes each existing account's issued starting password and
-  /// the following migration sets NOT NULL, because an account able to sign in
-  /// with a null hash would be an account with no password. Nothing in the
-  /// application is allowed to treat null as "any password will do" — the
-  /// sign-in path refuses a row without a hash before it compares anything.
-  passwordHash String?
+  /// NOT NULL, because an account able to sign in with a null hash would be an
+  /// account with no password. It arrived nullable and was tightened one
+  /// migration later, with `prisma/bootstrap-passwords.ts` in between: the
+  /// constraint could not be added to populated rows in one step, and SQL
+  /// cannot derive a scrypt hash because the hashing lives in Node (§7).
+  ///
+  /// The sign-in path still refuses a row it cannot verify rather than trusting
+  /// the constraint, so a database restored from before this migration fails
+  /// closed.
+  passwordHash String
 
   /// Set when an Administrator issues a starting password, cleared by the
   /// user's own change (BR-02). While it is set, every endpoint except reading

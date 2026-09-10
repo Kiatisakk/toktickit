@@ -54,7 +54,11 @@ const tokenOf = (setCookie: string[] | undefined): string => {
 };
 
 /** Restores an account to exactly what the seed guarantees. */
-const restore = async (email: string, password: string, mustChange: boolean) => {
+const restore = async (
+  email: string,
+  password: string,
+  mustChange: boolean
+) => {
   await prisma.user.update({
     where: { email },
     data: {
@@ -66,9 +70,10 @@ const restore = async (email: string, password: string, mustChange: boolean) => 
 
 describe("POST /api/auth/login", () => {
   it("API-01 answers 200 with the identity and role, and sets a session cookie", async () => {
-    const response = await request(app)
-      .post("/api/auth/login")
-      .send({ email: ACTIVE_REQUESTER.email, password: ACTIVE_REQUESTER.password });
+    const response = await request(app).post("/api/auth/login").send({
+      email: ACTIVE_REQUESTER.email,
+      password: ACTIVE_REQUESTER.password,
+    });
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
@@ -79,9 +84,10 @@ describe("POST /api/auth/login", () => {
   });
 
   it("API-01 returns no credential of any kind in the body", async () => {
-    const response = await request(app)
-      .post("/api/auth/login")
-      .send({ email: ACTIVE_REQUESTER.email, password: ACTIVE_REQUESTER.password });
+    const response = await request(app).post("/api/auth/login").send({
+      email: ACTIVE_REQUESTER.email,
+      password: ACTIVE_REQUESTER.password,
+    });
 
     const serialised = JSON.stringify(response.body);
 
@@ -93,9 +99,10 @@ describe("POST /api/auth/login", () => {
   });
 
   it("API-01 issues an httpOnly, SameSite=Lax cookie scoped to the whole site", async () => {
-    const response = await request(app)
-      .post("/api/auth/login")
-      .send({ email: ACTIVE_REQUESTER.email, password: ACTIVE_REQUESTER.password });
+    const response = await request(app).post("/api/auth/login").send({
+      email: ACTIVE_REQUESTER.email,
+      password: ACTIVE_REQUESTER.password,
+    });
 
     const cookie = cookieValue(cookiesOf(response)) ?? "";
 
@@ -105,9 +112,10 @@ describe("POST /api/auth/login", () => {
   });
 
   it("API-01 stores the token hashed, never the token itself", async () => {
-    const response = await request(app)
-      .post("/api/auth/login")
-      .send({ email: ACTIVE_REQUESTER.email, password: ACTIVE_REQUESTER.password });
+    const response = await request(app).post("/api/auth/login").send({
+      email: ACTIVE_REQUESTER.email,
+      password: ACTIVE_REQUESTER.password,
+    });
 
     const token = tokenOf(cookiesOf(response));
 
@@ -124,9 +132,10 @@ describe("POST /api/auth/login", () => {
   });
 
   it("API-02 refuses an unknown address and a wrong password identically", async () => {
-    const unknown = await request(app)
-      .post("/api/auth/login")
-      .send({ email: "nobody@example.ac.th", password: ACTIVE_REQUESTER.password });
+    const unknown = await request(app).post("/api/auth/login").send({
+      email: "nobody@example.ac.th",
+      password: ACTIVE_REQUESTER.password,
+    });
 
     const wrong = await request(app)
       .post("/api/auth/login")
@@ -149,7 +158,9 @@ describe("POST /api/auth/login", () => {
     });
 
     expect(response.status).toBe(403);
-    expect(response.body).toMatchObject({ error: { code: "ACCOUNT_INACTIVE" } });
+    expect(response.body).toMatchObject({
+      error: { code: "ACCOUNT_INACTIVE" },
+    });
     expect(cookieValue(cookiesOf(response))).toBeUndefined();
   });
 
@@ -190,7 +201,10 @@ describe("POST /api/auth/login", () => {
   });
 
   it("BR-12 leaves sessions already open undisturbed", async () => {
-    const first = await signIn(ACTIVE_REQUESTER.email, ACTIVE_REQUESTER.password);
+    const first = await signIn(
+      ACTIVE_REQUESTER.email,
+      ACTIVE_REQUESTER.password
+    );
     await signIn(ACTIVE_REQUESTER.email, ACTIVE_REQUESTER.password);
 
     const stillLive = await request(app)
@@ -208,7 +222,9 @@ describe("GET /api/auth/me", () => {
       ACTIVE_REQUESTER.password
     );
 
-    const response = await request(app).get("/api/auth/me").set("Cookie", cookie);
+    const response = await request(app)
+      .get("/api/auth/me")
+      .set("Cookie", cookie);
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
@@ -250,7 +266,9 @@ describe("POST /api/auth/logout", () => {
       ACTIVE_REQUESTER.password
     );
 
-    const out = await request(app).post("/api/auth/logout").set("Cookie", cookie);
+    const out = await request(app)
+      .post("/api/auth/logout")
+      .set("Cookie", cookie);
 
     expect(out.status).toBe(204);
 
@@ -262,9 +280,10 @@ describe("POST /api/auth/logout", () => {
   });
 
   it("API-08 deletes the row rather than only clearing the cookie", async () => {
-    const signedIn = await request(app)
-      .post("/api/auth/login")
-      .send({ email: ACTIVE_REQUESTER.email, password: ACTIVE_REQUESTER.password });
+    const signedIn = await request(app).post("/api/auth/login").send({
+      email: ACTIVE_REQUESTER.email,
+      password: ACTIVE_REQUESTER.password,
+    });
 
     const token = tokenOf(cookiesOf(signedIn));
 
@@ -288,9 +307,10 @@ describe("POST /api/auth/logout", () => {
 
 describe("session lifetime and account state", () => {
   it("API-09 refuses a session past its expiry", async () => {
-    const signedIn = await request(app)
-      .post("/api/auth/login")
-      .send({ email: ACTIVE_REQUESTER.email, password: ACTIVE_REQUESTER.password });
+    const signedIn = await request(app).post("/api/auth/login").send({
+      email: ACTIVE_REQUESTER.email,
+      password: ACTIVE_REQUESTER.password,
+    });
 
     const cookie = cookiesOf(signedIn);
     const token = tokenOf(cookie);
@@ -303,7 +323,9 @@ describe("session lifetime and account state", () => {
       data: { expiresAt: new Date(Date.now() - 1000) },
     });
 
-    const response = await request(app).get("/api/auth/me").set("Cookie", cookie);
+    const response = await request(app)
+      .get("/api/auth/me")
+      .set("Cookie", cookie);
 
     expect(response.status).toBe(401);
     expect(response.body).toMatchObject({ error: { code: "UNAUTHENTICATED" } });
@@ -325,7 +347,9 @@ describe("session lifetime and account state", () => {
     });
 
     try {
-      const after = await request(app).get("/api/auth/me").set("Cookie", cookie);
+      const after = await request(app)
+        .get("/api/auth/me")
+        .set("Cookie", cookie);
 
       // AC-11, BR-15, D-02: the session caches nothing about the user, so this
       // takes effect on the next request rather than at the next sign-in.
@@ -380,7 +404,9 @@ describe("the password-change gate", () => {
       MUST_CHANGE_REQUESTER.password
     );
 
-    const response = await request(gatedApp).get("/probe").set("Cookie", cookie);
+    const response = await request(gatedApp)
+      .get("/probe")
+      .set("Cookie", cookie);
 
     expect(response.status).toBe(403);
     expect(response.body).toMatchObject({
@@ -624,7 +650,10 @@ describe("POST /api/auth/password", () => {
 
     expect(response.status).toBe(400);
     expect(response.body).toMatchObject({
-      error: { code: "VALIDATION_FAILED", details: { newPassword: expect.any(String) } },
+      error: {
+        code: "VALIDATION_FAILED",
+        details: { newPassword: expect.any(String) },
+      },
     });
   });
 
