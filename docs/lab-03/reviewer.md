@@ -35,7 +35,7 @@ The remaining five were undefined behaviour rather than wrong behaviour: staff `
 
 ### PR #57 — Client test fixtures and workflow rules (Issue #46)
 
-[PR #57](https://github.com/Kiatisakk/toktickit/pull/57) · reviewed 2026-09-10 · **1 finding**, verdict **Comment**.
+[PR #57](https://github.com/Kiatisakk/toktickit/pull/57) · reviewed 2026-09-10 · **1 finding**, verdict **Comment**, then **Approved** and merged into `lab3-staging` as `285c613` by @beambeambeam.
 
 He challenged a claim in `CLAUDE.md` that GitHub exposes no API for linking a Pull Request to its Issue, and named `addCloseIssueReferences`.
 
@@ -45,9 +45,13 @@ The claim came from searching the mutation list for `link|closing|subissue`. The
 
 Fixed in `c546262`. I took his intent rather than his suggested wording, and said so: once the mutation is written into the rule, hedging about "no one-step PR-only API" explains less than showing the call. He also noted the fixture consolidation as mechanical and low risk.
 
+**What the review found that the finding did not say.** Reviewing the rules is what exposed that they were not being followed. `docs/lab-03/` held four of the six files §12 asks for; this file and `ai-use.md` did not exist, five Pull Requests into the sprint — and the rule requiring them had been added by this very branch, three commits earlier. Both were written in `8592bae` and backfilled from `gh api` rather than from notes, which is the reconstruction the rule exists to prevent. `CLAUDE.md` gained the half of the rule that was missing: the two files are created in the first Pull Request that targets a new `<lab>-staging`.
+
+He approved with `LGTM` at 15:47:23Z and merged eleven seconds later. Issue #46 was closed by hand, because the base is not the default branch.
+
 ### PR #59 — Sign in, sign out, and the forced first password change (Issue #47)
 
-[PR #59](https://github.com/Kiatisakk/toktickit/pull/59) · reviewed 2026-09-11 · **15 line comments and 2 in the review body**, verdict **Comment**.
+[PR #59](https://github.com/Kiatisakk/toktickit/pull/59) · reviewed 2026-09-11 · **15 line comments and 2 in the review body**, verdict **Comment**, then **Approved** and merged into `lab3-staging` as `7b1058b` by @beambeambeam.
 
 The largest review of the sprint, on the first Pull Request with real authentication in it. He marked seven findings as bugs or security defects, three as specification gaps, and five as nits. Eleven were accepted and fixed; four were answered with reasons instead.
 
@@ -66,6 +70,8 @@ The largest review of the sprint, on the first Pull Request with real authentica
 **Four I answered rather than applied.** Authenticating the reference-data endpoints now would break the Lab 2 journey #47 is required to keep working, and api-spec.md §5's own stated reason for the change arrives with #48. The seeded demonstration passwords are governed by BR-42, which permits documented local-only credentials — though it also required documenting them, which I had not done, so the README now does. The duplicated password rules follow the Lab 2 precedent for two workspaces with no shared package. And rewriting pushed commit history to a different message style would detach every line comment from its commit, for a rule this repository does not have.
 
 **What I take from it.** Two of the three hidden defects were a test or a check that passed for a reason unrelated to the code being right — a stub that could not fail, and a typecheck against the wrong schema. Both looked exactly like evidence.
+
+He approved with `LGTM` at 15:04:21Z on 2026-09-14 and merged ten seconds later. Issue #47 was closed by hand, because the base is not the default branch.
 
 ---
 
@@ -126,12 +132,12 @@ I said plainly that BR-07 is the better rule — composition requirements are wh
 | Pull Request | Direction | Findings | Verdict | State |
 | --- | --- | --- | --- | --- |
 | [#56](https://github.com/Kiatisakk/toktickit/pull/56) | received | 12 | Changes requested → Approved | Merged |
-| [#57](https://github.com/Kiatisakk/toktickit/pull/57) | received | 1 | Comment | Open |
-| [#59](https://github.com/Kiatisakk/toktickit/pull/59) | received | 17 | Comment | Open — fixes pushed |
+| [#57](https://github.com/Kiatisakk/toktickit/pull/57) | received | 1 | Comment → Approved | Merged |
+| [#59](https://github.com/Kiatisakk/toktickit/pull/59) | received | 17 | Comment → Approved | Merged |
 | [beambeambeam#59](https://github.com/beambeambeam/toktickit/pull/59) | given | 3 | Changes requested → Approved | Merged |
 | [beambeambeam#60](https://github.com/beambeambeam/toktickit/pull/60) | given | 6 | Changes requested → Approved | Merged |
 | [beambeambeam#61](https://github.com/beambeambeam/toktickit/pull/61) | given | 4 | Changes requested | Open |
 
 Checked by listing the Pull Requests from GitHub and searching this file for each number, rather than by reading down the page — which is how two were found missing in Lab 2.
 
-Pull Requests #58 and #61 onward are not yet open. This file is updated by the Pull Request that receives or gives the review, not at the end of the sprint.
+No Pull Request past #59 is open in this repository yet. This file is updated by the Pull Request that receives or gives the review, not at the end of the sprint.
