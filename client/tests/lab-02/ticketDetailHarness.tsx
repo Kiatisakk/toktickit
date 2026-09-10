@@ -2,12 +2,10 @@ import { render } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { vi } from "vitest";
 
-import {
-  RequesterContext,
-  type RequesterContextValue,
-} from "../../src/context/requesterContextValue";
+import { RequesterContext } from "../../src/context/requesterContextValue";
 import type { AttachmentMetadata } from "../../src/lib/api";
 import { TicketDetail } from "../../src/routes/TicketDetail";
+import { CONTEXT, jsonResponse } from "../support/requester";
 
 /**
  * Fixtures and a renderer shared by the two suites that exercise this screen.
@@ -20,17 +18,9 @@ import { TicketDetail } from "../../src/routes/TicketDetail";
  * copied into each and drifting apart.
  */
 
-export const CONTEXT: RequesterContextValue = {
-  status: "selected",
-  requester: {
-    id: 1,
-    name: "Jennifer Anderson",
-    email: "jennifer.anderson@example.ac.th",
-  },
-  generation: 0,
-  select: () => undefined,
-  clear: () => undefined,
-};
+// Re-exported so the two suites that already import these from here keep
+// working unchanged; the definitions now live with the other fixtures.
+export { CONTEXT, jsonResponse };
 
 export const ATTACHMENT: AttachmentMetadata = {
   id: 11,
@@ -62,9 +52,6 @@ export const TICKET = {
   ticketOwner: null,
   attachments: [] as AttachmentMetadata[],
 };
-
-export const jsonResponse = (body: unknown, status = 200) =>
-  ({ ok: status < 400, status, json: () => Promise.resolve(body) }) as Response;
 
 export const respond = (body: unknown, status = 200) =>
   vi.fn(() => Promise.resolve(jsonResponse(body, status)));

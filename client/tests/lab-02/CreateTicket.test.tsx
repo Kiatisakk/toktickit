@@ -8,6 +8,7 @@ import {
   type RequesterContextValue,
 } from "../../src/context/requesterContextValue";
 import { CreateTicket } from "../../src/routes/CreateTicket";
+import { CONTEXT, jsonResponse } from "../support/requester";
 
 /**
  * UI-07 — reference data comes from the API rather than from a constant.
@@ -27,23 +28,6 @@ const SYSTEMS = [
   { id: 7, name: "Corporate Laptop" },
   { id: 3, name: "VPN" },
 ];
-
-const REQUESTER = {
-  id: 1,
-  name: "Jennifer Anderson",
-  email: "jennifer.anderson@example.ac.th",
-};
-
-const CONTEXT: RequesterContextValue = {
-  status: "selected",
-  requester: REQUESTER,
-  generation: 0,
-  select: () => undefined,
-  clear: () => undefined,
-};
-
-const jsonResponse = (body: unknown, status = 200) =>
-  ({ ok: status < 400, status, json: async () => body }) as Response;
 
 /** Answers the two reference calls; POST is supplied per test. */
 const referenceFetch = (onPost?: () => Promise<Response>) =>

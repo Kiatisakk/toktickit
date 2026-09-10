@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RequesterProvider } from "../../src/context/RequesterContext";
 import { RequesterGuard } from "../../src/routes/RequesterGuard";
+import { jsonResponse } from "../support/requester";
 
 /**
  * UI-03 — requester-scoped screens are unreachable without a current context
@@ -22,9 +23,6 @@ const REQUESTERS = [
 ];
 
 const STORAGE_KEY = "toktickit.developmentRequesterId";
-
-const jsonResponse = (body: unknown) =>
-  ({ ok: true, status: 200, json: async () => body }) as Response;
 
 const renderAt = (path: string) =>
   render(

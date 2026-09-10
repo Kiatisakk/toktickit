@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RequesterProvider } from "../../src/context/RequesterContext";
 import { RequesterSelection } from "../../src/routes/RequesterSelection";
+import { jsonResponse } from "../support/requester";
 
 /**
  * UI-01 — the selector's loading, empty and failure states.
@@ -23,9 +24,6 @@ const REQUESTERS = [
   },
   { id: 2, name: "Somchai Wattana", email: "somchai.wattana@example.ac.th" },
 ];
-
-const jsonResponse = (body: unknown) =>
-  ({ ok: true, status: 200, json: async () => body }) as Response;
 
 const renderScreen = () =>
   render(

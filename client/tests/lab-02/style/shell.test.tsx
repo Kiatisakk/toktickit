@@ -5,10 +5,8 @@ import { describe, expect, it } from "vitest";
 import { AppShell } from "../../../src/components/AppShell";
 import { Breadcrumb } from "../../../src/components/Breadcrumb";
 import { StateBlock } from "../../../src/components/StateBlock";
-import {
-  RequesterContext,
-  type RequesterContextValue,
-} from "../../../src/context/requesterContextValue";
+import type { RequesterContextValue } from "../../../src/context/requesterContextValue";
+import { renderWithRequester, requesterContext } from "../../support/requester";
 
 /** STYLE-05 and STYLE-06 — see docs/lab-02/tests.md. */
 
@@ -21,25 +19,19 @@ import {
 const renderShell = (
   path: string,
   requester: RequesterContextValue["requester"] = null
-) => {
-  const value: RequesterContextValue = {
-    status: requester ? "selected" : "none",
-    requester,
-    generation: 0,
-    select: () => undefined,
-    clear: () => undefined,
-  };
-
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <RequesterContext.Provider value={value}>
-        <AppShell>
-          <p>Screen content</p>
-        </AppShell>
-      </RequesterContext.Provider>
-    </MemoryRouter>
+) =>
+  renderWithRequester(
+    <AppShell>
+      <p>Screen content</p>
+    </AppShell>,
+    {
+      path,
+      context: requesterContext({
+        status: requester ? "selected" : "none",
+        requester,
+      }),
+    }
   );
-};
 
 const JENNIFER = {
   id: 1,
