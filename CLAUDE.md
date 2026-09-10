@@ -129,7 +129,7 @@ Most formatting and common issues are automatically fixed by Oxlint + Oxfmt. Run
 
 # TokTickIT GitHub Workflow
 
-Rules from `material/TokTickIT_GitHub_Workflow_Guide_TH_EN-1.pdf` (CPE 334), applying to every lab. The guide is written around Lab 1 and says so; below, **`<lab>-staging`** stands for the staging branch of whichever lab is in progress — `lab1-staging`, `lab2-staging`, and so on. Lab 2 is current, so it is `lab2-staging` today.
+Rules from `material/TokTickIT_GitHub_Workflow_Guide_TH_EN-1.pdf` (CPE 334), applying to every lab. The guide is written around Lab 1 and says so; below, **`<lab>-staging`** stands for the staging branch of whichever lab is in progress — `lab1-staging`, `lab2-staging`, and so on. Read the current one off the repository — `git branch -r` shows which staging branch exists — rather than trusting a name written into this sentence, which is how it came to say Lab 2 for the whole of Lab 3.
 
 ## Board statuses
 
@@ -254,6 +254,23 @@ Four documents under `docs/<lab>/` are part of the submission and are graded dir
 **Why it has to be this way, from experience.** Lab 1 wrote `reviewer.md` at the end and it meant reopening every PR and expanding collapsed threads one at a time — slow, and it silently missed two PRs that were only found later by listing every PR from GitHub and searching the file for each number. Writing the entry while the conversation is still open is both faster and more accurate.
 
 **A row that still reads `Planned` at submission is a defect**, not a to-do. Either the test exists and the row is stale, or the test does not exist and the plan is a wish.
+
+### Create them when the lab starts, not when they are first needed
+
+`reviewer.md` and `ai-use.md` are created **in the first Pull Request that targets a new `<lab>-staging` branch** — the contract PR, alongside `specification.md` — as skeletons carrying their headings and nothing else. Every later PR appends to a file that already exists, which is the whole point: appending to a file takes a minute, and creating one four Pull Requests late means reconstructing what should have been written down.
+
+The check is one command, run the moment `<lab>-staging` exists:
+
+```bash
+ls docs/<lab>/
+# api-spec.md  ai-use.md  reviewer.md  specification.md  tests.md  ui-spec.md
+```
+
+Six files. Fewer than six means the missing ones are going to be written from memory.
+
+**`ai-use.md`'s reflection section is created empty and stays empty.** §14 Part 4 asks for the author's own words, so the skeleton carries a line saying the section is deliberately unwritten. It is never drafted "for review" and never filled in on the author's behalf.
+
+> Lab 3 forgot both files until the fifth Pull Request, and four review events then had to be recovered from `gh api` rather than from notes. The rule above it — the one saying these are living documents — had been added to this file three commits earlier, in the same lab. **A rule written during a lab applies to that lab.** After adding one, check the current sprint against it before moving on.
 
 **The specification is not allowed to describe behaviour the code does not have.** If a PR changes what the product does, the spec changes in the same PR. Discovering at report time that the documents and the code disagree is how a sprint ends up spending days on an audit instead of on the report.
 
