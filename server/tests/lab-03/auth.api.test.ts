@@ -1,0 +1,659 @@
+import cookieParser from "cookie-parser";
+import express from "express";
+import request from "supertest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import {
+  ACTIVE_REQUESTER,
+  INACTIVE_REQUESTER,
+  MUST_CHANGE_REQUESTER,
+  SECOND_REQUESTER,
+} from "../../prisma/accounts.js";
+import { app } from "../../src/app.js";
+import { hashPassword } from "../../src/auth/password.js";
+import { hashSessionToken, SESSION_COOKIE } from "../../src/auth/session.js";
+import {
+  requirePasswordChangeSatisfied,
+  requireSession,
+} from "../../src/middleware/session.js";
+import { prisma } from "../../src/prisma.js";
+import { signIn } from "./support/signIn.js";
+
+/**
+ * API-01 to API-13 — the authentication endpoints.
+ *
+ * Every test signs in through `POST /api/auth/login` (D-15). Nothing here
+ * fabricates a session row or sets a cookie by hand, because a test that
+ * manufactures its own credential proves the credential works, not the
+ * endpoint.
+ *
+ * The must-change and deactivated accounts are restored in `afterEach` rather
+ * than left as the tests leave them: this suite consumes the very flag it
+ * asserts (D-16), and a later run would otherwise find nothing to assert.
+ */
+
+const cookieValue = (setCookie: string[] | undefined): string | undefined =>
+  setCookie?.find((line) => line.startsWith(`${SESSION_COOKIE}=`));
+
+/**
+ * Supertest types `set-cookie` as a string; Node sends a string array whenever
+ * more than one cookie is set. Reading it through one helper keeps the
+ * correction in a single place rather than at every call site.
+ */
+const cookiesOf = (response: request.Response): string[] =>
+  response.headers["set-cookie"] as unknown as string[];
+
+const tokenOf = (setCookie: string[] | undefined): string => {
+  const line = cookieValue(setCookie);
+
+  if (!line) {
+    throw new Error("No session cookie in the response.");
+  }
+
+  return line.slice(`${SESSION_COOKIE}=`.length).split(";")[0] ?? "";
+};
+
+/** Restores an account to exactly what the seed guarantees. */
+const restore = async (email: string, password: string, mustChange: boolean) => {
+  await prisma.user.update({
+    where: { email },
+    data: {
+      passwordHash: await hashPassword(password),
+      mustChangePassword: mustChange,
+    },
+  });
+};
+
+describe("POST /api/auth/login", () => {
+  it("API-01 answers 200 with the identity and role, and sets a session cookie", async () => {
+    const response = await request(app)
+      .post("/api/auth/login")
+      .send({ email: ACTIVE_REQUESTER.email, password: ACTIVE_REQUESTER.password });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      user: { email: ACTIVE_REQUESTER.email, role: "REQUESTER" },
+      mustChangePassword: false,
+    });
+    expect(cookieValue(cookiesOf(response))).toBeDefined();
+  });
+
+  it("API-01 returns no credential of any kind in the body", async () => {
+    const response = await request(app)
+      .post("/api/auth/login")
+      .send({ email: ACTIVE_REQUESTER.email, password: ACTIVE_REQUESTER.password });
+
+    const serialised = JSON.stringify(response.body);
+
+    expect(serialised).not.toContain(ACTIVE_REQUESTER.password);
+    expect(serialised).not.toContain("passwordHash");
+    expect(serialised).not.toContain("scrypt$");
+    // The token lives in the cookie and nowhere else (api-spec.md §1).
+    expect(serialised).not.toContain(SESSION_COOKIE);
+  });
+
+  it("API-01 issues an httpOnly, SameSite=Lax cookie scoped to the whole site", async () => {
+    const response = await request(app)
+      .post("/api/auth/login")
+      .send({ email: ACTIVE_REQUESTER.email, password: ACTIVE_REQUESTER.password });
+
+    const cookie = cookieValue(cookiesOf(response)) ?? "";
+
+    expect(cookie).toContain("HttpOnly");
+    expect(cookie).toContain("SameSite=Lax");
+    expect(cookie).toContain("Path=/");
+  });
+
+  it("API-01 stores the token hashed, never the token itself", async () => {
+    const response = await request(app)
+      .post("/api/auth/login")
+      .send({ email: ACTIVE_REQUESTER.email, password: ACTIVE_REQUESTER.password });
+
+    const token = tokenOf(cookiesOf(response));
+
+    // BR-10. Looked up by hash — and the raw token must match nothing.
+    const byHash = await prisma.session.findUnique({
+      where: { tokenHash: hashSessionToken(token) },
+    });
+    const byToken = await prisma.session.findUnique({
+      where: { tokenHash: token },
+    });
+
+    expect(byHash).not.toBeNull();
+    expect(byToken).toBeNull();
+  });
+
+  it("API-02 refuses an unknown address and a wrong password identically", async () => {
+    const unknown = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "nobody@example.ac.th", password: ACTIVE_REQUESTER.password });
+
+    const wrong = await request(app)
+      .post("/api/auth/login")
+      .send({ email: ACTIVE_REQUESTER.email, password: "Wrong1!wrong" });
+
+    expect(unknown.status).toBe(401);
+    expect(wrong.status).toBe(401);
+    // BR-08, AC-05: byte for byte, or the form becomes an account oracle.
+    expect(unknown.body).toEqual(wrong.body);
+    expect(unknown.body).toMatchObject({
+      error: { code: "INVALID_CREDENTIALS" },
+    });
+    expect(cookieValue(cookiesOf(unknown))).toBeUndefined();
+  });
+
+  it("API-03 answers 403 ACCOUNT_INACTIVE for a correct password on a deactivated account", async () => {
+    const response = await request(app).post("/api/auth/login").send({
+      email: INACTIVE_REQUESTER.email,
+      password: INACTIVE_REQUESTER.password,
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.body).toMatchObject({ error: { code: "ACCOUNT_INACTIVE" } });
+    expect(cookieValue(cookiesOf(response))).toBeUndefined();
+  });
+
+  it("API-04 answers INVALID_CREDENTIALS, not ACCOUNT_INACTIVE, for a wrong password on a deactivated account", async () => {
+    const response = await request(app)
+      .post("/api/auth/login")
+      .send({ email: INACTIVE_REQUESTER.email, password: "Wrong1!wrong" });
+
+    // BR-09, D-04: someone who does not know the password learns nothing about
+    // whether the account exists or is switched off.
+    expect(response.status).toBe(401);
+    expect(response.body).toMatchObject({
+      error: { code: "INVALID_CREDENTIALS" },
+    });
+  });
+
+  it("refuses a blank email or password with field-level detail", async () => {
+    const response = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "  ", password: "" });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      error: {
+        code: "VALIDATION_FAILED",
+        details: { email: expect.any(String), password: expect.any(String) },
+      },
+    });
+  });
+
+  it("matches the address without regard to case", async () => {
+    const response = await request(app).post("/api/auth/login").send({
+      email: ACTIVE_REQUESTER.email.toUpperCase(),
+      password: ACTIVE_REQUESTER.password,
+    });
+
+    expect(response.status).toBe(200);
+  });
+
+  it("BR-12 leaves sessions already open undisturbed", async () => {
+    const first = await signIn(ACTIVE_REQUESTER.email, ACTIVE_REQUESTER.password);
+    await signIn(ACTIVE_REQUESTER.email, ACTIVE_REQUESTER.password);
+
+    const stillLive = await request(app)
+      .get("/api/auth/me")
+      .set("Cookie", first.cookie);
+
+    expect(stillLive.status).toBe(200);
+  });
+});
+
+describe("GET /api/auth/me", () => {
+  it("API-05 returns the identity, role and must-change flag", async () => {
+    const { cookie } = await signIn(
+      ACTIVE_REQUESTER.email,
+      ACTIVE_REQUESTER.password
+    );
+
+    const response = await request(app).get("/api/auth/me").set("Cookie", cookie);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      user: {
+        email: ACTIVE_REQUESTER.email,
+        name: ACTIVE_REQUESTER.name,
+        role: "REQUESTER",
+      },
+      mustChangePassword: false,
+    });
+    expect(Object.keys(response.body.user as object).toSorted()).toEqual([
+      "email",
+      "id",
+      "name",
+      "role",
+    ]);
+  });
+
+  it("answers 401 with no cookie at all", async () => {
+    const response = await request(app).get("/api/auth/me");
+
+    expect(response.status).toBe(401);
+    expect(response.body).toMatchObject({ error: { code: "UNAUTHENTICATED" } });
+  });
+
+  it("answers 401 for a token that never existed", async () => {
+    const response = await request(app)
+      .get("/api/auth/me")
+      .set("Cookie", `${SESSION_COOKIE}=not-a-real-token`);
+
+    expect(response.status).toBe(401);
+  });
+});
+
+describe("POST /api/auth/logout", () => {
+  it("API-08 answers 204 and the previous cookie then answers 401", async () => {
+    const { cookie } = await signIn(
+      ACTIVE_REQUESTER.email,
+      ACTIVE_REQUESTER.password
+    );
+
+    const out = await request(app).post("/api/auth/logout").set("Cookie", cookie);
+
+    expect(out.status).toBe(204);
+
+    const reused = await request(app).get("/api/auth/me").set("Cookie", cookie);
+
+    // AC-07, BR-13: indistinguishable from a token that never existed.
+    expect(reused.status).toBe(401);
+    expect(reused.body).toMatchObject({ error: { code: "UNAUTHENTICATED" } });
+  });
+
+  it("API-08 deletes the row rather than only clearing the cookie", async () => {
+    const signedIn = await request(app)
+      .post("/api/auth/login")
+      .send({ email: ACTIVE_REQUESTER.email, password: ACTIVE_REQUESTER.password });
+
+    const token = tokenOf(cookiesOf(signedIn));
+
+    await request(app)
+      .post("/api/auth/logout")
+      .set("Cookie", cookiesOf(signedIn));
+
+    const row = await prisma.session.findUnique({
+      where: { tokenHash: hashSessionToken(token) },
+    });
+
+    expect(row).toBeNull();
+  });
+
+  it("API-13 answers 204 without a session, since refusing would disclose one", async () => {
+    const response = await request(app).post("/api/auth/logout");
+
+    expect(response.status).toBe(204);
+  });
+});
+
+describe("session lifetime and account state", () => {
+  it("API-09 refuses a session past its expiry", async () => {
+    const signedIn = await request(app)
+      .post("/api/auth/login")
+      .send({ email: ACTIVE_REQUESTER.email, password: ACTIVE_REQUESTER.password });
+
+    const cookie = cookiesOf(signedIn);
+    const token = tokenOf(cookie);
+
+    // Aged rather than waited for. The row is the whole of the expiry rule
+    // (BR-11), so moving it back one second is the same event as eight hours
+    // passing — and a test that slept for eight hours is not a test.
+    await prisma.session.update({
+      where: { tokenHash: hashSessionToken(token) },
+      data: { expiresAt: new Date(Date.now() - 1000) },
+    });
+
+    const response = await request(app).get("/api/auth/me").set("Cookie", cookie);
+
+    expect(response.status).toBe(401);
+    expect(response.body).toMatchObject({ error: { code: "UNAUTHENTICATED" } });
+  });
+
+  it("API-10 refuses a live session whose user has since been deactivated", async () => {
+    const { cookie } = await signIn(
+      SECOND_REQUESTER.email,
+      SECOND_REQUESTER.password
+    );
+
+    const before = await request(app).get("/api/auth/me").set("Cookie", cookie);
+
+    expect(before.status).toBe(200);
+
+    await prisma.user.update({
+      where: { email: SECOND_REQUESTER.email },
+      data: { isActive: false },
+    });
+
+    try {
+      const after = await request(app).get("/api/auth/me").set("Cookie", cookie);
+
+      // AC-11, BR-15, D-02: the session caches nothing about the user, so this
+      // takes effect on the next request rather than at the next sign-in.
+      expect(after.status).toBe(401);
+    } finally {
+      await prisma.user.update({
+        where: { email: SECOND_REQUESTER.email },
+        data: { isActive: true },
+      });
+    }
+  });
+});
+
+describe("the password-change gate", () => {
+  afterEach(async () => {
+    await restore(
+      MUST_CHANGE_REQUESTER.email,
+      MUST_CHANGE_REQUESTER.password,
+      true
+    );
+  });
+
+  /**
+   * The guard is asserted against a route mounted here rather than against a
+   * shipped one, because this ticket is the *expand* half of the identity swap:
+   * the ticket routes still run on the Lab 2 selector and nothing else requires
+   * a session yet. The guard is real, the session is real, and the assertion is
+   * about the guard.
+   *
+   * When the ticket routes move onto the session, this becomes an assertion
+   * about them and this fixture goes away.
+   */
+  const gatedApp = (() => {
+    const probe = express();
+
+    probe.use(cookieParser());
+    probe.get(
+      "/probe",
+      requireSession,
+      requirePasswordChangeSatisfied,
+      (_req, res) => {
+        res.status(200).json({ reached: true });
+      }
+    );
+
+    return probe;
+  })();
+
+  it("API-06 answers 403 PASSWORD_CHANGE_REQUIRED on a gated endpoint", async () => {
+    const { cookie } = await signIn(
+      MUST_CHANGE_REQUESTER.email,
+      MUST_CHANGE_REQUESTER.password
+    );
+
+    const response = await request(gatedApp).get("/probe").set("Cookie", cookie);
+
+    expect(response.status).toBe(403);
+    expect(response.body).toMatchObject({
+      error: { code: "PASSWORD_CHANGE_REQUIRED" },
+    });
+  });
+
+  it("API-06 lets the same endpoint through once the flag is cleared", async () => {
+    const { cookie } = await signIn(
+      MUST_CHANGE_REQUESTER.email,
+      MUST_CHANGE_REQUESTER.password
+    );
+
+    const refused = await request(gatedApp).get("/probe").set("Cookie", cookie);
+
+    expect(refused.status).toBe(403);
+
+    const changed = await request(app)
+      .post("/api/auth/password")
+      .set("Cookie", cookie)
+      .send({
+        currentPassword: MUST_CHANGE_REQUESTER.password,
+        newPassword: "Replaced1!",
+      });
+
+    const allowed = await request(gatedApp)
+      .get("/probe")
+      .set("Cookie", cookiesOf(changed));
+
+    expect(allowed.status).toBe(200);
+  });
+
+  it("the gate refuses before it asks who you are, when there is no session", async () => {
+    const response = await request(gatedApp).get("/probe");
+
+    expect(response.status).toBe(401);
+    expect(response.body).toMatchObject({ error: { code: "UNAUTHENTICATED" } });
+  });
+
+  it("API-07 leaves me, password and logout reachable while the flag is set", async () => {
+    const { cookie, body } = await signIn(
+      MUST_CHANGE_REQUESTER.email,
+      MUST_CHANGE_REQUESTER.password
+    );
+
+    expect(body).toMatchObject({ mustChangePassword: true });
+
+    const me = await request(app).get("/api/auth/me").set("Cookie", cookie);
+
+    expect(me.status).toBe(200);
+    expect(me.body).toMatchObject({ mustChangePassword: true });
+
+    const changed = await request(app)
+      .post("/api/auth/password")
+      .set("Cookie", cookie)
+      .send({
+        currentPassword: MUST_CHANGE_REQUESTER.password,
+        newPassword: "Replaced1!",
+      });
+
+    expect(changed.status).toBe(204);
+
+    const out = await request(app)
+      .post("/api/auth/logout")
+      .set("Cookie", cookiesOf(changed));
+
+    expect(out.status).toBe(204);
+  });
+});
+
+describe("POST /api/auth/password", () => {
+  const CHANGED = "Replaced1!";
+
+  beforeEach(async () => {
+    await restore(
+      MUST_CHANGE_REQUESTER.email,
+      MUST_CHANGE_REQUESTER.password,
+      true
+    );
+  });
+
+  afterEach(async () => {
+    await restore(
+      MUST_CHANGE_REQUESTER.email,
+      MUST_CHANGE_REQUESTER.password,
+      true
+    );
+  });
+
+  it("AC-09 clears the flag and rotates the current session", async () => {
+    const first = await request(app).post("/api/auth/login").send({
+      email: MUST_CHANGE_REQUESTER.email,
+      password: MUST_CHANGE_REQUESTER.password,
+    });
+
+    const oldCookie = cookiesOf(first);
+
+    const changed = await request(app)
+      .post("/api/auth/password")
+      .set("Cookie", oldCookie)
+      .send({
+        currentPassword: MUST_CHANGE_REQUESTER.password,
+        newPassword: CHANGED,
+      });
+
+    expect(changed.status).toBe(204);
+
+    const newCookie = cookiesOf(changed);
+
+    expect(tokenOf(newCookie)).not.toBe(tokenOf(oldCookie));
+
+    const me = await request(app).get("/api/auth/me").set("Cookie", newCookie);
+
+    expect(me.status).toBe(200);
+    expect(me.body).toMatchObject({ mustChangePassword: false });
+  });
+
+  it("API-12 ends every other session and keeps the caller signed in", async () => {
+    const elsewhere = await signIn(
+      MUST_CHANGE_REQUESTER.email,
+      MUST_CHANGE_REQUESTER.password
+    );
+    const here = await request(app).post("/api/auth/login").send({
+      email: MUST_CHANGE_REQUESTER.email,
+      password: MUST_CHANGE_REQUESTER.password,
+    });
+
+    const changed = await request(app)
+      .post("/api/auth/password")
+      .set("Cookie", cookiesOf(here))
+      .send({
+        currentPassword: MUST_CHANGE_REQUESTER.password,
+        newPassword: CHANGED,
+      });
+
+    expect(changed.status).toBe(204);
+
+    const other = await request(app)
+      .get("/api/auth/me")
+      .set("Cookie", elsewhere.cookie);
+    const current = await request(app)
+      .get("/api/auth/me")
+      .set("Cookie", cookiesOf(changed));
+
+    // BR-14, AC-09.
+    expect(other.status).toBe(401);
+    expect(current.status).toBe(200);
+  });
+
+  it("signs in with the new password and refuses the old one", async () => {
+    const { cookie } = await signIn(
+      MUST_CHANGE_REQUESTER.email,
+      MUST_CHANGE_REQUESTER.password
+    );
+
+    await request(app).post("/api/auth/password").set("Cookie", cookie).send({
+      currentPassword: MUST_CHANGE_REQUESTER.password,
+      newPassword: CHANGED,
+    });
+
+    const withNew = await request(app)
+      .post("/api/auth/login")
+      .send({ email: MUST_CHANGE_REQUESTER.email, password: CHANGED });
+    const withOld = await request(app).post("/api/auth/login").send({
+      email: MUST_CHANGE_REQUESTER.email,
+      password: MUST_CHANGE_REQUESTER.password,
+    });
+
+    expect(withNew.status).toBe(200);
+    expect(withOld.status).toBe(401);
+  });
+
+  it("API-11 refuses a wrong current password without changing anything", async () => {
+    const { cookie } = await signIn(
+      MUST_CHANGE_REQUESTER.email,
+      MUST_CHANGE_REQUESTER.password
+    );
+
+    const response = await request(app)
+      .post("/api/auth/password")
+      .set("Cookie", cookie)
+      .send({ currentPassword: "Wrong1!wrong", newPassword: CHANGED });
+
+    expect(response.status).toBe(401);
+    expect(response.body).toMatchObject({
+      error: { code: "INVALID_CREDENTIALS" },
+    });
+
+    const unchanged = await request(app).post("/api/auth/login").send({
+      email: MUST_CHANGE_REQUESTER.email,
+      password: MUST_CHANGE_REQUESTER.password,
+    });
+
+    expect(unchanged.status).toBe(200);
+  });
+
+  it.each([
+    { what: "too short", newPassword: "Aa1!aaa" },
+    { what: "no upper-case letter", newPassword: "replaced1!" },
+    { what: "no lower-case letter", newPassword: "REPLACED1!" },
+    { what: "no digit", newPassword: "Replaced!!" },
+    { what: "no special character", newPassword: "Replaced11" },
+  ])("API-11 refuses a new password that is $what", async ({ newPassword }) => {
+    const { cookie } = await signIn(
+      MUST_CHANGE_REQUESTER.email,
+      MUST_CHANGE_REQUESTER.password
+    );
+
+    const response = await request(app)
+      .post("/api/auth/password")
+      .set("Cookie", cookie)
+      .send({
+        currentPassword: MUST_CHANGE_REQUESTER.password,
+        newPassword,
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      error: {
+        code: "VALIDATION_FAILED",
+        details: { newPassword: expect.any(String) },
+      },
+    });
+    // BR-06: the rule is named, the password is never echoed.
+    expect(JSON.stringify(response.body)).not.toContain(newPassword);
+  });
+
+  it("API-11 refuses a new password identical to the current one", async () => {
+    const { cookie } = await signIn(
+      MUST_CHANGE_REQUESTER.email,
+      MUST_CHANGE_REQUESTER.password
+    );
+
+    const response = await request(app)
+      .post("/api/auth/password")
+      .set("Cookie", cookie)
+      .send({
+        currentPassword: MUST_CHANGE_REQUESTER.password,
+        newPassword: MUST_CHANGE_REQUESTER.password,
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      error: { code: "VALIDATION_FAILED", details: { newPassword: expect.any(String) } },
+    });
+  });
+
+  it("answers 401 without a session", async () => {
+    const response = await request(app)
+      .post("/api/auth/password")
+      .send({ currentPassword: "whatever", newPassword: CHANGED });
+
+    expect(response.status).toBe(401);
+  });
+
+  it("stores the new password only as a hash", async () => {
+    const { cookie } = await signIn(
+      MUST_CHANGE_REQUESTER.email,
+      MUST_CHANGE_REQUESTER.password
+    );
+
+    await request(app).post("/api/auth/password").set("Cookie", cookie).send({
+      currentPassword: MUST_CHANGE_REQUESTER.password,
+      newPassword: CHANGED,
+    });
+
+    const row = await prisma.user.findUniqueOrThrow({
+      where: { email: MUST_CHANGE_REQUESTER.email },
+      select: { passwordHash: true },
+    });
+
+    expect(row.passwordHash).not.toBe(CHANGED);
+    expect(row.passwordHash).not.toContain(CHANGED);
+    expect(row.passwordHash?.startsWith("scrypt$")).toBe(true);
+  });
+});

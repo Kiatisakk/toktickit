@@ -1,4 +1,6 @@
+import { hashPassword } from "../src/auth/password.js";
 import { prisma } from "../src/prisma.js";
+import { REQUESTER_ACCOUNTS } from "./accounts.js";
 
 /**
  * Reference data for TokTickIT.
@@ -36,43 +38,6 @@ const RELATED_SYSTEM_NAMES = [
   "Grade Submission App",
   "Printer",
   "Corporate Laptop",
-];
-
-/**
- * Development Requesters — seeded identities the selection screen offers.
- *
- * Four active and one inactive, as §5.3 requires. The inactive one exists to be
- * absent: BR-07 says it never appears in the selector and can never become the
- * current context, and API-02 asserts exactly that.
- *
- * Every row is a REQUESTER. Lab 3 adds the other roles.
- */
-const REQUESTERS = [
-  {
-    email: "jennifer.anderson@example.ac.th",
-    name: "Jennifer Anderson",
-    isActive: true,
-  },
-  {
-    email: "somchai.wattana@example.ac.th",
-    name: "Somchai Wattana",
-    isActive: true,
-  },
-  {
-    email: "pimchanok.srisai@example.ac.th",
-    name: "Pimchanok Srisai",
-    isActive: true,
-  },
-  {
-    email: "thanakorn.boonmee@example.ac.th",
-    name: "Thanakorn Boonmee",
-    isActive: true,
-  },
-  {
-    email: "natthaphong.chaiyaporn@example.ac.th",
-    name: "Natthaphong Chaiyaporn",
-    isActive: false,
-  },
 ];
 
 type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
@@ -189,29 +154,62 @@ const seedRelatedSystems = async (tx: Tx) => {
  * identity for the same person.
  *
  * There is no ordering column here, so no parking pass is needed.
+ *
+ * **Credentials are restored, not merely created** (D-16). The update branch
+ * rewrites the hash and the must-change flag every run, because the account
+ * demonstrating the first-sign-in flow has its flag consumed by the test that
+ * demonstrates it — a create-if-absent seed would make that test pass once and
+ * fail on every run afterwards.
+ *
+ * Hashing happens before the transaction opens. scrypt is deliberately slow and
+ * memory-hard, and six of them inside a transaction would hold it open for no
+ * reason.
  */
-const seedRequesters = (tx: Tx) =>
-  Promise.all(
-    REQUESTERS.map((requester) =>
-      tx.user.upsert({
-        where: { email: requester.email },
-        update: { name: requester.name, isActive: requester.isActive },
-        create: {
-          email: requester.email,
-          name: requester.name,
-          isActive: requester.isActive,
-          role: "REQUESTER",
+const seedRequesters = async (tx: Tx, hashes: Map<string, string>) => {
+  await Promise.all(
+    REQUESTER_ACCOUNTS.map((account) => {
+      const passwordHash = hashes.get(account.email);
+
+      if (!passwordHash) {
+        throw new Error(`No hash prepared for ${account.email}.`);
+      }
+
+      return tx.user.upsert({
+        where: { email: account.email },
+        update: {
+          name: account.name,
+          isActive: account.isActive,
+          passwordHash,
+          mustChangePassword: account.mustChangePassword,
         },
-      })
+        create: {
+          email: account.email,
+          name: account.name,
+          isActive: account.isActive,
+          role: "REQUESTER",
+          passwordHash,
+          mustChangePassword: account.mustChangePassword,
+        },
+      });
+    })
+  );
+};
+
+const seed = async () => {
+  const hashes = new Map(
+    await Promise.all(
+      REQUESTER_ACCOUNTS.map(
+        async (account) =>
+          [account.email, await hashPassword(account.password)] as const
+      )
     )
   );
 
-const seed = async () => {
   const { retiredCategories, retiredSystems } = await prisma.$transaction(
     async (tx) => {
       const categories = await seedCategories(tx);
       const systems = await seedRelatedSystems(tx);
-      await seedRequesters(tx);
+      await seedRequesters(tx, hashes);
 
       return { retiredCategories: categories, retiredSystems: systems };
     }
@@ -249,6 +247,34 @@ const seed = async () => {
   if (inactiveRequesters < 1) {
     throw new Error(
       `§5.3 requires at least one inactive Development Requester, found ${inactiveRequesters}.`
+    );
+  }
+
+  // An account able to sign in with no hash would be an account with no
+  // password. The column is NOT NULL, so this can only fail if the seed itself
+  // is wrong — which is exactly the case worth catching here rather than at a
+  // sign-in three files away.
+  const withoutPassword = await prisma.user.count({
+    where: { passwordHash: null },
+  });
+
+  if (withoutPassword > 0) {
+    throw new Error(
+      `${withoutPassword} account(s) have no password hash after seeding.`
+    );
+  }
+
+  // BR-02's demonstration account. Asserted because D-16 makes restoring it the
+  // whole reason the seed rewrites credentials rather than skipping existing
+  // rows, and a seed that quietly stopped doing so would only surface as an
+  // end-to-end test that passed once.
+  const mustChange = await prisma.user.count({
+    where: { mustChangePassword: true },
+  });
+
+  if (mustChange < 1) {
+    throw new Error(
+      "The first-sign-in demonstration needs an account flagged for a password change."
     );
   }
 

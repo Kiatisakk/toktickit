@@ -70,7 +70,13 @@ const send = async (
   let response: Response;
 
   try {
-    const init: RequestInit = { method, headers };
+    // The session cookie only travels if both sides opt in: this, and
+    // `credentials: true` in the API's CORS configuration. The client and the
+    // API are different origins in development, so without it the browser
+    // sends the request, gets an answer, and silently drops the cookie — which
+    // presents as a broken sign-in rather than as a missing option
+    // (api-spec.md §1).
+    const init: RequestInit = { method, headers, credentials: "include" };
 
     if (options.signal) {
       init.signal = options.signal;
@@ -121,7 +127,7 @@ const sendForBlob = async (
   let response: Response;
 
   try {
-    const init: RequestInit = { headers };
+    const init: RequestInit = { headers, credentials: "include" };
 
     if (options.signal) {
       init.signal = options.signal;

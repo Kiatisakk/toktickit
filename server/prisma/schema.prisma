@@ -47,7 +47,26 @@ model User {
   /// tickets they own intact.
   isActive Boolean @default(true)
 
+  /// The scrypt hash of the account's password, never the password (BR-06).
+  ///
+  /// Nullable only for the length of the migration that introduces it. The
+  /// bootstrap step hashes each existing account's issued starting password and
+  /// the following migration sets NOT NULL, because an account able to sign in
+  /// with a null hash would be an account with no password. Nothing in the
+  /// application is allowed to treat null as "any password will do" — the
+  /// sign-in path refuses a row without a hash before it compares anything.
+  passwordHash String?
+
+  /// Set when an Administrator issues a starting password, cleared by the
+  /// user's own change (BR-02). While it is set, every endpoint except reading
+  /// the current user, changing the password and signing out is refused.
+  mustChangePassword Boolean @default(false)
+
   createdAt DateTime @default(now())
+
+  /// Every session this account currently holds. A user may hold several at
+  /// once (BR-12); changing a password deletes all but the current one (BR-14).
+  sessions Session[]
 
   /// Tickets this user raised.
   tickets Ticket[] @relation("TicketRequester")
@@ -242,4 +261,35 @@ model Attachment {
   /// The active count in BR-23 is a filtered count per ticket, which is exactly
   /// what this index serves.
   @@index([ticketId, removedAt])
+}
+
+/// One signed-in session.
+///
+/// The token the browser holds is never stored. What is stored is its SHA-256
+/// hash, so a disclosed database is a list of expired-looking rows rather than
+/// a set of usable sessions (BR-10). Lookup is by that hash, which is why it
+/// carries the unique index.
+///
+/// Nothing about the user is cached here — not the role, not the activation
+/// flag. Both are read from the User row on every request, so a deactivation or
+/// a role change takes effect on the user's next request rather than at their
+/// next sign-in (BR-15, D-02). The cost is one join on a primary key; the
+/// benefit is that the Administrator safety rules mean something.
+model Session {
+  id String @id @default(uuid())
+
+  /// SHA-256 of the opaque token held in the cookie. Not the token.
+  tokenHash String @unique
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  /// Eight hours after creation, and never renewed by activity (BR-11, A-02).
+  expiresAt DateTime
+
+  /// Ending a user's other sessions is one statement, and this is what makes it
+  /// one statement rather than a scan (BR-14).
+  @@index([userId])
 }
