@@ -337,7 +337,7 @@ All of §9 is Administrator only. An unauthenticated request receives `401 UNAUT
 | `search` | Free text, matched against name and email | Treated as absent |
 | `role` | `REQUESTER` \| `IT_STAFF` \| `ADMIN` | Treated as absent |
 
-Returns every matching user with `{ id, name, email, role, isActive }`. **Not paginated** — §8.5 of the handout excludes pagination for this list, and the seeded population is small enough that adding it would be inventing a requirement.
+Returns every matching user with `{ id, name, email, role, isActive }`, as a plain array — the same shape as categories, since there is no page metadata to carry. Ordered by name, then id. A `role` outside the three, or any other parameter, is refused with `400 INVALID_QUERY_PARAMETER` rather than ignored. **Not paginated** — §8.5 of the handout excludes pagination for this list, and the seeded population is small enough that adding it would be inventing a requirement.
 
 Password hashes are never included in any response.
 
@@ -356,12 +356,12 @@ Password hashes are never included in any response.
 
 Exactly one role. There is no array and no second role field (BR-16).
 
+The address is stored lower-case, and the duplicate check ignores case, so two accounts can never differ only by case (D-18). Names are 1–100 characters after trimming; addresses at most 254.
+
 ### `PATCH /api/admin/users/:id`
 
 **Request** — any subset of `{ "name", "email", "role", "isActive" }`
 
-| Condition | Status | Code |
-| --- | --- | --- |
 **200** — the updated user, in the same shape the list returns, never including a credential.
 
 | Condition | Status | Code |
