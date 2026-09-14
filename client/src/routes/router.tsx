@@ -1,7 +1,9 @@
 import { createBrowserRouter, Navigate } from "react-router";
 
 import App from "../App";
+import { ChangePassword } from "./ChangePassword";
 import { CreateTicket } from "./CreateTicket";
+import { Login } from "./Login";
 import { MyTickets } from "./MyTickets";
 import { NotFound } from "./NotFound";
 import { RequesterGuard } from "./RequesterGuard";
@@ -19,6 +21,12 @@ import { TicketDetail } from "./TicketDetail";
  * Everything requester-scoped sits behind `RequesterGuard`, so BR-10 holds for
  * every screen at once rather than being re-implemented per screen.
  *
+ * The ticket screens are deliberately *not* behind an authentication guard yet.
+ * This is the expand half of the identity swap: sign-in exists, the selector
+ * still works, and both run side by side for one ticket so that nothing is ever
+ * broken between them. The guard arrives with the ticket that deletes the
+ * selector.
+ *
  * `/system-status` keeps the Lab 1 vertical slice reachable and renders `App`
  * directly rather than inside the shell — `App` brings its own `<main>`, and
  * nesting one inside another is invalid. Its three Lab 1 tests import that
@@ -32,6 +40,17 @@ export const router = createBrowserRouter([
   {
     path: "/",
     element: <Navigate replace to="/my-tickets" />,
+  },
+  // Lab 3. Neither screen renders inside the shell: the sign-in screen has
+  // nobody to show in the header, and the change-password screen must not offer
+  // navigation the server would refuse (AC-02).
+  {
+    path: "/login",
+    element: <Login />,
+  },
+  {
+    path: "/change-password",
+    element: <ChangePassword />,
   },
   {
     path: "/select-requester",

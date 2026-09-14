@@ -1,4 +1,6 @@
+import { hashPassword, isUsableHash } from "../src/auth/password.js";
 import { prisma } from "../src/prisma.js";
+import { SEED_ACCOUNTS } from "./accounts.js";
 
 /**
  * Reference data for TokTickIT.
@@ -36,43 +38,6 @@ const RELATED_SYSTEM_NAMES = [
   "Grade Submission App",
   "Printer",
   "Corporate Laptop",
-];
-
-/**
- * Development Requesters — seeded identities the selection screen offers.
- *
- * Four active and one inactive, as §5.3 requires. The inactive one exists to be
- * absent: BR-07 says it never appears in the selector and can never become the
- * current context, and API-02 asserts exactly that.
- *
- * Every row is a REQUESTER. Lab 3 adds the other roles.
- */
-const REQUESTERS = [
-  {
-    email: "jennifer.anderson@example.ac.th",
-    name: "Jennifer Anderson",
-    isActive: true,
-  },
-  {
-    email: "somchai.wattana@example.ac.th",
-    name: "Somchai Wattana",
-    isActive: true,
-  },
-  {
-    email: "pimchanok.srisai@example.ac.th",
-    name: "Pimchanok Srisai",
-    isActive: true,
-  },
-  {
-    email: "thanakorn.boonmee@example.ac.th",
-    name: "Thanakorn Boonmee",
-    isActive: true,
-  },
-  {
-    email: "natthaphong.chaiyaporn@example.ac.th",
-    name: "Natthaphong Chaiyaporn",
-    isActive: false,
-  },
 ];
 
 type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
@@ -184,34 +149,70 @@ const seedRelatedSystems = async (tx: Tx) => {
 };
 
 /**
- * Requesters are keyed on email, which is what makes a rerun idempotent: a
+ * Accounts are keyed on email, which is what makes a rerun idempotent: a
  * changed display name updates the existing row rather than creating a second
  * identity for the same person.
  *
  * There is no ordering column here, so no parking pass is needed.
+ *
+ * **Credentials are restored, not merely created** (D-16). The update branch
+ * rewrites the hash and the must-change flag every run, because the account
+ * demonstrating the first-sign-in flow has its flag consumed by the test that
+ * demonstrates it — a create-if-absent seed would make that test pass once and
+ * fail on every run afterwards.
+ *
+ * The role is written on update as well as on create. Lab 2 left the IT Staff
+ * rows to the demonstration seed; now that they are reference data, a database
+ * seeded under the old arrangement has to be corrected rather than left with
+ * whatever role it happens to hold.
+ *
+ * Hashing happens before the transaction opens. scrypt is deliberately slow and
+ * memory-hard, and eleven of them inside a transaction would hold it open for
+ * no reason.
  */
-const seedRequesters = (tx: Tx) =>
-  Promise.all(
-    REQUESTERS.map((requester) =>
-      tx.user.upsert({
-        where: { email: requester.email },
-        update: { name: requester.name, isActive: requester.isActive },
-        create: {
-          email: requester.email,
-          name: requester.name,
-          isActive: requester.isActive,
-          role: "REQUESTER",
-        },
-      })
+const seedAccounts = async (tx: Tx, hashes: Map<string, string>) => {
+  await Promise.all(
+    SEED_ACCOUNTS.map((account) => {
+      const passwordHash = hashes.get(account.email);
+
+      if (!passwordHash) {
+        throw new Error(`No hash prepared for ${account.email}.`);
+      }
+
+      // One object for both branches, so the fields written on creation and
+      // the fields restored on every rerun cannot drift apart.
+      const fields = {
+        name: account.name,
+        role: account.role,
+        isActive: account.isActive,
+        passwordHash,
+        mustChangePassword: account.mustChangePassword,
+      };
+
+      return tx.user.upsert({
+        where: { email: account.email },
+        update: fields,
+        create: { email: account.email, ...fields },
+      });
+    })
+  );
+};
+
+const seed = async () => {
+  const hashes = new Map(
+    await Promise.all(
+      SEED_ACCOUNTS.map(
+        async (account) =>
+          [account.email, await hashPassword(account.password)] as const
+      )
     )
   );
 
-const seed = async () => {
   const { retiredCategories, retiredSystems } = await prisma.$transaction(
     async (tx) => {
       const categories = await seedCategories(tx);
       const systems = await seedRelatedSystems(tx);
-      await seedRequesters(tx);
+      await seedAccounts(tx, hashes);
 
       return { retiredCategories: categories, retiredSystems: systems };
     }
@@ -220,13 +221,23 @@ const seed = async () => {
   // Assertions rather than logs: a seed that silently produced the wrong number
   // of rows would break the tests that count them, several files away from the
   // cause.
-  const [categories, systems, activeRequesters, inactiveRequesters] =
-    await Promise.all([
-      prisma.category.count({ where: { isActive: true } }),
-      prisma.relatedSystem.count({ where: { isActive: true } }),
-      prisma.user.count({ where: { role: "REQUESTER", isActive: true } }),
-      prisma.user.count({ where: { role: "REQUESTER", isActive: false } }),
-    ]);
+  const [
+    categories,
+    systems,
+    activeRequesters,
+    inactiveRequesters,
+    activeStaff,
+    inactiveStaff,
+    activeAdmins,
+  ] = await Promise.all([
+    prisma.category.count({ where: { isActive: true } }),
+    prisma.relatedSystem.count({ where: { isActive: true } }),
+    prisma.user.count({ where: { role: "REQUESTER", isActive: true } }),
+    prisma.user.count({ where: { role: "REQUESTER", isActive: false } }),
+    prisma.user.count({ where: { role: "IT_STAFF", isActive: true } }),
+    prisma.user.count({ where: { role: "IT_STAFF", isActive: false } }),
+    prisma.user.count({ where: { role: "ADMIN", isActive: true } }),
+  ]);
 
   if (categories !== CATEGORY_NAMES.length) {
     throw new Error(
@@ -252,10 +263,63 @@ const seed = async () => {
     );
   }
 
+  if (activeStaff < 3) {
+    throw new Error(
+      `§7 requires at least three active IT Staff, found ${activeStaff}.`
+    );
+  }
+
+  if (inactiveStaff < 1) {
+    throw new Error(
+      `§7 requires at least one inactive IT Staff, found ${inactiveStaff}.`
+    );
+  }
+
+  if (activeAdmins < 1) {
+    throw new Error(
+      `§7 requires at least one active Administrator, found ${activeAdmins}.`
+    );
+  }
+
+  // Every account this seed owns must be able to sign in. The column is NOT
+  // NULL, so the failure worth catching is not a null — it is a seeded account
+  // still holding the `!` the migration gives accounts that predate
+  // authentication, which would mean this seed did not restore it. Accounts
+  // the seed does not own are left alone: staying locked is correct for them.
+  const seeded = await prisma.user.findMany({
+    where: { email: { in: SEED_ACCOUNTS.map((account) => account.email) } },
+    select: { email: true, passwordHash: true },
+  });
+
+  const locked = seeded.filter((row) => !isUsableHash(row.passwordHash));
+
+  if (seeded.length !== SEED_ACCOUNTS.length || locked.length > 0) {
+    throw new Error(
+      `Seeded accounts without a usable password: ${
+        locked.map((row) => row.email).join(", ") ||
+        "(some accounts are missing)"
+      }.`
+    );
+  }
+
+  // BR-02's demonstration account. Asserted because D-16 makes restoring it the
+  // whole reason the seed rewrites credentials rather than skipping existing
+  // rows, and a seed that quietly stopped doing so would only surface as an
+  // end-to-end test that passed once.
+  const mustChange = await prisma.user.count({
+    where: { mustChangePassword: true },
+  });
+
+  if (mustChange < 1) {
+    throw new Error(
+      "The first-sign-in demonstration needs an account flagged for a password change."
+    );
+  }
+
   const retired = retiredCategories + retiredSystems;
 
   console.log(
-    `Seeded ${categories} categories, ${systems} related systems, ${activeRequesters} active and ${inactiveRequesters} inactive requesters${
+    `Seeded ${categories} categories, ${systems} related systems, ${activeRequesters} active and ${inactiveRequesters} inactive requesters, ${activeStaff} active and ${inactiveStaff} inactive IT staff, ${activeAdmins} administrator(s)${
       retired > 0 ? `, retired ${retired} no longer listed` : ""
     }.`
   );

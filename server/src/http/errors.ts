@@ -12,6 +12,14 @@ import type { Response } from "express";
  */
 
 export const ErrorCode = {
+  // Lab 3 authentication and authorization. The four REQUESTER_CONTEXT_* codes
+  // below are retired in the ticket that deletes the selector; while both
+  // identity mechanisms coexist, both sets of codes are reachable.
+  unauthenticated: "UNAUTHENTICATED",
+  invalidCredentials: "INVALID_CREDENTIALS",
+  accountInactive: "ACCOUNT_INACTIVE",
+  passwordChangeRequired: "PASSWORD_CHANGE_REQUIRED",
+  forbidden: "FORBIDDEN",
   requesterContextRequired: "REQUESTER_CONTEXT_REQUIRED",
   requesterContextInvalid: "REQUESTER_CONTEXT_INVALID",
   requesterContextUnknown: "REQUESTER_CONTEXT_UNKNOWN",

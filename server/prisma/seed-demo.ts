@@ -82,20 +82,6 @@ const DISTRIBUTION = [55, 6, 0, 3];
  */
 const TOTAL_TICKETS = DISTRIBUTION.reduce((sum, count) => sum + count, 0);
 
-/**
- * IT staff, for Ticket Owner. Named as the labsheet illustrations name them.
- *
- * They live in the demonstration seed rather than the reference seed because
- * the test database must hold reference data alone (D-11), and Lab 2 has no
- * feature that needs an IT user — only a screenshot does. Lab 3 moves them when
- * authentication gives them a purpose.
- */
-const IT_STAFF = [
-  { name: "Michael Brown", email: "michael.brown@example.ac.th" },
-  { name: "Sarah Johnson", email: "sarah.johnson@example.ac.th" },
-  { name: "David Lee", email: "david.lee@example.ac.th" },
-];
-
 /** The lifecycle a requester would actually see. `CLOSED` is absent on purpose. */
 const STATUS_CYCLE = [
   "NEW",
@@ -157,17 +143,22 @@ const seedDemo = async () => {
     throw new Error("Reference data is missing. Run npm run db:seed first.");
   }
 
-  // Upserted, so a rerun neither duplicates them nor orphans the tickets
-  // already pointing at them.
-  const staff = await Promise.all(
-    IT_STAFF.map((person) =>
-      prisma.user.upsert({
-        where: { email: person.email },
-        create: { ...person, role: "IT_STAFF", isActive: true },
-        update: { name: person.name, role: "IT_STAFF", isActive: true },
-      })
-    )
-  );
+  // Read, not created. Lab 2 created the IT Staff rows here because nothing else
+  // needed them; Lab 3 gave them passwords, which made them reference data, and
+  // the comment that used to sit on that constant said exactly this would
+  // happen. Two seeds writing one row is how the row ends up with two different
+  // roles depending on which ran last.
+  const staff = await prisma.user.findMany({
+    where: { role: "IT_STAFF", isActive: true },
+    orderBy: { id: "asc" },
+    select: { id: true },
+  });
+
+  if (staff.length === 0) {
+    throw new Error(
+      "No active IT Staff. Run npm run db:seed first — they are reference data from Lab 3 onwards."
+    );
+  }
 
   const year = new Date().getFullYear();
 

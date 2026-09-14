@@ -4,6 +4,8 @@ Companion to [specification.md](specification.md). Written before implementation
 
 Every row's **Result** reads `Planned` until the Pull Request implementing it lands, at which point it is updated in that same Pull Request. **No row may read `Planned` at submission.**
 
+A row may read `Partial` while an increment is deliberately half-finished — the expand half of a swap, where the old mechanism and the new one run side by side on purpose. The row then says what passes, what does not, and which ticket finishes it. `Partial` at submission is as much a defect as `Planned`.
+
 ---
 
 ## 1. Test Strategy
@@ -37,28 +39,28 @@ Eight levels, each answering a question the level above it cannot.
 | --- | --- | --- | --- | --- | --- |
 | UNIT-01 | BR-19, D-08 | Role-to-query-scope mapping | Requester yields an ownership constraint; IT Staff and Administrator yield none | `server/tests/lab-03/scope.test.ts` | Planned |
 | UNIT-02 | AC-20, AC-21, BR-25, BR-26 | Status transition matrix, every cell | Each permitted transition allowed; every other refused; `CANCELLED` allows none | `server/tests/lab-03/transitions.test.ts` | Planned |
-| UNIT-03 | AC-10, BR-07 | Password rule evaluation | Too short, too long, and each missing character class rejected with the rule named; a compliant password accepted | `server/tests/lab-03/password.test.ts` | Planned |
-| UNIT-04 | BR-06 | Hash and verify round-trip | A password verifies against its own hash and not against another; the hash is not the password | `server/tests/lab-03/password.test.ts` | Planned |
-| UNIT-05 | BR-10 | Session token generation and hashing | Tokens are unique across many draws; the stored value is a hash, not the token | `server/tests/lab-03/session.test.ts` | Planned |
+| UNIT-03 | AC-10, BR-07 | Password rule evaluation | Too short, too long, and each missing character class rejected with the rule named; a compliant password accepted | `server/tests/lab-03/password.test.ts` | Pass |
+| UNIT-04 | BR-06 | Hash and verify round-trip | A password verifies against its own hash and not against another; the hash is not the password | `server/tests/lab-03/password.test.ts` | Pass |
+| UNIT-05 | BR-10 | Session token generation and hashing | Tokens are unique across many draws; the stored value is a hash, not the token | `server/tests/lab-03/session.test.ts` | Pass |
 | UNIT-06 | BR-30 | Comment and note body validation | Empty, whitespace-only and over-length refused; boundary lengths accepted | `server/tests/lab-03/messages.test.ts` | Planned |
 
 ### API / integration
 
 | ID | AC | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
-| API-01 | AC-01 | Valid sign-in | 200, session cookie set, identity and role returned, no credential in the body | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-02 | AC-05 | Unknown email vs wrong password | Both 401 `INVALID_CREDENTIALS`, identical body | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-03 | AC-06 | Correct password, deactivated account | 403 `ACCOUNT_INACTIVE` | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-04 | BR-09 | Wrong password on a deactivated account | 401 `INVALID_CREDENTIALS`, not `ACCOUNT_INACTIVE` | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-05 | FR-04 | Current user retrieval | 200 with identity, role and the must-change flag | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-06 | AC-02 | The password-change gate | Every endpoint except `me`, `password`, `logout` answers 403 `PASSWORD_CHANGE_REQUIRED` | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-07 | AC-02 | The three permitted endpoints during the gate | All reachable while the flag is set | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-08 | AC-07 | Sign-out | 204; the previous cookie then answers 401 | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-09 | AC-08 | Expired session | A session past its expiry answers 401 | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-10 | AC-11 | Deactivation mid-session | A live session whose user is deactivated answers 401 on the next request | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-11 | AC-10 | Password change validation | Rule failures 400 with the field named; password unchanged | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-12 | AC-09 | Password change ends other sessions | Other sessions 401 afterwards; the current one continues | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-13 | BR-13 | Sign-out is idempotent | Signing out without a session answers 204 | `server/tests/lab-03/auth.api.test.ts` | Planned |
+| API-01 | AC-01 | Valid sign-in | 200, session cookie set, identity and role returned, no credential in the body | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-02 | AC-05 | Unknown email vs wrong password | Both 401 `INVALID_CREDENTIALS`, identical body | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-03 | AC-06 | Correct password, deactivated account | 403 `ACCOUNT_INACTIVE` | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-04 | BR-09 | Wrong password on a deactivated account | 401 `INVALID_CREDENTIALS`, not `ACCOUNT_INACTIVE` | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-05 | FR-04 | Current user retrieval | 200 with identity, role and the must-change flag | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-06 | AC-02 | The password-change gate | Every endpoint except `me`, `password`, `logout` answers 403 `PASSWORD_CHANGE_REQUIRED` | `server/tests/lab-03/auth.api.test.ts` | Partial — the guard is asserted against a route mounted in the test, because the ticket routes still run on the Lab 2 selector until the selector is deleted. Becomes an assertion about shipped endpoints in that ticket. |
+| API-07 | AC-02 | The three permitted endpoints during the gate | All reachable while the flag is set | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-08 | AC-07 | Sign-out | 204; the previous cookie then answers 401 | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-09 | AC-08 | Expired session | A session past its expiry answers 401 | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-10 | AC-11 | Deactivation mid-session | A live session whose user is deactivated answers 401 on the next request | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-11 | AC-10 | Password change validation | Rule failures 400 with the field named; password unchanged | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-12 | AC-09 | Password change ends other sessions | Other sessions 401 afterwards; the current one continues | `server/tests/lab-03/auth.api.test.ts` | Pass |
+| API-13 | BR-13 | Sign-out is idempotent | Signing out without a session answers 204 | `server/tests/lab-03/auth.api.test.ts` | Pass |
 | API-14 | AC-03 | A body carrying `requesterId` | Ignored; the ticket is recorded against the authenticated user | `server/tests/lab-03/authorization.api.test.ts` | Planned |
 | API-15 | AC-15 | Staff queue returns all requesters' tickets | Tickets from several requesters present | `server/tests/lab-03/staff-queue.api.test.ts` | Planned |
 | API-16 | FR-20 | Queue search, filters and sorting | Each parameter narrows or orders as documented | `server/tests/lab-03/staff-queue.api.test.ts` | Planned |
@@ -118,20 +120,20 @@ Every test here calls the API directly with a session of the wrong kind. None dr
 
 | ID | AC | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
-| UI-01 | FR-01 | Login renders its fields | Email and password with real labels; Sign In enabled | `client/tests/lab-03/Login.test.tsx` | Planned |
-| UI-02 | AC-05 | Login validation | Field-level messages; the API is not called for an invalid form | `client/tests/lab-03/Login.test.tsx` | Planned |
-| UI-03 | AC-05 | Invalid credentials presentation | One message, wording identical for both causes; neither field singled out; values preserved | `client/tests/lab-03/Login.test.tsx` | Planned |
-| UI-04 | AC-06 | Inactive account presentation | A distinct message naming the account as deactivated | `client/tests/lab-03/Login.test.tsx` | Planned |
-| UI-05 | AC-36 | Login API failure | Safe failure block; entered values preserved | `client/tests/lab-03/Login.test.tsx` | Planned |
-| UI-06 | FR-01 | Busy state on submit | Button disabled and labelled as working; no second submission | `client/tests/lab-03/Login.test.tsx` | Planned |
-| UI-07 | AC-10 | Password rules panel | Each rule ticks as it is satisfied while typing | `client/tests/lab-03/ChangePassword.test.tsx` | Planned |
-| UI-08 | AC-10 | Confirmation mismatch | Reported against Confirm, not against New | `client/tests/lab-03/ChangePassword.test.tsx` | Planned |
-| UI-09 | AC-02 | The gated shell | No navigation is rendered while a password change is outstanding | `client/tests/lab-03/ChangePassword.test.tsx` | Planned |
+| UI-01 | FR-01 | Login renders its fields | Email and password with real labels; Sign In enabled | `client/tests/lab-03/Login.test.tsx` | Pass |
+| UI-02 | AC-05 | Login validation | Field-level messages; the API is not called for an invalid form | `client/tests/lab-03/Login.test.tsx` | Pass |
+| UI-03 | AC-05 | Invalid credentials presentation | One message, wording identical for both causes; neither field singled out; values preserved | `client/tests/lab-03/Login.test.tsx` | Pass |
+| UI-04 | AC-06 | Inactive account presentation | A distinct message naming the account as deactivated | `client/tests/lab-03/Login.test.tsx` | Pass |
+| UI-05 | AC-36 | Login API failure | Safe failure block; entered values preserved | `client/tests/lab-03/Login.test.tsx` | Pass |
+| UI-06 | FR-01 | Busy state on submit | Button disabled and labelled as working; no second submission | `client/tests/lab-03/Login.test.tsx` | Pass |
+| UI-07 | AC-10 | Password rules panel | Each rule ticks as it is satisfied while typing | `client/tests/lab-03/ChangePassword.test.tsx` | Pass |
+| UI-08 | AC-10 | Confirmation mismatch | Reported against Confirm, not against New | `client/tests/lab-03/ChangePassword.test.tsx` | Pass |
+| UI-09 | AC-02 | The gated shell | No navigation is rendered while a password change is outstanding | `client/tests/lab-03/ChangePassword.test.tsx` | Pass |
 | UI-10 | FR-20 | Queue renders rows and controls | Search, filters, sort and pagination present; rows populated | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Planned |
 | UI-11 | FR-21 | Unassigned rendering | An unowned ticket reads *Unassigned*, never an empty cell | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Planned |
 | UI-12 | FR-20 | Queue empty and no-results | Distinct messages; no-results offers Clear Filters | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Planned |
 | UI-13 | AC-34 | Role-dependent navigation | Each role sees only its destinations; unauthorized ones absent, not disabled | `client/tests/lab-03/AppShell.test.tsx` | Planned |
-| UI-14 | FR-04 | Shell shows identity | Name and role badge shown; Logout present; no Change Requester action | `client/tests/lab-03/AppShell.test.tsx` | Planned |
+| UI-14 | FR-04 | Shell shows identity | Name and role badge shown; Logout present; no Change Requester action | `client/tests/lab-03/AppShell.test.tsx` | Partial — name, role (through the shared badge) and Logout pass, and the gated and signed-out header variants omit Change Requester. On the application screens it cannot be absent yet: both identity mechanisms coexist by design for one ticket. Completed by the ticket that deletes the selector. |
 | UI-15 | FR-23 | Claim and reassign controls | Claim shown when unassigned; a select of eligible users when assigned | `client/tests/lab-03/StaffTicketDetail.test.tsx` | Planned |
 | UI-16 | AC-20 | Only permitted transitions offered | The status control lists exactly the permitted targets; a cancelled ticket shows it read-only | `client/tests/lab-03/StaffTicketDetail.test.tsx` | Planned |
 | UI-17 | BR-04 | Comments and notes are distinct | Separate headings, standing notes, and the note composer warns before posting | `client/tests/lab-03/StaffTicketDetail.test.tsx` | Planned |

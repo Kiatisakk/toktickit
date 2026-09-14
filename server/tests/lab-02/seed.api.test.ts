@@ -149,12 +149,44 @@ describe("reference seed", () => {
     expect(inactiveRequesters).toBeGreaterThanOrEqual(1);
   });
 
-  it("seeds every requester as REQUESTER, since Lab 2 has no other role", async () => {
-    const others = await prisma.user.count({
-      where: { role: { not: "REQUESTER" } },
+  // Lab 2 asserted the opposite here: that no account held any role but
+  // REQUESTER, "since Lab 2 has no other role". Lab 3 ends that — §7 requires
+  // the reference seed to carry IT Staff and an Administrator so the suites can
+  // sign in as each of them. What survives is the part that was actually worth
+  // asserting: every account holds one of the three defined roles.
+  it("seeds every account with one of the three defined roles", async () => {
+    const total = await prisma.user.count();
+    const byRole = await prisma.user.count({
+      where: { role: { in: ["REQUESTER", "IT_STAFF", "ADMIN"] } },
     });
 
-    expect(others).toBe(0);
+    expect(byRole).toBe(total);
+  });
+
+  it("seeds the IT Staff and Administrator accounts §7 requires", async () => {
+    const [activeStaff, inactiveStaff, admins] = await Promise.all([
+      prisma.user.count({ where: { role: "IT_STAFF", isActive: true } }),
+      prisma.user.count({ where: { role: "IT_STAFF", isActive: false } }),
+      prisma.user.count({ where: { role: "ADMIN", isActive: true } }),
+    ]);
+
+    expect(activeStaff).toBeGreaterThanOrEqual(3);
+    expect(inactiveStaff).toBeGreaterThanOrEqual(1);
+    expect(admins).toBeGreaterThanOrEqual(1);
+  });
+
+  // BR-06. The seed is the one place that writes a password, so it is the one
+  // place a plaintext one could be written by mistake.
+  it("stores every seeded password as a hash", async () => {
+    const accounts = await prisma.user.findMany({
+      select: { passwordHash: true },
+    });
+
+    expect(accounts.length).toBeGreaterThan(0);
+
+    for (const account of accounts) {
+      expect(account.passwordHash.startsWith("scrypt$")).toBe(true);
+    }
   });
 
   it("gives every related system a distinct display order", async () => {

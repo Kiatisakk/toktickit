@@ -30,6 +30,12 @@ const GLYPHS = {
   loading: "hourglass-split",
   empty: "inbox",
   warning: "exclamation-triangle",
+  // Lab 3. `check` and `pending` are the two states of one password rule, so
+  // they are a filled and an unfilled circle rather than a tick and nothing —
+  // an absent icon reads as a rendering fault, not as "not yet".
+  check: "check-circle-fill",
+  pending: "circle",
+  logout: "box-arrow-right",
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

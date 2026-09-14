@@ -75,13 +75,18 @@ export const respond = (body: unknown, status = 200) =>
  */
 export const renderWithRequester = (
   ui: ReactNode,
-  { context = CONTEXT, path = "/" }: {
+  {
+    context = CONTEXT,
+    path = "/",
+  }: {
     context?: RequesterContextValue;
     path?: string;
   } = {}
 ) =>
   render(
     <MemoryRouter initialEntries={[path]}>
-      <RequesterContext.Provider value={context}>{ui}</RequesterContext.Provider>
+      <RequesterContext.Provider value={context}>
+        {ui}
+      </RequesterContext.Provider>
     </MemoryRouter>
   );
