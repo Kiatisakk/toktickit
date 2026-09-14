@@ -103,6 +103,22 @@ I said plainly that BR-07 is the better rule — composition requirements are wh
 
 **His response.** All six fixed, and two fixed better than asked. `cookieSecure` no longer reads the request at all — it derives from configuration, so `trust proxy` became a second line of defence rather than the only one. And the reservation release went into a `finally` rather than onto the single path I named, which closed the paths I had not named. The evidence now reproduces: the Lab 3 spec takes its own screenshots and writes its own manifest. `tests.md` was renamed from a plan to a register, implemented rows carry real coverage, and the rows still reading `Planned` are the slices that genuinely are.
 
+### beambeambeam#61 — User list and account creation (his Issue #56)
+
+[PR #61](https://github.com/beambeambeam/toktickit/pull/61) · reviewed 2026-09-14 · **4 line comments**, verdict **Changes requested**.
+
+35 files, +2244/−60: the Administrator user list, search, role filter and account creation, plus a client-wide icon swap.
+
+**Three of my own suspicions did not survive checking, and I said so in the review.** The one worth recording: I expected his hand-written `escapeLikePattern` to double-escape, because I assumed Prisma escaped `LIKE` wildcards itself. Rather than argue it, I ran both against a throwaway PostgreSQL database on his Prisma version, 7.9.1. Prisma does *not* escape them — a raw search for `50%` matched `Discount 50 off`. His function is correct and necessary, and the finding I would have written would have told him to remove the thing preventing the bug. The other two — a gated account landing on the wrong screen, and the table and cards both being read by assistive technology — were already handled, by `AuthRequired` and by `display: none`.
+
+**One blocker.** The PR says `Closes #56`, and two of that Issue's acceptance criteria have no test: that a created account must replace its password before normal access, and the API-level checks — non-admin refusal, duplicate email including concurrent creates, and create-to-first-login end to end. The only server test is a unit test of the parsers. His description was honest that integration and E2E were not run; the problem was only that merging would tick criteria nothing checks. I offered two ways out and said both were fine: add the API suite, or keep #56 open and split the unproven parts off.
+
+**Two gaps against his own specification.** A `403` from the API renders as a retryable failure, where his `ui-spec.md` asks for denial or the mandatory password change; and the client tests cover four of the states AC-4 names, missing duplicate-email feedback, empty versus no-results, and failure with retry.
+
+**One scope note**, marked as a nit: the icon-set swap touches a third of the files and is unrelated to the Issue.
+
+**Two process notes in the body**, because neither has a line: the PR is not linked to #56 — the closing keyword does not link against a non-default base, and `addCloseIssueReferences`, the mutation he taught me on #57, fixes it — and `tests.md` is not in the diff while tests for the slice now exist.
+
 ---
 
 ## Coverage
@@ -114,6 +130,7 @@ I said plainly that BR-07 is the better rule — composition requirements are wh
 | [#59](https://github.com/Kiatisakk/toktickit/pull/59) | received | 17 | Comment | Open — fixes pushed |
 | [beambeambeam#59](https://github.com/beambeambeam/toktickit/pull/59) | given | 3 | Changes requested → Approved | Merged |
 | [beambeambeam#60](https://github.com/beambeambeam/toktickit/pull/60) | given | 6 | Changes requested → Approved | Merged |
+| [beambeambeam#61](https://github.com/beambeambeam/toktickit/pull/61) | given | 4 | Changes requested | Open |
 
 Checked by listing the Pull Requests from GitHub and searching this file for each number, rather than by reading down the page — which is how two were found missing in Lab 2.
 
