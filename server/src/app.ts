@@ -9,7 +9,6 @@ import { authRouter } from "./routes/auth.js";
 import { categoriesRouter } from "./routes/categories.js";
 import { healthRouter } from "./routes/health.js";
 import { relatedSystemsRouter } from "./routes/relatedSystems.js";
-import { requestersRouter } from "./routes/requesters.js";
 import { ticketsRouter } from "./routes/tickets.js";
 
 /**
@@ -59,7 +58,6 @@ export const createApp = (): Express => {
   app.use("/api", authRouter);
   app.use("/api", categoriesRouter);
   app.use("/api", relatedSystemsRouter);
-  app.use("/api", requestersRouter);
   app.use("/api", ticketsRouter);
   app.use("/api", attachmentsRouter);
 

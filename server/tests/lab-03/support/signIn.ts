@@ -54,3 +54,54 @@ export const signIn = async (
 
   return { cookie, body: response.body };
 };
+
+export interface SignedInUser {
+  id: number;
+  cookie: SessionCookie;
+}
+
+/** Signs in as a seeded account and returns who the server says that is. */
+export const signInAs = async (account: {
+  email: string;
+  password: string;
+}): Promise<SignedInUser> => {
+  const { cookie, body } = await signIn(account.email, account.password);
+  const id = (body as { user?: { id?: unknown } }).user?.id;
+
+  if (typeof id !== "number") {
+    throw new TypeError(`Sign-in for ${account.email} returned no user id.`);
+  }
+
+  return { id, cookie };
+};
+
+/**
+ * Sessions keyed by user id, for the Lab 2 suites.
+ *
+ * Those suites were written around requester ids — `attach(ticket, ownerB)`,
+ * `listing("", ownerB)` — and every assertion in them is phrased that way.
+ * Holding a cookie per id lets identity setup move to sign-in while the
+ * assertions stay exactly as they were (tests.md, MIG-07).
+ *
+ * `as` throws for an id nobody signed in as: silently sending no cookie would
+ * turn every assertion into an assertion about a 401.
+ */
+export const sessionJar = () => {
+  const jar = new Map<number, SessionCookie>();
+
+  return {
+    add: (session: SignedInUser): number => {
+      jar.set(session.id, session.cookie);
+      return session.id;
+    },
+    cookieOf: (id: number): SessionCookie => {
+      const cookie = jar.get(id);
+
+      if (!cookie) {
+        throw new Error(`No session for user ${id}. Sign in as them first.`);
+      }
+
+      return cookie;
+    },
+  };
+};

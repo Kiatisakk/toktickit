@@ -1,9 +1,10 @@
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { ACTIVE_REQUESTER, SECOND_REQUESTER } from "../../prisma/accounts.js";
 import { app } from "../../src/app.js";
-import { REQUESTER_HEADER } from "../../src/middleware/requesterContext.js";
 import { prisma } from "../../src/prisma.js";
+import { sessionJar, signInAs } from "../lab-03/support/signIn.js";
 
 /**
  * API-08 — the list returns only tickets owned by the request context.
@@ -35,18 +36,19 @@ const OWNER_B_COUNT = 3;
 const idsOf = (response: { body: { data: { id: number }[] } }) =>
   response.body.data.map((ticket) => ticket.id);
 
+const sessions = sessionJar();
+
 const listing = (query = "", requesterId = ownerA) =>
   request(app)
     .get(`/api/tickets${query}`)
-    .set(REQUESTER_HEADER, String(requesterId));
+    .set("Cookie", sessions.cookieOf(requesterId));
 
 beforeAll(async () => {
-  const [a, b] = await prisma.user.findMany({
-    where: { role: "REQUESTER", isActive: true },
-    orderBy: { id: "asc" },
-    take: 2,
-    select: { id: true },
-  });
+  // Signed in, not looked up: identity comes from the session now (D-15).
+  const [a, b] = await Promise.all([
+    signInAs(ACTIVE_REQUESTER),
+    signInAs(SECOND_REQUESTER),
+  ]);
   const [first, second] = await prisma.category.findMany({
     where: { isActive: true },
     orderBy: { displayOrder: "asc" },
@@ -58,8 +60,8 @@ beforeAll(async () => {
     select: { id: true },
   });
 
-  ownerA = a?.id ?? 0;
-  ownerB = b?.id ?? 0;
+  ownerA = sessions.add(a);
+  ownerB = sessions.add(b);
   categoryId = first?.id ?? 0;
   otherCategoryId = second?.id ?? 0;
   relatedSystemId = system.id;
@@ -130,8 +132,10 @@ describe("ownership", () => {
   it("requires a requester context", async () => {
     const response = await request(app).get("/api/tickets");
 
-    expect(response.status).toBe(400);
-    expect(response.body.error.code).toBe("REQUESTER_CONTEXT_REQUIRED");
+    // Lab 2 answered 400 REQUESTER_CONTEXT_REQUIRED; that code is retired and
+    // its situation is now 401 UNAUTHENTICATED (api-spec.md §3).
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("UNAUTHENTICATED");
   });
 });
 
