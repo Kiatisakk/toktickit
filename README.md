@@ -63,8 +63,50 @@ npm run db:seed:demo
 ```
 
 The seed is idempotent — running it again does not create duplicates. It writes
-the four request categories, seven related systems, and five Development
-Requesters, one of which is deliberately inactive.
+the four request categories, seven related systems, and the user accounts of all
+three roles. It also **restores their passwords on every run**, so an account
+whose password a test changed is returned to its seeded state.
+
+### Upgrading a database created before sign-in existed
+
+The same two commands, `npm run db:migrate` then `npm run db:seed`, are the whole
+upgrade — nothing else has to be run between them, and nothing has to be run in a
+particular order beyond those two.
+
+The migration that makes passwords required cannot give an existing account a
+real password, because hashing happens in Node rather than in SQL. So every
+account that predates sign-in is first given a value that is not a hash of
+anything, and **cannot be signed in to**. `db:seed` then restores a real password
+for every seeded account. An account the seed does not know about stays locked
+until an Administrator issues it a password. The upgrade fails closed: no account
+ever ends up without a password.
+
+The test database follows the same path through `npm run db:test:setup`.
+
+### Seeded accounts — local development only
+
+These credentials exist so the application can be signed in to straight after
+cloning and seeding, and so the test suites can authenticate through the real
+sign-in endpoint. They are demonstration passwords for a local database, not
+secrets, and must never be used anywhere else (BR-42). The database stores only
+their hashes.
+
+| Account | Role | Password | Notes |
+| --- | --- | --- | --- |
+| `jennifer.anderson@example.ac.th` | Requester | `Requester1!` | |
+| `somchai.wattana@example.ac.th` | Requester | `Requester2!` | |
+| `pimchanok.srisai@example.ac.th` | Requester | `Requester3!` | |
+| `thanakorn.boonmee@example.ac.th` | Requester | `Requester4!` | |
+| `kanya.pongsakorn@example.ac.th` | Requester | `Starting1!` | Must choose a new password on first sign-in |
+| `natthaphong.chaiyaporn@example.ac.th` | Requester | `Requester5!` | Deactivated — sign-in is refused |
+| `michael.brown@example.ac.th` | IT Staff | `ItStaff1!` | |
+| `sarah.johnson@example.ac.th` | IT Staff | `ItStaff2!` | |
+| `david.lee@example.ac.th` | IT Staff | `ItStaff3!` | |
+| `arthit.saelim@example.ac.th` | IT Staff | `ItStaff4!` | Deactivated |
+| `wanida.thongchai@example.ac.th` | Administrator | `Admin1!pass` | |
+
+The list is defined once, in `server/prisma/accounts.ts`, which both the seed and
+the tests import.
 
 Tests run against their own database, `toktickit_test`, in the same container.
 Sharing one database would mean every test run wiped the demonstration data the

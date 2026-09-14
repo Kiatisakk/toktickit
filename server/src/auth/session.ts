@@ -141,20 +141,31 @@ export const closeSession = async (token: string): Promise<void> => {
 };
 
 /**
- * Replaces the current session with a fresh one and ends every other session
- * the user holds (BR-14, AC-09).
+ * Stores a new password, ends every session the user holds, and issues one
+ * replacement for the caller (BR-14, AC-09).
  *
- * One transaction, so a password change cannot leave the user signed out of the
- * session they are using or leave a stale session alive. The delete is by user
- * id, which the index on that column serves, and the insert is the replacement.
+ * **All three writes are one transaction.** An earlier version committed the
+ * password first and rotated the sessions afterwards, so a failure between the
+ * two left the new password active while every old token — including any that
+ * had been observed — still worked. A password change is exactly the moment an
+ * old token must stop working, so either all of it happens or none of it does.
+ *
+ * The hash is computed by the caller, before this is called: scrypt is
+ * deliberately slow, and holding a transaction open across it would serialise
+ * sign-ins behind password changes for no benefit.
  */
-export const rotateSessionAndEndOthers = async (
-  userId: number
+export const replacePasswordAndSessions = async (
+  userId: number,
+  passwordHash: string
 ): Promise<IssuedSession> => {
   const token = newSessionToken();
   const expiresAt = new Date(Date.now() + SESSION_LIFETIME_MS);
 
   await prisma.$transaction([
+    prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash, mustChangePassword: false },
+    }),
     prisma.session.deleteMany({ where: { userId } }),
     prisma.session.create({
       data: { tokenHash: hashSessionToken(token), userId, expiresAt },

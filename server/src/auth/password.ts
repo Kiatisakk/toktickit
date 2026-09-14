@@ -136,6 +136,19 @@ export const hashPassword = async (password: string): Promise<string> => {
 };
 
 /**
+ * Whether a stored value is a hash this module could verify.
+ *
+ * Accounts that predate authentication are migrated to the value `!`, which is
+ * not a hash of anything (see the `password_hash_not_null` migration). The
+ * sign-in route uses this to send those accounts down the same key-derivation
+ * path as an unknown address, so a locked account costs the same to probe as
+ * one that does not exist.
+ */
+export const isUsableHash = (stored: string): boolean =>
+  stored.startsWith(`${ENCODING_ID}$`) &&
+  stored.split("$").length === ENCODED_FIELD_COUNT;
+
+/**
  * Verifies a password against a stored hash.
  *
  * Returns false rather than throwing for a stored value this module did not

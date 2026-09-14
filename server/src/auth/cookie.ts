@@ -17,19 +17,18 @@ import { SESSION_COOKIE } from "./session.js";
  */
 
 /**
- * Defaults to on outside development, so forgetting the variable in a deployed
- * environment fails safe. Set `COOKIE_SECURE=false` only where there is no TLS
- * at all, which is a developer machine.
+ * **On unless explicitly turned off.** An earlier version turned it on only when
+ * `NODE_ENV` was `production`, which left it off in staging and anywhere the
+ * variable was simply unset — the opposite of failing safe, and against
+ * api-spec.md §1, which requires it everywhere but local development.
+ *
+ * Local development does not need the opt-out in a current browser: Chromium
+ * and Firefox treat `http://localhost` as a secure context and accept a
+ * `Secure` cookie on it. `COOKIE_SECURE=false` exists for the case where the
+ * API is reached by a non-localhost address over plain HTTP, and it has to be
+ * written down to take effect.
  */
-const cookieSecure = (): boolean => {
-  const configured = process.env["COOKIE_SECURE"];
-
-  if (configured !== undefined) {
-    return configured === "true";
-  }
-
-  return process.env["NODE_ENV"] === "production";
-};
+const cookieSecure = (): boolean => process.env["COOKIE_SECURE"] !== "false";
 
 const baseOptions = (): CookieOptions => ({
   httpOnly: true,

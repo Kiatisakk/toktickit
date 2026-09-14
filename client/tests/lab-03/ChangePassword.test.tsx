@@ -86,7 +86,7 @@ describe("UI-08 the confirmation", () => {
 
     await user.type(screen.getByLabelText(/^new password/iu), "Replaced1!");
     await user.type(
-      screen.getByLabelText(/confirm new password/iu),
+      screen.getByLabelText(/^confirm new password/iu),
       "Replaced2!"
     );
 
@@ -107,13 +107,13 @@ describe("UI-08 the confirmation", () => {
 
     const user = userEvent.setup();
 
-    await user.type(screen.getByLabelText(/current password/iu), "Starting1!");
+    await user.type(screen.getByLabelText(/^current password/iu), "Starting1!");
     await user.type(screen.getByLabelText(/^new password/iu), "Replaced1!");
     await user.type(
-      screen.getByLabelText(/confirm new password/iu),
+      screen.getByLabelText(/^confirm new password/iu),
       "Replaced2!"
     );
-    await user.click(screen.getByRole("button", { name: /save password/iu }));
+    await user.click(screen.getByRole("button", { name: /continue/iu }));
 
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -167,15 +167,15 @@ describe("a wrong current password", () => {
     const user = userEvent.setup();
 
     await user.type(
-      screen.getByLabelText(/current password/iu),
+      screen.getByLabelText(/^current password/iu),
       "Wrong1!wrong"
     );
     await user.type(screen.getByLabelText(/^new password/iu), "Replaced1!");
     await user.type(
-      screen.getByLabelText(/confirm new password/iu),
+      screen.getByLabelText(/^confirm new password/iu),
       "Replaced1!"
     );
-    await user.click(screen.getByRole("button", { name: /save password/iu }));
+    await user.click(screen.getByRole("button", { name: /continue/iu }));
 
     const message = await screen.findByText(
       "Your current password is not correct."
@@ -185,5 +185,35 @@ describe("a wrong current password", () => {
       .closest(".tkt-field-group");
 
     expect(currentField).toContainElement(message);
+  });
+});
+
+describe("the gated header", () => {
+  it("shows the user's name, role and Logout", () => {
+    gated();
+
+    expect(screen.getByRole("banner")).toHaveTextContent("Jennifer Anderson");
+    expect(screen.getByRole("banner")).toHaveTextContent("Requester");
+    expect(
+      screen.getByRole("button", { name: /logout/iu })
+    ).toBeInTheDocument();
+  });
+
+  it("offers no way round the gate", () => {
+    gated();
+
+    expect(
+      screen.queryByRole("button", { name: /change requester/iu })
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("show/hide on all three fields", () => {
+  it("gives each field its own toggle", () => {
+    gated();
+
+    expect(
+      screen.getAllByRole("button", { name: "Show password" })
+    ).toHaveLength(3);
   });
 });

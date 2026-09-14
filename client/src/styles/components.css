@@ -1340,21 +1340,17 @@
 }
 
 /* --------------------------------------------------------------------------
-   Authentication screens (§8.1, §8.2)
+   Authentication screens (ui-spec.md §3, §4)
 
-   Both render outside the shell, so they bring their own page frame. The panel
-   is centred vertically on a tall viewport and simply flows from the top on a
-   short one — `min-height` rather than `height`, or the form is unreachable in
-   landscape on a phone.
+   Both render inside the shell — the signed-out and gated variants — so the
+   page frame is the shell's. The panel only centres itself horizontally; the
+   header above it already gives the page its top.
    -------------------------------------------------------------------------- */
 
 .tkt-auth {
-  align-items: center;
-  background-color: var(--tkt-page);
   display: flex;
   justify-content: center;
-  min-height: 100vh;
-  padding: var(--tkt-space-8) var(--tkt-space-4);
+  padding-block: var(--tkt-space-8);
 }
 
 .tkt-auth__panel {
@@ -1422,11 +1418,51 @@
   color: var(--tkt-success);
 }
 
-.tkt-identity__role {
-  background-color: rgb(255 255 255 / 18%);
+/* Role badges (ui-spec.md: role renders through the one badge component).
+   They sit on the green header, so they use the inverse surface rather than the
+   pale fills the status badges use on white. The word carries the meaning; the
+   colour only separates the three. */
+.tkt-badge[data-kind="role"] {
+  background-color: var(--tkt-surface);
+  color: var(--tkt-green);
+}
+
+.tkt-badge--it-staff {
+  color: var(--tkt-info);
+}
+
+.tkt-badge--admin {
+  color: var(--tkt-warning);
+}
+
+.tkt-password-control {
+  align-items: stretch;
+  display: flex;
+  gap: var(--tkt-space-2);
+}
+
+.tkt-password-control > .tkt-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* A text button rather than an eye icon: §8.3 requires visible text on
+   buttons, and "Show password" says what it does where an eye only hints. */
+.tkt-password-toggle {
+  background: none;
+  border: 1px solid var(--tkt-border);
   border-radius: var(--tkt-radius-sm);
+  color: var(--tkt-green-accent);
+  flex: 0 0 auto;
   font-size: var(--tkt-font-small);
-  padding: 0 var(--tkt-space-2);
+  min-height: var(--tkt-touch-target);
+  padding: 0 var(--tkt-space-3);
+  white-space: nowrap;
+}
+
+.tkt-password-toggle:disabled {
+  color: var(--tkt-text-muted);
+  cursor: not-allowed;
 }
 
 /* Only rendered while the two identity mechanisms disagree, which they can do

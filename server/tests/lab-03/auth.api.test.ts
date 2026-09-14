@@ -111,6 +111,76 @@ describe("POST /api/auth/login", () => {
     expect(cookie).toContain("Path=/");
   });
 
+  it("API-01 marks the cookie Secure unless it is explicitly turned off", async () => {
+    // api-spec.md §1 requires Secure outside local development. It used to be
+    // on only when NODE_ENV was "production", which left it off everywhere the
+    // variable was unset — including this test run. The default is now on.
+    const previous = process.env["COOKIE_SECURE"];
+
+    delete process.env["COOKIE_SECURE"];
+
+    try {
+      const response = await request(app).post("/api/auth/login").send({
+        email: ACTIVE_REQUESTER.email,
+        password: ACTIVE_REQUESTER.password,
+      });
+
+      expect(cookieValue(cookiesOf(response)) ?? "").toContain("Secure");
+    } finally {
+      if (previous === undefined) {
+        delete process.env["COOKIE_SECURE"];
+      } else {
+        process.env["COOKIE_SECURE"] = previous;
+      }
+    }
+  });
+
+  it("API-01 leaves Secure off only when COOKIE_SECURE is false", async () => {
+    const previous = process.env["COOKIE_SECURE"];
+
+    process.env["COOKIE_SECURE"] = "false";
+
+    try {
+      const response = await request(app).post("/api/auth/login").send({
+        email: ACTIVE_REQUESTER.email,
+        password: ACTIVE_REQUESTER.password,
+      });
+
+      expect(cookieValue(cookiesOf(response)) ?? "").not.toContain("Secure");
+    } finally {
+      if (previous === undefined) {
+        delete process.env["COOKIE_SECURE"];
+      } else {
+        process.env["COOKIE_SECURE"] = previous;
+      }
+    }
+  });
+
+  it("refuses an account locked by the migration exactly like a wrong password", async () => {
+    // Accounts that predate authentication hold "!" after the NOT NULL
+    // migration. They must not be enumerable: same status, same body as a
+    // wrong password against a real account.
+    const email = "locked-by-migration@example.ac.th";
+
+    await prisma.user.create({
+      data: { name: "Locked Fixture", email, passwordHash: "!" },
+    });
+
+    try {
+      const locked = await request(app)
+        .post("/api/auth/login")
+        .send({ email, password: "Anything1!" });
+      const wrong = await request(app)
+        .post("/api/auth/login")
+        .send({ email: ACTIVE_REQUESTER.email, password: "Wrong1!wrong" });
+
+      expect(locked.status).toBe(401);
+      expect(locked.body).toEqual(wrong.body);
+    } finally {
+      await prisma.user.delete({ where: { email } });
+    }
+  });
+
   it("API-01 stores the token hashed, never the token itself", async () => {
     const response = await request(app).post("/api/auth/login").send({
       email: ACTIVE_REQUESTER.email,

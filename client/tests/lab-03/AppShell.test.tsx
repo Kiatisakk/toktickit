@@ -111,3 +111,34 @@ describe("while both identity mechanisms coexist", () => {
     expect(screen.queryByText(/acting as/iu)).not.toBeInTheDocument();
   });
 });
+
+describe("the session check", () => {
+  it("offers no Sign In while it is still resolving", () => {
+    // Otherwise the link flashes at everybody who is already signed in, for as
+    // long as GET /api/auth/me takes to answer.
+    renderShell({ auth: authContext({ status: "resolving", user: null }) });
+
+    expect(
+      screen.queryByRole("link", { name: /sign in/iu })
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("the role badge", () => {
+  it("renders the role through the shared badge component", () => {
+    renderShell();
+
+    const role = screen.getByText("Requester");
+
+    expect(role).toHaveClass("tkt-badge");
+    expect(role).toHaveAttribute("data-kind", "role");
+  });
+
+  it("names the administrator role as the handout does", () => {
+    renderShell({
+      auth: authContext({ user: { ...STAFF_USER, role: "ADMIN" } }),
+    });
+
+    expect(screen.getByText("Administrator")).toHaveClass("tkt-badge");
+  });
+});

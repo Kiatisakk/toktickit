@@ -45,6 +45,28 @@ The claim came from searching the mutation list for `link|closing|subissue`. The
 
 Fixed in `c546262`. I took his intent rather than his suggested wording, and said so: once the mutation is written into the rule, hedging about "no one-step PR-only API" explains less than showing the call. He also noted the fixture consolidation as mechanical and low risk.
 
+### PR #59 — Sign in, sign out, and the forced first password change (Issue #47)
+
+[PR #59](https://github.com/Kiatisakk/toktickit/pull/59) · reviewed 2026-09-11 · **15 line comments and 2 in the review body**, verdict **Comment**.
+
+The largest review of the sprint, on the first Pull Request with real authentication in it. He marked seven findings as bugs or security defects, three as specification gaps, and five as nits. Eleven were accepted and fixed; four were answered with reasons instead.
+
+**Three were defects the test suite could not have caught, and each is worth remembering for why.**
+
+*Sign-out and password change reported failure after succeeding.* Both answer `204` with no body, and the shared request function called `response.json()` on every successful response. The client tests passed because the fake `Response` in `tests/support` returns `{}` from `json()` whatever the status — a stub more forgiving than the platform it stands in for. The regression test now uses the real `Response`.
+
+*The build was broken, and so was the seed.* The final schema makes `passwordHash` non-null, so a filter on `null` is a type error — and, at runtime, a Prisma validation error that crashed `npm run db:seed`. I had reported the typecheck clean. It was clean against a stale client: Prisma 7's `migrate dev` no longer regenerates the client, so I had checked the code against the schema as it was before the constraint. A green check against the wrong input is not a green check.
+
+*The upgrade path only worked for someone who already knew it.* The bootstrap script had to run between two migrations that `db:migrate` applies back to back, so any populated database took the null-value failure. The step moved into the migration itself: accounts that predate authentication get a value that is not a hash of anything, cannot be signed in to, and are restored by the seed. Verified against a throwaway database built in the Lab 2 shape before replying.
+
+**Two were security ordering problems.** The new password committed before the old sessions were revoked, so a failure between the two left the new password live and every old token still working; the three writes are now one transaction. And the cookie's `Secure` flag defaulted off wherever `NODE_ENV` was not `production`, which is the opposite of failing safe; it now defaults on.
+
+**Three were the specification I wrote, not followed.** `ui-spec.md` §3 and §4 put both authentication screens inside the shell's header, render the role through the shared badge, and give every password field a show/hide toggle. I had built all three screens from memory of the specification rather than from the specification, and he read it more carefully than I did.
+
+**Four I answered rather than applied.** Authenticating the reference-data endpoints now would break the Lab 2 journey #47 is required to keep working, and api-spec.md §5's own stated reason for the change arrives with #48. The seeded demonstration passwords are governed by BR-42, which permits documented local-only credentials — though it also required documenting them, which I had not done, so the README now does. The duplicated password rules follow the Lab 2 precedent for two workspaces with no shared package. And rewriting pushed commit history to a different message style would detach every line comment from its commit, for a rule this repository does not have.
+
+**What I take from it.** Two of the three hidden defects were a test or a check that passed for a reason unrelated to the code being right — a stub that could not fail, and a typecheck against the wrong schema. Both looked exactly like evidence.
+
 ---
 
 ## Reviews I gave
@@ -89,6 +111,7 @@ I said plainly that BR-07 is the better rule — composition requirements are wh
 | --- | --- | --- | --- | --- |
 | [#56](https://github.com/Kiatisakk/toktickit/pull/56) | received | 12 | Changes requested → Approved | Merged |
 | [#57](https://github.com/Kiatisakk/toktickit/pull/57) | received | 1 | Comment | Open |
+| [#59](https://github.com/Kiatisakk/toktickit/pull/59) | received | 17 | Comment | Open — fixes pushed |
 | [beambeambeam#59](https://github.com/beambeambeam/toktickit/pull/59) | given | 3 | Changes requested → Approved | Merged |
 | [beambeambeam#60](https://github.com/beambeambeam/toktickit/pull/60) | given | 6 | Changes requested → Approved | Merged |
 

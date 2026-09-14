@@ -23,7 +23,7 @@ const fillAndSubmit = async (email: string, password: string) => {
   const user = userEvent.setup();
 
   await user.type(screen.getByLabelText(/email/iu), email);
-  await user.type(screen.getByLabelText(/password/iu), password);
+  await user.type(screen.getByLabelText(/^password/iu), password);
   await user.click(screen.getByRole("button", { name: /sign in/iu }));
 };
 
@@ -40,14 +40,14 @@ describe("UI-01 the form", () => {
     renderLogin();
 
     expect(screen.getByLabelText(/email/iu)).toBeInTheDocument();
-    expect(screen.getByLabelText(/password/iu)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^password/iu)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /sign in/iu })).toBeEnabled();
   });
 
   it("masks the password field", () => {
     renderLogin();
 
-    expect(screen.getByLabelText(/password/iu)).toHaveAttribute(
+    expect(screen.getByLabelText(/^password/iu)).toHaveAttribute(
       "type",
       "password"
     );
@@ -229,5 +229,123 @@ describe("UI-06 the busy state", () => {
     await waitFor(() => {
       expect(signedIn).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe("the show/hide toggle", () => {
+  it("is a button whose name says what pressing it will do", async () => {
+    renderLogin();
+
+    const user = userEvent.setup();
+    const password = screen.getByLabelText(/^password/iu);
+
+    await user.click(screen.getByRole("button", { name: "Show password" }));
+
+    expect(password).toHaveAttribute("type", "text");
+    expect(
+      screen.getByRole("button", { name: "Hide password" })
+    ).toBeInTheDocument();
+  });
+
+  it("does not submit the form", async () => {
+    const fetchMock = respond({});
+
+    vi.stubGlobal("fetch", fetchMock);
+    renderLogin();
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Show password" }));
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(
+      screen.queryByText("Enter your email address.")
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides the password again on submit, so a failure never leaves it on screen", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve(
+          jsonResponse(
+            { error: { code: "INVALID_CREDENTIALS", message: "No." } },
+            401
+          )
+        )
+      )
+    );
+    renderLogin();
+
+    const user = userEvent.setup();
+
+    await user.type(
+      screen.getByLabelText(/email/iu),
+      "jennifer.anderson@example.ac.th"
+    );
+    await user.type(screen.getByLabelText(/^password/iu), "Wrong1!wrong");
+    await user.click(screen.getByRole("button", { name: "Show password" }));
+    await user.click(screen.getByRole("button", { name: /sign in/iu }));
+
+    await screen.findByRole("alert");
+
+    expect(screen.getByLabelText(/^password/iu)).toHaveAttribute(
+      "type",
+      "password"
+    );
+  });
+});
+
+describe("the refusal wording", () => {
+  it("uses the words ui-spec.md gives it", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve(
+          jsonResponse(
+            {
+              error: { code: "INVALID_CREDENTIALS", message: "server wording" },
+            },
+            401
+          )
+        )
+      )
+    );
+    renderLogin();
+
+    await fillAndSubmit("jennifer.anderson@example.ac.th", "Wrong1!wrong");
+
+    expect(
+      await screen.findByText("Invalid email or password. Please try again.")
+    ).toBeInTheDocument();
+  });
+});
+
+describe("the signed-out header", () => {
+  it("renders the shell header with no navigation and no user", () => {
+    renderWithAuth(<Login />, {
+      context: authContext({ status: "anonymous", user: null, signedIn }),
+    });
+
+    expect(screen.getByRole("banner")).toBeInTheDocument();
+    expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /logout/iu })
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("while the request runs", () => {
+  it("makes both fields read-only", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => undefined))
+    );
+    renderLogin();
+
+    await fillAndSubmit("jennifer.anderson@example.ac.th", "Requester1!");
+
+    expect(screen.getByLabelText(/email/iu)).toHaveAttribute("readonly");
+    expect(screen.getByLabelText(/^password/iu)).toHaveAttribute("readonly");
   });
 });

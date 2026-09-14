@@ -29,13 +29,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
 
-  const apply = useCallback((identity: Identity) => {
+  const setAuthenticated = useCallback((identity: Identity) => {
     setUser(identity.user);
     setMustChangePassword(identity.mustChangePassword);
     setStatus("authenticated");
   }, []);
 
-  const clear = useCallback(() => {
+  const setAnonymous = useCallback(() => {
     setUser(null);
     setMustChangePassword(false);
     setStatus("anonymous");
@@ -48,13 +48,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const resolve = async () => {
       try {
-        apply(await currentIdentity(controller.signal));
+        setAuthenticated(await currentIdentity(controller.signal));
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
 
-        clear();
+        setAnonymous();
       }
     };
 
@@ -63,15 +63,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       controller.abort();
     };
-  }, [apply, clear]);
+  }, [setAuthenticated, setAnonymous]);
 
   const refresh = useCallback(async () => {
     try {
-      apply(await currentIdentity());
+      setAuthenticated(await currentIdentity());
     } catch {
-      clear();
+      setAnonymous();
     }
-  }, [apply, clear]);
+  }, [setAuthenticated, setAnonymous]);
 
   const signOut = useCallback(async () => {
     try {
@@ -80,20 +80,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Cleared whatever the server said. If the call failed because the
       // session was already gone, the user is signed out either way; leaving
       // the header showing their name would be worse than a redundant clear.
-      clear();
+      setAnonymous();
     }
-  }, [clear]);
+  }, [setAnonymous]);
 
   const value = useMemo(
     () => ({
       status,
       user,
       mustChangePassword,
-      signedIn: apply,
+      signedIn: setAuthenticated,
       signOut,
       refresh,
     }),
-    [status, user, mustChangePassword, apply, signOut, refresh]
+    [status, user, mustChangePassword, setAuthenticated, signOut, refresh]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

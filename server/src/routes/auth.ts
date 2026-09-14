@@ -4,12 +4,13 @@ import { clearSessionCookie, setSessionCookie } from "../auth/cookie.js";
 import {
   firstUnsatisfiedRule,
   hashPassword,
+  isUsableHash,
   verifyPassword,
 } from "../auth/password.js";
 import {
   closeSession,
   openSession,
-  rotateSessionAndEndOthers,
+  replacePasswordAndSessions,
   SESSION_COOKIE,
 } from "../auth/session.js";
 import type { SessionUser } from "../auth/session.js";
@@ -118,15 +119,15 @@ authRouter.post("/auth/login", async (req, res) => {
       },
     });
 
-    // A row without a hash is an account the bootstrap step never reached. It
-    // is not an account with no password — it is one that cannot be signed in
-    // to at all, and treating it as either "no password required" or a distinct
-    // failure would be worse than refusing it like any other bad credential.
-    // Either way the caller pays for one key derivation, so the absent, the
-    // unhashed and the wrong-password cases cost the same from outside.
-    const verified = user?.passwordHash
-      ? await verifyPassword(password, user.passwordHash)
-      : await costOfAnAbsentAccount(password);
+    // An account that predates authentication holds `!`, which is not a hash
+    // of anything: it cannot be signed in to until it is issued a password.
+    // It is refused like any other bad credential, and it pays for the same
+    // key derivation as an unknown address — so the absent, the locked and the
+    // wrong-password cases cost the same from outside.
+    const verified =
+      user && isUsableHash(user.passwordHash)
+        ? await verifyPassword(password, user.passwordHash)
+        : await costOfAnAbsentAccount(password);
 
     if (!(user && verified)) {
       // BR-08, AC-05: an unknown address and a wrong password are one response,
@@ -244,9 +245,10 @@ authRouter.post("/auth/password", requireSession, async (req, res) => {
       select: { passwordHash: true },
     });
 
-    const verified = stored?.passwordHash
-      ? await verifyPassword(currentPassword, stored.passwordHash)
-      : false;
+    const verified =
+      stored && isUsableHash(stored.passwordHash)
+        ? await verifyPassword(currentPassword, stored.passwordHash)
+        : false;
 
     if (!verified) {
       sendError(
@@ -286,18 +288,13 @@ authRouter.post("/auth/password", requireSession, async (req, res) => {
       return;
     }
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        passwordHash: await hashPassword(newPassword),
-        mustChangePassword: false,
-      },
-    });
-
-    // BR-14, AC-09: every other session this user holds ends, and the session
-    // in hand is replaced rather than kept — a password change is exactly when
-    // a token that may have been observed should stop working.
-    const rotated = await rotateSessionAndEndOthers(user.id);
+    // BR-14, AC-09: the password, the end of every other session and the
+    // replacement of this one commit together or not at all. Hashed first,
+    // outside the transaction, because scrypt is slow on purpose.
+    const rotated = await replacePasswordAndSessions(
+      user.id,
+      await hashPassword(newPassword)
+    );
 
     setSessionCookie(res, rotated.token, rotated.expiresAt);
 

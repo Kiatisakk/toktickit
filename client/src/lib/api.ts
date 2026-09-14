@@ -103,6 +103,16 @@ const send = async (
     throw await toApiError(response);
   }
 
+  // A 204 has no body, and `response.json()` on an empty body throws. Sign-out
+  // and password change both answer 204, so without this they reported failure
+  // to the user after the server had succeeded — the session gone, the password
+  // changed, and an error on screen saying neither happened. The earlier tests
+  // missed it because their fake Response returned `{}` from `json()` whatever
+  // the status; the regression test uses a real `Response`.
+  if (response.status === 204) {
+    return null;
+  }
+
   return await response.json();
 };
 

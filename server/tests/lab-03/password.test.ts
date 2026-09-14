@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   firstUnsatisfiedRule,
   hashPassword,
+  isUsableHash,
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
   verifyPassword,
@@ -114,5 +115,22 @@ describe("UNIT-04 hash and verify", () => {
     // A malformed row is a corrupt record. The only correct answer at the
     // sign-in path is to refuse, and throwing would answer 500 instead of 401.
     await expect(verifyPassword(VALID, stored)).resolves.toBe(false);
+  });
+});
+
+describe("usable and unusable stored values", () => {
+  it("recognises a hash this module wrote", async () => {
+    expect(isUsableHash(await hashPassword(VALID))).toBe(true);
+  });
+
+  it.each([
+    { what: "the migration's lock value", stored: "!" },
+    { what: "a plaintext password", stored: VALID },
+    { what: "a truncated hash", stored: "scrypt$16384$8$1$c2FsdA" },
+  ])("refuses $what", ({ stored }) => {
+    // Accounts that predate authentication are migrated to "!". They must not
+    // look like a verifiable hash, or sign-in would skip the dummy derivation
+    // and answer them faster than an unknown address.
+    expect(isUsableHash(stored)).toBe(false);
   });
 });

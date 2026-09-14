@@ -1,7 +1,9 @@
 import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router";
 
+import { AppShell } from "../components/AppShell";
 import { Button } from "../components/Button";
+import { PasswordInput } from "../components/PasswordInput";
 import { StateBlock } from "../components/StateBlock";
 import { TextInput } from "../components/TextInput";
 import { useAuth } from "../context/useAuth";
@@ -9,7 +11,10 @@ import { ApiError } from "../lib/api";
 import { login } from "../lib/auth";
 
 /**
- * The sign-in screen (§8.1).
+ * The sign-in screen (ui-spec.md §3).
+ *
+ * Rendered inside the shell's signed-out variant: the header is present, but it
+ * carries no navigation and no user, because there is not one yet.
  *
  * Two things here are security decisions rather than presentation ones.
  *
@@ -23,8 +28,8 @@ import { login } from "../lib/auth";
  * verified and the person reading it is the account's owner (BR-09, D-04).
  *
  * What the user typed survives every failure, including a failure to reach the
- * API at all (§8.3): making somebody retype an address because a server was
- * restarting is the failure mode the requirement exists to prevent.
+ * API at all (§8.3). The password is not cleared either — but it is hidden
+ * again on every submit, so a failed sign-in never leaves it on screen.
  */
 
 type Failure =
@@ -33,12 +38,13 @@ type Failure =
   | { kind: "inactive"; message: string }
   | { kind: "unreachable"; message: string };
 
-const REFUSED =
-  "That email address and password do not match an account. Check both and try again.";
+/** Worded as ui-spec.md §3 gives it, for an unknown address and a wrong password alike. */
+const REFUSED = "Invalid email or password. Please try again.";
 
 export const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Failure>({ kind: "none" });
@@ -54,6 +60,7 @@ export const Login = () => {
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setTouched(true);
+    setPasswordVisible(false);
 
     // Refused here, so an empty form never reaches the API (UI-02). The server
     // validates the same thing — this is feedback, not the boundary (BR-17).
@@ -96,67 +103,76 @@ export const Login = () => {
   };
 
   return (
-    <div className="tkt-auth">
-      <main className="tkt-auth__panel">
-        <h1 className="tkt-auth__title">Sign in to TokTickIT</h1>
-        <p className="tkt-auth__intro">
-          Use the email address and password issued to you.
-        </p>
-
-        {failure.kind === "credentials" ? (
-          <p className="tkt-form-error" role="alert">
-            {REFUSED}
+    <AppShell variant="signed-out">
+      <div className="tkt-auth">
+        <section aria-labelledby="login-title" className="tkt-auth__panel">
+          <h1 className="tkt-auth__title" id="login-title">
+            Sign in to TokTickIT
+          </h1>
+          <p className="tkt-auth__intro">
+            Use the email address and password issued to you.
           </p>
-        ) : null}
 
-        {failure.kind === "inactive" ? (
-          <p className="tkt-form-error" role="alert">
-            {failure.message}
-          </p>
-        ) : null}
+          {failure.kind === "credentials" ? (
+            <p className="tkt-form-error" role="alert">
+              {REFUSED}
+            </p>
+          ) : null}
 
-        {failure.kind === "unreachable" ? (
-          <StateBlock
-            description={failure.message}
-            kind="error"
-            title="Cannot reach TokTickIT"
-          />
-        ) : null}
+          {failure.kind === "inactive" ? (
+            <p className="tkt-form-error" role="alert">
+              {failure.message}
+            </p>
+          ) : null}
 
-        <form noValidate onSubmit={onSubmit}>
-          <TextInput
-            autoComplete="username"
-            error={emailError}
-            label="Email"
-            name="email"
-            onChange={(event) => setEmail(event.target.value)}
-            required
-            type="email"
-            value={email}
-          />
+          {failure.kind === "unreachable" ? (
+            <StateBlock
+              description={failure.message}
+              kind="error"
+              title="Cannot reach TokTickIT"
+            />
+          ) : null}
 
-          <TextInput
-            autoComplete="current-password"
-            error={passwordError}
-            label="Password"
-            name="password"
-            onChange={(event) => setPassword(event.target.value)}
-            required
-            type="password"
-            value={password}
-          />
+          <form noValidate onSubmit={onSubmit}>
+            {/* Read-only while busy (ui-spec.md §3): edits made during the
+                request would not be the credentials that request carries. */}
+            <TextInput
+              autoComplete="username"
+              error={emailError}
+              label="Email"
+              name="email"
+              onChange={(event) => setEmail(event.target.value)}
+              readOnly={busy}
+              required
+              type="email"
+              value={email}
+            />
 
-          <Button
-            busy={busy}
-            busyLabel="Signing in…"
-            className="tkt-auth__submit"
-            type="submit"
-            variant="primary"
-          >
-            Sign In
-          </Button>
-        </form>
-      </main>
-    </div>
+            <PasswordInput
+              autoComplete="current-password"
+              error={passwordError}
+              label="Password"
+              name="password"
+              onChange={(event) => setPassword(event.target.value)}
+              onVisibleChange={setPasswordVisible}
+              readOnly={busy}
+              required
+              value={password}
+              visible={passwordVisible}
+            />
+
+            <Button
+              busy={busy}
+              busyLabel="Signing in…"
+              className="tkt-auth__submit"
+              type="submit"
+              variant="primary"
+            >
+              Sign In
+            </Button>
+          </form>
+        </section>
+      </div>
+    </AppShell>
   );
 };

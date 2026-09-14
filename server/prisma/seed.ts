@@ -1,4 +1,4 @@
-import { hashPassword } from "../src/auth/password.js";
+import { hashPassword, isUsableHash } from "../src/auth/password.js";
 import { prisma } from "../src/prisma.js";
 import { SEED_ACCOUNTS } from "./accounts.js";
 
@@ -179,23 +179,20 @@ const seedAccounts = async (tx: Tx, hashes: Map<string, string>) => {
         throw new Error(`No hash prepared for ${account.email}.`);
       }
 
+      // One object for both branches, so the fields written on creation and
+      // the fields restored on every rerun cannot drift apart.
+      const fields = {
+        name: account.name,
+        role: account.role,
+        isActive: account.isActive,
+        passwordHash,
+        mustChangePassword: account.mustChangePassword,
+      };
+
       return tx.user.upsert({
         where: { email: account.email },
-        update: {
-          name: account.name,
-          role: account.role,
-          isActive: account.isActive,
-          passwordHash,
-          mustChangePassword: account.mustChangePassword,
-        },
-        create: {
-          email: account.email,
-          name: account.name,
-          role: account.role,
-          isActive: account.isActive,
-          passwordHash,
-          mustChangePassword: account.mustChangePassword,
-        },
+        update: fields,
+        create: { email: account.email, ...fields },
       });
     })
   );
@@ -284,17 +281,24 @@ const seed = async () => {
     );
   }
 
-  // An account able to sign in with no hash would be an account with no
-  // password. The column is NOT NULL, so this can only fail if the seed itself
-  // is wrong — which is exactly the case worth catching here rather than at a
-  // sign-in three files away.
-  const withoutPassword = await prisma.user.count({
-    where: { passwordHash: null },
+  // Every account this seed owns must be able to sign in. The column is NOT
+  // NULL, so the failure worth catching is not a null — it is a seeded account
+  // still holding the `!` the migration gives accounts that predate
+  // authentication, which would mean this seed did not restore it. Accounts
+  // the seed does not own are left alone: staying locked is correct for them.
+  const seeded = await prisma.user.findMany({
+    where: { email: { in: SEED_ACCOUNTS.map((account) => account.email) } },
+    select: { email: true, passwordHash: true },
   });
 
-  if (withoutPassword > 0) {
+  const locked = seeded.filter((row) => !isUsableHash(row.passwordHash));
+
+  if (seeded.length !== SEED_ACCOUNTS.length || locked.length > 0) {
     throw new Error(
-      `${withoutPassword} account(s) have no password hash after seeding.`
+      `Seeded accounts without a usable password: ${
+        locked.map((row) => row.email).join(", ") ||
+        "(some accounts are missing)"
+      }.`
     );
   }
 
