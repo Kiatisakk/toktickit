@@ -43,11 +43,7 @@ export const ZEN_GREEN = {
  */
 export const shoot = async (
   page: Page,
-  screen:
-    | "create-ticket"
-    | "my-tickets"
-    | "ticket-detail"
-    | "requester-selection",
+  screen: "create-ticket" | "my-tickets" | "ticket-detail",
   name: string
 ): Promise<void> => {
   await page.screenshot({
@@ -166,15 +162,17 @@ export const expectNothingClipped = async (page: Page): Promise<void> => {
 export const firstTicketLink = (page: Page): Locator =>
   page.getByRole("link", { name: /^TKT-\d{4}-\d{6}$/u }).first();
 
-/** Selects a Development Requester by name and lands on My Tickets. */
-export const signInAs = async (page: Page, name: string): Promise<void> => {
-  await page.goto("/select-requester");
-
-  const select = page.getByLabel("Development Requester");
-
-  await expect(select).toBeVisible();
-  await select.selectOption({ label: name });
-  await page.getByRole("button", { name: "Continue" }).click();
+/**
+ * Opens My Tickets as whoever the page is signed in as.
+ *
+ * Replaces Lab 2's `signInAs`, which drove the Development Requester selector.
+ * Identity now arrives with the page: the viewport projects start signed in as
+ * Requester A, and `pageAs` opens anyone else (e2e/lab-03/sessions.ts). The
+ * URL assertion is what catches a saved session that has stopped working — a
+ * guard redirect to /login would otherwise pass for an empty list.
+ */
+export const openMyTickets = async (page: Page): Promise<void> => {
+  await page.goto("/my-tickets");
 
   await expect(page).toHaveURL(/\/my-tickets$/u);
 };
