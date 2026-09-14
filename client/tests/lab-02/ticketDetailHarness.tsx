@@ -2,10 +2,11 @@ import { render } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { vi } from "vitest";
 
-import { RequesterContext } from "../../src/context/requesterContextValue";
+import { AuthContext } from "../../src/context/authContextValue";
 import type { AttachmentMetadata } from "../../src/lib/api";
 import { TicketDetail } from "../../src/routes/TicketDetail";
-import { CONTEXT, jsonResponse } from "../support/requester";
+import { authContext } from "../support/auth";
+import { jsonResponse } from "../support/http";
 
 /**
  * Fixtures and a renderer shared by the two suites that exercise this screen.
@@ -20,7 +21,10 @@ import { CONTEXT, jsonResponse } from "../support/requester";
 
 // Re-exported so the two suites that already import these from here keep
 // working unchanged; the definitions now live with the other fixtures.
-export { CONTEXT, jsonResponse };
+export { jsonResponse };
+
+/** Jennifer, signed in. The ticket below is hers. */
+export const AUTH = authContext();
 
 export const ATTACHMENT: AttachmentMetadata = {
   id: 11,
@@ -59,10 +63,10 @@ export const respond = (body: unknown, status = 200) =>
 export const renderAt = (path = "/tickets/42") =>
   render(
     <MemoryRouter initialEntries={[path]}>
-      <RequesterContext.Provider value={CONTEXT}>
+      <AuthContext.Provider value={AUTH}>
         <Routes>
           <Route element={<TicketDetail />} path="/tickets/:ticketId" />
         </Routes>
-      </RequesterContext.Provider>
+      </AuthContext.Provider>
     </MemoryRouter>
   );

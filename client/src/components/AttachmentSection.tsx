@@ -42,14 +42,12 @@ const MAX_REASON = 500;
 
 interface AttachmentSectionProps {
   ticketId: number;
-  requesterId: number;
   attachments: AttachmentMetadata[];
   onChange: (attachments: AttachmentMetadata[]) => void;
 }
 
 export const AttachmentSection = ({
   ticketId,
-  requesterId,
   attachments,
   onChange,
 }: AttachmentSectionProps) => {
@@ -78,7 +76,7 @@ export const AttachmentSection = ({
     });
 
     try {
-      const created = await uploadAttachment(ticketId, file, requesterId);
+      const created = await uploadAttachment(ticketId, file);
 
       onChange([created, ...attachments]);
       setPending(null);
@@ -112,11 +110,7 @@ export const AttachmentSection = ({
     setRemovalFailure(null);
 
     try {
-      const removed = await removeAttachment(
-        removing.id,
-        reason.trim(),
-        requesterId
-      );
+      const removed = await removeAttachment(removing.id, reason.trim());
 
       onChange(
         attachments.map((one) => (one.id === removed.id ? removed : one))
@@ -138,7 +132,7 @@ export const AttachmentSection = ({
     setDownloadFailure(null);
 
     try {
-      await downloadAttachment(attachment, requesterId);
+      await downloadAttachment(attachment);
     } catch (error) {
       setDownloadFailure({
         id: attachment.id,

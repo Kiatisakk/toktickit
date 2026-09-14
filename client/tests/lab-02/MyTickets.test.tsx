@@ -3,9 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { RequesterContext } from "../../src/context/requesterContextValue";
+import { AuthContext } from "../../src/context/authContextValue";
 import { MyTickets } from "../../src/routes/MyTickets";
-import { CONTEXT, jsonResponse } from "../support/requester";
+import { authContext, SOMCHAI_USER } from "../support/auth";
+import { jsonResponse } from "../support/http";
+
+const AUTH = authContext();
 
 /**
  * UI-11 — an empty list and a query that matched nothing are different states.
@@ -66,9 +69,9 @@ const listFetch = (
 const renderScreen = () =>
   render(
     <MemoryRouter>
-      <RequesterContext.Provider value={CONTEXT}>
+      <AuthContext.Provider value={AUTH}>
         <MyTickets />
-      </RequesterContext.Provider>
+      </AuthContext.Provider>
     </MemoryRouter>
   );
 
@@ -97,19 +100,23 @@ describe("a populated list", () => {
     expect(links[0]).toHaveAttribute("href", "/tickets/1");
   });
 
-  it("scopes the request to the current requester", async () => {
+  // Scoped by the session cookie, which only travels with credentials. The
+  // client names nobody: the retired header must not reappear (BR-41).
+  it("scopes the request to the signed-in user by the session alone", async () => {
     renderScreen();
 
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining("/api/tickets"),
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            "X-Development-Requester-Id": "1",
-          }),
-        })
+        expect.objectContaining({ credentials: "include" })
       );
     });
+
+    for (const [, init] of vi.mocked(fetch).mock.calls) {
+      expect(Object.keys(init?.headers ?? {})).not.toContain(
+        "X-Development-Requester-Id"
+      );
+    }
   });
 });
 
@@ -581,19 +588,19 @@ describe("retrying after a failure", () => {
   });
 });
 
-describe("switching requester", () => {
+describe("switching user", () => {
   // BR-08 on the client. The API side is covered by API-08; this is the half
   // that decides whether one person's rows stay on screen under another
   // person's name.
-  it("refetches when the current requester changes", async () => {
+  it("refetches when the signed-in user changes", async () => {
     const fetchMock = listFetch([ticket(1)]);
     vi.stubGlobal("fetch", fetchMock);
 
     const { rerender } = render(
       <MemoryRouter>
-        <RequesterContext.Provider value={CONTEXT}>
+        <AuthContext.Provider value={AUTH}>
           <MyTickets />
-        </RequesterContext.Provider>
+        </AuthContext.Provider>
       </MemoryRouter>
     );
 
@@ -604,19 +611,9 @@ describe("switching requester", () => {
 
     rerender(
       <MemoryRouter>
-        <RequesterContext.Provider
-          value={{
-            ...CONTEXT,
-            generation: CONTEXT.generation + 1,
-            requester: {
-              id: 2,
-              name: "Somchai Wattana",
-              email: "somchai.wattana@example.ac.th",
-            },
-          }}
-        >
+        <AuthContext.Provider value={authContext({ user: SOMCHAI_USER })}>
           <MyTickets />
-        </RequesterContext.Provider>
+        </AuthContext.Provider>
       </MemoryRouter>
     );
 
@@ -629,15 +626,32 @@ describe("switching requester", () => {
     });
   });
 
-  it("asks for the new requester's tickets, not the old one's", async () => {
-    const fetchMock = listFetch([ticket(1)]);
+  // Part 7's evidence, on the client: A's rows leave the screen and B's arrive.
+  // Which rows are B's is the session's decision, so the stub answers A's list
+  // first and B's afterwards, as the server would for two different cookies.
+  it("replaces the old user's tickets with the new user's", async () => {
+    let listCalls = 0;
+    const fetchMock = vi.fn((url: string) => {
+      if (url.includes("/api/categories")) {
+        return Promise.resolve(jsonResponse(CATEGORIES));
+      }
+
+      listCalls += 1;
+
+      return Promise.resolve(
+        jsonResponse({
+          data: [listCalls === 1 ? ticket(1) : ticket(2)],
+          meta: { page: 1, pageSize: 10, totalItems: 1, totalPages: 1 },
+        })
+      );
+    });
     vi.stubGlobal("fetch", fetchMock);
 
     const { rerender } = render(
       <MemoryRouter>
-        <RequesterContext.Provider value={CONTEXT}>
+        <AuthContext.Provider value={AUTH}>
           <MyTickets />
-        </RequesterContext.Provider>
+        </AuthContext.Provider>
       </MemoryRouter>
     );
 
@@ -645,32 +659,14 @@ describe("switching requester", () => {
 
     rerender(
       <MemoryRouter>
-        <RequesterContext.Provider
-          value={{
-            ...CONTEXT,
-            generation: CONTEXT.generation + 1,
-            requester: {
-              id: 2,
-              name: "Somchai Wattana",
-              email: "somchai.wattana@example.ac.th",
-            },
-          }}
-        >
+        <AuthContext.Provider value={authContext({ user: SOMCHAI_USER })}>
           <MyTickets />
-        </RequesterContext.Provider>
+        </AuthContext.Provider>
       </MemoryRouter>
     );
 
-    await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining("/api/tickets"),
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            "X-Development-Requester-Id": "2",
-          }),
-        })
-      );
-    });
+    expect(await screen.findAllByText("TKT-2026-000002")).not.toHaveLength(0);
+    expect(screen.queryByText("TKT-2026-000001")).not.toBeInTheDocument();
   });
 
   /**
@@ -680,7 +676,7 @@ describe("switching requester", () => {
    * requests page 3 of B's — usually much shorter — filtered list, which is
    * empty and looks like a bug.
    */
-  it("discards the filter, sort and page when the requester changes", async () => {
+  it("discards the filter, sort and page when the user changes", async () => {
     const fetchMock = listFetch([ticket(1)], {
       page: 1,
       pageSize: 10,
@@ -691,9 +687,9 @@ describe("switching requester", () => {
 
     const { rerender } = render(
       <MemoryRouter>
-        <RequesterContext.Provider value={CONTEXT}>
+        <AuthContext.Provider value={AUTH}>
           <MyTickets />
-        </RequesterContext.Provider>
+        </AuthContext.Provider>
       </MemoryRouter>
     );
 
@@ -713,19 +709,9 @@ describe("switching requester", () => {
 
     rerender(
       <MemoryRouter>
-        <RequesterContext.Provider
-          value={{
-            ...CONTEXT,
-            generation: CONTEXT.generation + 1,
-            requester: {
-              id: 2,
-              name: "Somchai Wattana",
-              email: "somchai.wattana@example.ac.th",
-            },
-          }}
-        >
+        <AuthContext.Provider value={authContext({ user: SOMCHAI_USER })}>
           <MyTickets />
-        </RequesterContext.Provider>
+        </AuthContext.Provider>
       </MemoryRouter>
     );
 

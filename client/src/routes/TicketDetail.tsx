@@ -8,7 +8,7 @@ import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { StateBlock } from "../components/StateBlock";
 import { TextInput } from "../components/TextInput";
-import { useRequester } from "../context/useRequester";
+import { useAuth } from "../context/useAuth";
 import {
   ApiError,
   type AttachmentMetadata,
@@ -43,7 +43,8 @@ type Load =
 
 export const TicketDetail = () => {
   const { ticketId } = useParams();
-  const { requester, generation } = useRequester();
+  const { user } = useAuth();
+  const signedInAs = user?.id ?? null;
   const navigate = useNavigate();
 
   const [state, setState] = useState<Load>({ kind: "loading" });
@@ -62,7 +63,7 @@ export const TicketDetail = () => {
     (signal: AbortSignal, current: { active: boolean }) => {
       const id = Number(ticketId);
 
-      if (!requester) {
+      if (!user) {
         return;
       }
 
@@ -75,7 +76,7 @@ export const TicketDetail = () => {
 
       setState({ kind: "loading" });
 
-      fetchTicket(id, requester.id, signal)
+      fetchTicket(id, signal)
         .then((ticket) => {
           if (current.active) {
             setState({ kind: "loaded", ticket });
@@ -105,10 +106,10 @@ export const TicketDetail = () => {
           });
         });
     },
-    [ticketId, requester]
+    [ticketId, user]
   );
 
-  // `generation` is here so that changing requester re-asks. Without it, one
+  // `signedInAs` is here so that a change of user re-asks. Without it, one
   // person's ticket stays on screen under another person's name — and this is
   // the screen where that matters most, because the URL survives the switch.
   useEffect(() => {
@@ -122,7 +123,7 @@ export const TicketDetail = () => {
       current.active = false;
       controller.abort();
     };
-  }, [load, generation, reloadToken]);
+  }, [load, signedInAs, reloadToken]);
 
   const onAttachmentsChange = (attachments: AttachmentMetadata[]) => {
     setState((current) =>
@@ -305,14 +306,11 @@ export const TicketDetail = () => {
         </div>
       </div>
 
-      {requester ? (
-        <AttachmentSection
-          attachments={ticket.attachments}
-          onChange={onAttachmentsChange}
-          requesterId={requester.id}
-          ticketId={ticket.id}
-        />
-      ) : null}
+      <AttachmentSection
+        attachments={ticket.attachments}
+        onChange={onAttachmentsChange}
+        ticketId={ticket.id}
+      />
     </AppShell>
   );
 };
