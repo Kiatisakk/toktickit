@@ -137,6 +137,18 @@ I said plainly that BR-07 is the better rule — composition requirements are wh
 
 **Two process notes in the body**, because neither has a line: the PR is not linked to #56 — the closing keyword does not link against a non-default base, and `addCloseIssueReferences`, the mutation he taught me on #57, fixes it — and `tests.md` is not in the diff while tests for the slice now exist.
 
+### beambeambeam#62 — Shared Ticket queue and read-only detail (his Issue #51)
+
+[PR #62](https://github.com/beambeambeam/toktickit/pull/62) · reviewed 2026-09-16 · **4 line comments**, verdict **Changes requested** on one of them.
+
+47 files, +3929/−186: the expanded status set, IT Priority, owner and version columns, the staff queue API with strict query parsing, and the queue and read-only detail screens.
+
+**The server was the strongest work of his I have reviewed, and three things I checked rather than assumed.** Severity sorting uses the enum's declared order, and his test tells it apart from alphabetical. Every fixture ticket shares one `ticketDate`, so his date-ordering assertions are really tie-break tests — which I nearly flagged as missing before reading the fixture. And the largest offset his contract allows, about `1.07e11`, is past a 32-bit integer; I ran it against PostgreSQL on his Prisma version and it is accepted.
+
+**The one change requested was his own fix, not carried over.** On #61 he fixed a `403` rendering as a retryable failure (`0d0c9f6`). The new queue and detail pages repeat the original defect, and #51 names the forbidden state in its acceptance criteria. The same branch would also make a stale owner filter recoverable.
+
+**Three optional notes.** The `@default(Low)` needed to backfill IT Priority outlives the migration, so a future create that forgets the field gets a quietly wrong value; attachment write denial is tested for staff upload but not staff removal or Administrator upload, under a variable named `requesterUpload`; and the new queue-to-detail browser spec is not in `tests.md`. Plus the process note from #61 again: the PR is not linked to its Issue.
+
 ---
 
 ## Coverage
@@ -150,6 +162,7 @@ I said plainly that BR-07 is the better rule — composition requirements are wh
 | [beambeambeam#59](https://github.com/beambeambeam/toktickit/pull/59) | given | 3 | Changes requested → Approved | Merged |
 | [beambeambeam#60](https://github.com/beambeambeam/toktickit/pull/60) | given | 6 | Changes requested → Approved | Merged |
 | [beambeambeam#61](https://github.com/beambeambeam/toktickit/pull/61) | given | 4 | Changes requested | Open |
+| [beambeambeam#62](https://github.com/beambeambeam/toktickit/pull/62) | given | 4 | Changes requested | Open |
 
 Checked by listing the Pull Requests from GitHub and searching this file for each number, rather than by reading down the page — which is how two were found missing in Lab 2.
 
