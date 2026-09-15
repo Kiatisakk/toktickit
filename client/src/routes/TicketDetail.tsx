@@ -308,6 +308,7 @@ export const TicketDetail = () => {
 
       <AttachmentSection
         attachments={ticket.attachments}
+        canModify={user !== null && ticket.requester.id === user.id}
         onChange={onAttachmentsChange}
         ticketId={ticket.id}
       />

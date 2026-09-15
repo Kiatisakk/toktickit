@@ -20,8 +20,11 @@ import { TicketDetail } from "./TicketDetail";
  *
  * `/system-status` keeps the Lab 1 vertical slice reachable and renders `App`
  * directly rather than inside the shell — `App` brings its own `<main>`, and
- * nesting one inside another is invalid. It calls only the public health
- * endpoint, so it stays unguarded.
+ * nesting one inside another is invalid. It is guarded like every other screen:
+ * its verdict needs the categories as well as the health endpoint (CONTEXT.md),
+ * and the categories need a session. An earlier version left it unguarded on the
+ * belief that it called only the public health endpoint, and a signed-out check
+ * reported a healthy system as Offline.
  */
 const guarded = (element: React.ReactNode) => <AuthGuard>{element}</AuthGuard>;
 
@@ -59,7 +62,7 @@ export const router = createBrowserRouter([
   },
   {
     path: "/system-status",
-    element: <App />,
+    element: guarded(<App />),
   },
   {
     path: "*",

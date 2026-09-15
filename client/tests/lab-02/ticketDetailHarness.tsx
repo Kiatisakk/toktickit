@@ -60,10 +60,10 @@ export const TICKET = {
 export const respond = (body: unknown, status = 200) =>
   vi.fn(() => Promise.resolve(jsonResponse(body, status)));
 
-export const renderAt = (path = "/tickets/42") =>
+export const renderAt = (path = "/tickets/42", auth = AUTH) =>
   render(
     <MemoryRouter initialEntries={[path]}>
-      <AuthContext.Provider value={AUTH}>
+      <AuthContext.Provider value={auth}>
         <Routes>
           <Route element={<TicketDetail />} path="/tickets/:ticketId" />
         </Routes>
