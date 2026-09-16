@@ -8,6 +8,7 @@ import { adminUsersRouter } from "./routes/adminUsers.js";
 import { attachmentsRouter } from "./routes/attachments.js";
 import { authRouter } from "./routes/auth.js";
 import { categoriesRouter } from "./routes/categories.js";
+import { commentsRouter } from "./routes/comments.js";
 import { healthRouter } from "./routes/health.js";
 import { relatedSystemsRouter } from "./routes/relatedSystems.js";
 import { ticketsRouter } from "./routes/tickets.js";
@@ -60,6 +61,7 @@ export const createApp = (): Express => {
   app.use("/api", categoriesRouter);
   app.use("/api", relatedSystemsRouter);
   app.use("/api", ticketsRouter);
+  app.use("/api", commentsRouter);
   app.use("/api", attachmentsRouter);
   app.use("/api", adminUsersRouter);
 
