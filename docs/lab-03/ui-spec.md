@@ -88,7 +88,7 @@ The user cannot navigate away, and cannot reach any other screen by URL, while t
 
 The queue is the working screen of the sprint. It reuses the ticket list surface, the filter bar and the pagination control from My Tickets rather than introducing a second table idiom.
 
-**Controls.** A search field (ticket number or summary); filters for Category, Requested Priority, IT Priority, Status and Owner; and a pagination control. The Owner filter includes an **Unassigned** option, which is how staff find unclaimed work.
+**Controls.** A search field (ticket number or summary); filters for Category, Requested Priority, IT Priority, Status and Owner; and a pagination control. The Owner filter includes an **Unassigned** option, which is how staff find unclaimed work. At desktop width the six controls sit on one row of their own grid; if categories cannot be loaded, Category is disabled and says why, as on My Tickets.
 
 **Columns (desktop).** Ticket No. · Created Date · Summary · Category · Req. Priority · IT Priority · Status · Owner · Last Updated.
 
@@ -106,7 +106,7 @@ Nine columns is the ceiling. Anything further belongs on the detail screen. Owne
 | Populated | Rows, with the result count and pagination |
 | Empty | *No tickets yet* — the queue itself is empty |
 | No results | *No tickets match these filters*, with a Clear Filters action |
-| Forbidden | Not reachable: the destination is absent from a Requester's navigation, and the route redirects |
+| Forbidden | Not reachable: the destination is absent from a Requester's navigation, and the route redirects. If access is lost while the queue is open — the session ends, or the account stops being staff — the queue says *Your access has changed*, offers no retry, and re-reads the identity so the route guard moves the user on |
 | Failure | The safe failure block with a retry |
 
 Empty and no-results are different states with different remedies, and must not share a message.

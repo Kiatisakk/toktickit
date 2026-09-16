@@ -107,6 +107,20 @@ He approved with `LGTM` at 14:39:23Z on 2026-09-16 and merged nine seconds later
 
 **One answered rather than applied.** He read `ui-spec.md` §8 — *"no simultaneous filters — all excluded by §8.5"* — as forbidding a search and a role filter together. The handout's §8.5 lists search and "optionally filter users by role" as two separate required functions, and places "multiple simultaneous filters" under *not required*, not under anything forbidden. There is one filter here. But the finding was a fair reading of what I had written: "excluded" said more than "not required" does. The sentence now says what the handout says.
 
+### PR #62 — IT Staff Ticket Queue (Issue #50)
+
+[PR #62](https://github.com/Kiatisakk/toktickit/pull/62) · reviewed 2026-09-16 · **3 line comments**, verdict **Changes requested**.
+
+Three findings on the queue screen, all marked as risks. All three were real, and all three were fixed.
+
+*A refusal read as a failure worth retrying.* A 401 or 403 from the queue showed *Try again*, which can only be refused again, and kept a signed-out or demoted staff member on a screen that is no longer theirs. The queue now says *Your access has changed* and re-reads the identity, and the route guard moves them on. **This is the defect I raised on his own queue (beambeambeam#62) the same afternoon.** Finding it in someone else's code did not stop me writing it into mine.
+
+*A failed category load looked like a system with no categories.* Category stayed enabled with only *All Categories* in it. It is now disabled with the hint My Tickets already used. The queue had copied My Tickets' filter bar but not its failure handling.
+
+*Owner wrapped onto a second row.* The queue has six filters, and the grid it shared with My Tickets has five columns. The queue now has a six-column grid of its own. jsdom has no layout, so this one was measured in Edge against the real stylesheet: two rows at 1440, 1200 and 992 px before, one row after, no horizontal overflow, and tablet and mobile unchanged.
+
+The four regression tests were run against the unfixed screen first and failed there.
+
 ---
 
 ## Reviews I gave
@@ -202,6 +216,7 @@ Reviewed 2026-09-16, in order, in the terse caveman format at his request for th
 | [#59](https://github.com/Kiatisakk/toktickit/pull/59) | received | 17 | Comment → Approved | Merged |
 | [#60](https://github.com/Kiatisakk/toktickit/pull/60) | received | 2 | Comment → Approved | Merged |
 | [#61](https://github.com/Kiatisakk/toktickit/pull/61) | received | 4 | Comment → Approved | Merged |
+| [#62](https://github.com/Kiatisakk/toktickit/pull/62) | received | 3 | Changes requested | Open — fixes pushed |
 | [beambeambeam#59](https://github.com/beambeambeam/toktickit/pull/59) | given | 3 | Changes requested → Approved | Merged |
 | [beambeambeam#60](https://github.com/beambeambeam/toktickit/pull/60) | given | 6 | Changes requested → Approved | Merged |
 | [beambeambeam#61](https://github.com/beambeambeam/toktickit/pull/61) | given | 4 | Changes requested | Open |
