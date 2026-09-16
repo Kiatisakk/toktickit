@@ -103,6 +103,8 @@ Four findings, all on the screen, all marked as bugs. Three were real; one was a
 
 All three regression tests were run against the unfixed screen first and failed there.
 
+He approved with `LGTM` at 14:39:23Z on 2026-09-16 and merged nine seconds later as `1dcd3da`. Issue #53 was closed by hand. Recorded on the next feature branch, #50's.
+
 **One answered rather than applied.** He read `ui-spec.md` §8 — *"no simultaneous filters — all excluded by §8.5"* — as forbidding a search and a role filter together. The handout's §8.5 lists search and "optionally filter users by role" as two separate required functions, and places "multiple simultaneous filters" under *not required*, not under anything forbidden. There is one filter here. But the finding was a fair reading of what I had written: "excluded" said more than "not required" does. The sentence now says what the handout says.
 
 ---
@@ -199,7 +201,7 @@ Reviewed 2026-09-16, in order, in the terse caveman format at his request for th
 | [#57](https://github.com/Kiatisakk/toktickit/pull/57) | received | 1 | Comment → Approved | Merged |
 | [#59](https://github.com/Kiatisakk/toktickit/pull/59) | received | 17 | Comment → Approved | Merged |
 | [#60](https://github.com/Kiatisakk/toktickit/pull/60) | received | 2 | Comment → Approved | Merged |
-| [#61](https://github.com/Kiatisakk/toktickit/pull/61) | received | 4 | Comment | Open — fixes pushed |
+| [#61](https://github.com/Kiatisakk/toktickit/pull/61) | received | 4 | Comment → Approved | Merged |
 | [beambeambeam#59](https://github.com/beambeambeam/toktickit/pull/59) | given | 3 | Changes requested → Approved | Merged |
 | [beambeambeam#60](https://github.com/beambeambeam/toktickit/pull/60) | given | 6 | Changes requested → Approved | Merged |
 | [beambeambeam#61](https://github.com/beambeambeam/toktickit/pull/61) | given | 4 | Changes requested | Open |
