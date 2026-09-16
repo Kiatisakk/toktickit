@@ -12,41 +12,88 @@ export type SortField =
   | "createdAt"
   | "updatedAt"
   | "summary"
-  | "requestedPriority";
+  | "requestedPriority"
+  | "itPriority"
+  | "currentStatus"
+  | "ticketOwner";
+
+/**
+ * Which list this is.
+ *
+ * - `mine` — My Tickets. Sorts by the five fields the Requester list accepts.
+ * - `queue` — the staff Ticket Queue (ui-spec.md §5). The same nine columns,
+ *   three more of them sortable, and an unowned ticket reads *Unassigned* in
+ *   words, because in the queue "nobody has picked this up" is the fact staff
+ *   are scanning for.
+ */
+export type TicketListVariant = "mine" | "queue";
 
 interface TicketTableProps {
   tickets: TicketRow[];
   sort: SortField;
   order: "asc" | "desc";
   onSort: (field: SortField) => void;
+  variant?: TicketListVariant;
 }
 
-const COLUMNS: {
+interface Column {
   field: SortField | null;
   label: string;
   /** The one column allowed to run to a second line. See components.css. */
   wraps?: boolean;
-}[] = [
-  { field: "ticketNumber", label: "Ticket No." },
-  { field: "createdAt", label: "Created Date" },
-  { field: "summary", label: "Summary", wraps: true },
-  { field: null, label: "Category" },
-  { field: "requestedPriority", label: "Requested Priority" },
-  { field: null, label: "IT Priority" },
-  { field: null, label: "Current Status" },
-  { field: null, label: "Ticket Owner" },
-  { field: "updatedAt", label: "Last Updated" },
-];
+}
 
 /**
- * The columns a reader can actually sort by, derived from `COLUMNS` rather
- * than listed again — so the mobile sort control below can never end up
- * offering a field the desktop headers do not, or missing one they do.
+ * The nine columns, with the sort field each list accepts for it.
+ *
+ * Category is sortable in neither: the API refuses it, and a header that answers
+ * 400 is worse than one that does not invite the click (ui-spec.md §5).
  */
-const SORTABLE_COLUMNS = COLUMNS.filter(
-  (column): column is { field: SortField; label: string; wraps?: boolean } =>
-    column.field !== null
-);
+const columnsFor = (variant: TicketListVariant): Column[] => {
+  const queue = variant === "queue";
+
+  return [
+    { field: "ticketNumber", label: "Ticket No." },
+    { field: "createdAt", label: "Created Date" },
+    { field: "summary", label: "Summary", wraps: true },
+    { field: null, label: "Category" },
+    { field: "requestedPriority", label: "Requested Priority" },
+    { field: queue ? "itPriority" : null, label: "IT Priority" },
+    { field: queue ? "currentStatus" : null, label: "Current Status" },
+    { field: queue ? "ticketOwner" : null, label: "Ticket Owner" },
+    { field: "updatedAt", label: "Last Updated" },
+  ];
+};
+
+/**
+ * The owner cell. My Tickets keeps its Lab 2 dash with a spoken label; the
+ * queue says *Unassigned* outright — never an empty cell, which reads as missing
+ * data rather than as a fact (ui-spec.md §5, FR-21).
+ */
+const Owner = ({
+  owner,
+  variant,
+}: {
+  owner: TicketRow["ticketOwner"];
+  variant: TicketListVariant;
+}) => {
+  if (owner) {
+    return <>{owner.name}</>;
+  }
+
+  if (variant === "queue") {
+    return <span className="tkt-unassigned">Unassigned</span>;
+  }
+
+  return (
+    <span className="tkt-unset">
+      <span aria-hidden="true">—</span>
+      <span className="tkt-visually-hidden">
+        Not yet assigned to an IT owner
+      </span>
+    </span>
+  );
+};
 
 /**
  * "Aug 29, 2026 09:14 AM" — the shape the illustrations print.
@@ -88,7 +135,16 @@ export const TicketTable = ({
   sort,
   order,
   onSort,
+  variant = "mine",
 }: TicketTableProps) => {
+  const COLUMNS = columnsFor(variant);
+  // Derived from the columns rather than listed again, so the mobile sort
+  // control can never offer a field the desktop headers do not, or miss one.
+  const SORTABLE_COLUMNS = COLUMNS.filter(
+    (column): column is Column & { field: SortField } => column.field !== null
+  );
+  const regionLabel = variant === "queue" ? "Ticket queue" : "Your tickets";
+
   // A column with no `field` is not sortable at all, so it carries no
   // `aria-sort` — the attribute would claim a capability the header does not
   // have. A sortable column that is not the current sort still gets an
@@ -121,7 +177,7 @@ export const TicketTable = ({
         with a mouse and not at all otherwise.
       */}
       <div
-        aria-label="Your tickets"
+        aria-label={regionLabel}
         className="tkt-table-scroll"
         // `role="region"` is what makes `aria-label` mean anything here. A
         // bare `<div>` has no implicit role, and `aria-label` is only ever
@@ -134,7 +190,7 @@ export const TicketTable = ({
       >
         <table className="tkt-table">
           <caption className="tkt-visually-hidden">
-            Your tickets, sortable by column
+            {regionLabel}, sortable by column
           </caption>
           <thead>
             <tr>
@@ -192,16 +248,7 @@ export const TicketTable = ({
                   <Badge kind="status" value={ticket.currentStatus} />
                 </td>
                 <td>
-                  {ticket.ticketOwner ? (
-                    ticket.ticketOwner.name
-                  ) : (
-                    <span className="tkt-unset">
-                      <span aria-hidden="true">—</span>
-                      <span className="tkt-visually-hidden">
-                        Not yet assigned to an IT owner
-                      </span>
-                    </span>
-                  )}
+                  <Owner owner={ticket.ticketOwner} variant={variant} />
                 </td>
                 <td>{formatDate(ticket.updatedAt)}</td>
               </tr>
@@ -279,16 +326,7 @@ export const TicketTable = ({
               </dd>
               <dt>Ticket Owner</dt>
               <dd>
-                {ticket.ticketOwner ? (
-                  ticket.ticketOwner.name
-                ) : (
-                  <span className="tkt-unset">
-                    <span aria-hidden="true">—</span>
-                    <span className="tkt-visually-hidden">
-                      Not yet assigned to an IT owner
-                    </span>
-                  </span>
-                )}
+                <Owner owner={ticket.ticketOwner} variant={variant} />
               </dd>
               <dt>Created</dt>
               <dd>{formatDate(ticket.createdAt)}</dd>

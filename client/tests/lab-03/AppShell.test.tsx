@@ -111,33 +111,41 @@ describe("the role badge", () => {
 
 describe("UI-13 navigation by role", () => {
   const destinations = () =>
-    screen.getByRole("navigation", { name: "Primary" }).querySelectorAll("a");
+    [
+      ...screen
+        .getByRole("navigation", { name: "Primary" })
+        .querySelectorAll("a"),
+    ].map((link) => link.textContent);
 
-  it("offers an Administrator User Management, first, as ui-spec.md orders it", () => {
+  // The order and membership ui-spec.md §2 gives, role by role. A destination
+  // a role may not use is absent rather than disabled (AC-34).
+  it("offers an Administrator all four, in ui-spec.md's order", () => {
     renderShell({ auth: authContext({ user: ADMIN_USER }) });
 
-    expect([...destinations()].map((link) => link.textContent)).toEqual([
+    expect(destinations()).toEqual([
+      "Ticket Queue",
       "User Management",
       "My Tickets",
       "Create Ticket",
     ]);
   });
 
-  it.each([
-    { who: "a Requester", auth: authContext() },
-    { who: "IT Staff", auth: authContext({ user: STAFF_USER }) },
-  ])(
-    "leaves User Management out for $who — absent, not disabled",
-    ({ auth }) => {
-      renderShell({ auth });
+  it("offers IT Staff the Ticket Queue but not User Management", () => {
+    renderShell({ auth: authContext({ user: STAFF_USER }) });
 
-      expect(
-        screen.queryByRole("link", { name: /user management/iu })
-      ).not.toBeInTheDocument();
-      expect([...destinations()].map((link) => link.textContent)).toEqual([
-        "My Tickets",
-        "Create Ticket",
-      ]);
-    }
-  );
+    expect(destinations()).toEqual([
+      "Ticket Queue",
+      "My Tickets",
+      "Create Ticket",
+    ]);
+  });
+
+  it("offers a Requester neither staff destination", () => {
+    renderShell();
+
+    expect(
+      screen.queryByRole("link", { name: /ticket queue|user management/iu })
+    ).not.toBeInTheDocument();
+    expect(destinations()).toEqual(["My Tickets", "Create Ticket"]);
+  });
 });
