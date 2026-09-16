@@ -9,7 +9,9 @@ import { StateBlock } from "../components/StateBlock";
 import { TextInput } from "../components/TextInput";
 import { type SortField, TicketTable } from "../components/TicketTable";
 import { TicketTableSkeleton } from "../components/TicketTableSkeleton";
+import { useAuth } from "../context/useAuth";
 import {
+  ApiError,
   fetchCategories,
   fetchStaffOwners,
   fetchStaffTickets,
@@ -62,7 +64,20 @@ const NO_FILTERS: Filters = {
 type Listing =
   | { kind: "loading" }
   | { kind: "loaded"; tickets: QueueRow[]; meta: TicketListMeta }
-  | { kind: "failed"; message: string };
+  | { kind: "failed"; message: string }
+  | { kind: "refused" };
+
+const aborted = (error: unknown) =>
+  error instanceof DOMException && error.name === "AbortError";
+
+/**
+ * A refusal that no retry can fix: the session has ended (401), or the account
+ * is no longer IT Staff or an Administrator (403). The server applies a role
+ * change on the very next request (D-02), so this is how a demotion first
+ * reaches an open queue.
+ */
+const accessLost = (error: unknown) =>
+  error instanceof ApiError && (error.status === 401 || error.status === 403);
 
 const anyFilterActive = (filters: Filters) =>
   Object.values(filters).some((value) => value.trim() !== "");
@@ -120,7 +135,9 @@ export const StaffTicketQueue = () => {
   const [sort, setSort] = useState<SortField>("createdAt");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
+  const { refresh } = useAuth();
   const [categories, setCategories] = useState<ReferenceItem[]>([]);
+  const [categoriesFailed, setCategoriesFailed] = useState(false);
   const [owners, setOwners] = useState<ReferenceItem[]>([]);
   const [ownersFailed, setOwnersFailed] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
@@ -128,16 +145,22 @@ export const StaffTicketQueue = () => {
 
   // Reference data for the filters. Losing either is not worth failing the
   // screen over — the queue still works — so each degrades on its own.
+  //
+  // Categories fail the way My Tickets' do: the select is disabled and says
+  // why. Left enabled, a list holding only "All Categories" looks like a system
+  // with no categories rather than one that could not read them.
   useEffect(() => {
     const controller = new AbortController();
-    const aborted = (error: unknown) =>
-      error instanceof DOMException && error.name === "AbortError";
 
     fetchCategories(controller.signal)
-      .then(setCategories)
+      .then((items) => {
+        setCategories(items);
+        setCategoriesFailed(false);
+      })
       .catch((error: unknown) => {
         if (!aborted(error)) {
           setCategories([]);
+          setCategoriesFailed(true);
         }
       });
 
@@ -175,7 +198,17 @@ export const StaffTicketQueue = () => {
         });
       })
       .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") {
+        if (aborted(error)) {
+          return;
+        }
+
+        // Re-read who is signed in and let the route guard act on the answer:
+        // to sign-in for an ended session, to My Tickets for a demotion. A
+        // Try again button here would repeat a request that can only be
+        // refused, and keep the person on a screen that is no longer theirs.
+        if (accessLost(error)) {
+          setListing({ kind: "refused" });
+          void refresh();
           return;
         }
 
@@ -191,7 +224,7 @@ export const StaffTicketQueue = () => {
     return () => {
       controller.abort();
     };
-  }, [filters, sort, order, page, reloadToken]);
+  }, [filters, sort, order, page, reloadToken, refresh]);
 
   const setFilter = (key: keyof Filters) => (value: string) => {
     setFilters((current) => ({ ...current, [key]: value }));
@@ -239,7 +272,10 @@ export const StaffTicketQueue = () => {
         </div>
       </div>
 
-      <div className="tkt-filters">
+      {/* Six controls, one more than My Tickets' grid has columns for, so the
+          queue has a grid of its own rather than wrapping Owner onto a second
+          row (components.css). */}
+      <div className="tkt-filters tkt-filters--queue">
         <TextInput
           icon="search"
           label="Search"
@@ -248,10 +284,21 @@ export const StaffTicketQueue = () => {
           value={filters.search}
         />
         <Select
+          disabled={categoriesFailed}
+          hint={
+            categoriesFailed
+              ? "Categories could not be loaded, so this filter is unavailable."
+              : undefined
+          }
           label="Category"
           onChange={(event) => setFilter("categoryId")(event.target.value)}
           options={[
-            { value: "", label: "All Categories" },
+            {
+              value: "",
+              label: categoriesFailed
+                ? "Categories unavailable"
+                : "All Categories",
+            },
             ...categories.map((item) => ({
               value: String(item.id),
               label: item.name,
@@ -300,6 +347,14 @@ export const StaffTicketQueue = () => {
       </div>
 
       {listing.kind === "loading" ? <TicketTableSkeleton /> : null}
+
+      {listing.kind === "refused" ? (
+        <StateBlock
+          description="This account can no longer open the ticket queue. Checking who is signed in…"
+          kind="error"
+          title="Your access has changed"
+        />
+      ) : null}
 
       {listing.kind === "failed" ? (
         <StateBlock

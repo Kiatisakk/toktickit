@@ -1005,6 +1005,14 @@
   padding: var(--tkt-space-4);
 }
 
+/* The staff queue has six controls to My Tickets' five: Owner is the extra
+   one. On the five-column grid above it wrapped alone onto a second row at
+   desktop width. Declared before the tablet and mobile rules below, which take
+   over at their widths exactly as they do for My Tickets. */
+.tkt-filters--queue {
+  grid-template-columns: 2fr repeat(5, 1fr);
+}
+
 /* An em dash for a value the workflow has not set yet. Lab 2 never assigns an
    IT owner or an IT priority, so on this screen it is every row. */
 /* The queue's owner cell when nobody has the ticket (ui-spec.md §5). The word

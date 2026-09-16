@@ -277,6 +277,100 @@ describe("UI-12 empty and no-results are different", () => {
   });
 });
 
+/**
+ * Raised in review on PR #62. Each is a situation the suites above never
+ * played: a session that stops being staff while the screen is open, a
+ * category list that fails, and a filter bar with one more control than the
+ * grid it shared with My Tickets had columns for.
+ */
+describe("review of PR #62", () => {
+  const refusing = (status: 401 | 403) =>
+    vi.fn((input: string) => {
+      const { pathname } = new URL(input);
+
+      if (pathname === "/api/staff/tickets") {
+        return Promise.resolve(
+          json(
+            {
+              error: {
+                code: status === 401 ? "UNAUTHENTICATED" : "FORBIDDEN",
+                message: "You do not have permission to do that.",
+              },
+            },
+            status
+          )
+        );
+      }
+
+      return Promise.resolve(json([]));
+    });
+
+  it.each([401, 403] as const)(
+    "a %i re-reads the identity instead of offering a retry that can only fail",
+    async (status) => {
+      vi.stubGlobal("fetch", refusing(status));
+      const refresh = vi.fn(() => Promise.resolve());
+
+      renderWithAuth(<StaffTicketQueue />, {
+        context: authContext({ user: STAFF_USER, refresh }),
+        path: "/staff/tickets",
+      });
+
+      expect(
+        await screen.findByText("Your access has changed")
+      ).toBeInTheDocument();
+      expect(refresh).toHaveBeenCalled();
+      expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    }
+  );
+
+  it("disables Category and says why when categories cannot be loaded", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string) => {
+        const { pathname } = new URL(input);
+
+        if (pathname === "/api/staff/tickets") {
+          return Promise.resolve(json(page([OWNED])));
+        }
+
+        if (pathname === "/api/staff/owners") {
+          return Promise.resolve(json([]));
+        }
+
+        return Promise.resolve(
+          json({ error: { code: "INTERNAL_ERROR", message: "No." } }, 500)
+        );
+      })
+    );
+    render();
+
+    const category = await screen.findByLabelText(/^Category/u);
+
+    await waitFor(() => expect(category).toBeDisabled());
+    expect(
+      screen.getByText(
+        "Categories could not be loaded, so this filter is unavailable."
+      )
+    ).toBeInTheDocument();
+    expect(
+      within(category).getByRole("option", { name: "Categories unavailable" })
+    ).toBeInTheDocument();
+  });
+
+  it("lays the six filters out on a grid of their own, not My Tickets' five columns", async () => {
+    stub();
+    const { container } = render();
+
+    await screen.findByRole("table");
+
+    const bar = container.querySelector(".tkt-filters");
+
+    expect(bar).toHaveClass("tkt-filters--queue");
+    expect(bar?.children).toHaveLength(6);
+  });
+});
+
 describe("UI-25 opening a ticket from the queue", () => {
   it("makes the ticket number a link to the detail, in the table and on the card", async () => {
     stub();
