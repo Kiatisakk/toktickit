@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { MESSAGE_LIMIT, validateMessageBody } from "../../src/tickets/messages.js";
+import {
+  MESSAGE_LIMIT,
+  validateMessageBody,
+} from "../../src/tickets/messages.js";
 
 /**
  * UNIT-06 — the body of a Public Comment or an Internal Note (BR-30, AC-26).

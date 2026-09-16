@@ -152,6 +152,8 @@ Gains the **Public Comments** section described above, with the same composer.
 
 Gains a **Problem appears resolved** action. It is a secondary button, confirmed before it fires, and once used it is replaced by a statement of when it was indicated. The Requester never sees a status control and never sees the Internal Notes section — not disabled, not empty, absent (BR-04, BR-05).
 
+The page reads: the ticket card, then the indication, then Attachments, then Public Comments. The confirmation says that the status does not change and that the indication cannot be undone, and it uses the neutral confirmation surface rather than attachment removal's red — nothing is being destroyed. IT Staff and Administrators opening the same ticket see the statement once it exists, worded as the requester's, and never the button: the server refuses them (SEC-11).
+
 ---
 
 ## 8. Administrator User Management
