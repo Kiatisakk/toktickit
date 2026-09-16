@@ -1,9 +1,16 @@
 import { PRIORITIES, STATUSES } from "./domain.js";
 
 /**
- * Parses the `GET /api/tickets` query string.
+ * Parses the ticket list query string, for two scopes.
  *
- * The contract is in docs/lab-02/api-spec.md. Kept as a pure function so the
+ * - `requester` — `GET /api/tickets`, My Tickets (docs/lab-02/api-spec.md).
+ * - `queue` — `GET /api/staff/tickets`, the staff Ticket Queue
+ *   (docs/lab-03/api-spec.md §7). Everything the Requester scope accepts, plus
+ *   `ownerId`, `unassigned`, `requesterId` and three more sort fields.
+ *
+ * One parser rather than two (D-12). Search, filters and sorting are easy to
+ * duplicate; blank handling, repeated parameters and pagination bounds are the
+ * parts that go subtly wrong, and they are written once below. Kept as a pure function so the
  * rules can be exercised without HTTP or a database — there are a lot of them
  * and none needs either to be wrong.
  *
@@ -29,6 +36,21 @@ export const SORT_FIELDS = [
   "requestedPriority",
 ] as const;
 
+/**
+ * The queue sorts by everything My Tickets does, and by the three columns only
+ * staff act on. A Requester sending one of these is refused: they are not in
+ * that scope's list, which is what keeps "extend the parser" from quietly
+ * widening the Requester contract.
+ */
+export const QUEUE_SORT_FIELDS = [
+  ...SORT_FIELDS,
+  "itPriority",
+  "currentStatus",
+  "ticketOwner",
+] as const;
+
+export type QueryScope = "requester" | "queue";
+
 export const ORDERS = ["asc", "desc"] as const;
 
 /** §6.1 fixes these three. 50 is the maximum a caller may ask for. */
@@ -36,7 +58,7 @@ export const PAGE_SIZES = [10, 20, 50] as const;
 
 export type Priority = (typeof PRIORITIES)[number];
 export type Status = (typeof STATUSES)[number];
-export type SortField = (typeof SORT_FIELDS)[number];
+export type SortField = (typeof QUEUE_SORT_FIELDS)[number];
 export type Order = (typeof ORDERS)[number];
 
 export interface TicketQuery {
@@ -45,6 +67,12 @@ export interface TicketQuery {
   requestedPriority?: Priority;
   itPriority?: Priority;
   status?: Status;
+  /** Queue scope only. Mutually exclusive with `unassigned`. */
+  ownerId?: number;
+  /** Queue scope only. `true` narrows to tickets nobody owns (FR-21). */
+  unassigned?: true;
+  /** Queue scope only. */
+  requesterId?: number;
   sort: SortField;
   order: Order;
   page: number;
@@ -62,6 +90,13 @@ const KNOWN_PARAMS = new Set([
   "order",
   "page",
   "pageSize",
+]);
+
+const QUEUE_PARAMS = new Set([
+  ...KNOWN_PARAMS,
+  "ownerId",
+  "unassigned",
+  "requesterId",
 ]);
 
 export type QueryResult =
@@ -197,15 +232,73 @@ const readPositiveInt = (
   return parsed;
 };
 
+/**
+ * The three filters only the queue has.
+ *
+ * `ownerId` and `requesterId` are numbers like `categoryId`, and blank means
+ * "no filter" for the same reason: the Owner dropdown's "All Owners" sends "".
+ * `unassigned` accepts exactly `true` — `false` would be a second way of saying
+ * "no filter", and two spellings of one request is how a client ends up sending
+ * the wrong one. Asking for one owner's tickets and for nobody's at once cannot
+ * both be answered, so the pair is refused rather than one silently winning.
+ */
+const readQueueFilters = (
+  params: Record<string, unknown>,
+  value: TicketQuery,
+  details: Record<string, string>
+) => {
+  const ownerId = readPositiveInt(
+    params["ownerId"],
+    "ownerId",
+    details,
+    "absent"
+  );
+
+  if (ownerId !== undefined) {
+    value.ownerId = ownerId;
+  }
+
+  const requesterId = readPositiveInt(
+    params["requesterId"],
+    "requesterId",
+    details,
+    "absent"
+  );
+
+  if (requesterId !== undefined) {
+    value.requesterId = requesterId;
+  }
+
+  const unassigned = readEnum(
+    params["unassigned"],
+    ["true"] as const,
+    "unassigned",
+    details,
+    "absent"
+  );
+
+  if (unassigned !== undefined) {
+    value.unassigned = true;
+  }
+
+  if (value.ownerId !== undefined && value.unassigned) {
+    details["unassigned"] = "unassigned cannot be combined with ownerId.";
+  }
+};
+
 export const parseTicketQuery = (
-  params: Record<string, unknown>
+  params: Record<string, unknown>,
+  scope: QueryScope = "requester"
 ): QueryResult => {
   const details: Record<string, string> = {};
+  const known = scope === "queue" ? QUEUE_PARAMS : KNOWN_PARAMS;
+  const sortFields: readonly SortField[] =
+    scope === "queue" ? QUEUE_SORT_FIELDS : SORT_FIELDS;
 
   // BR-34. Ignoring an unrecognised parameter means a typo quietly returns the
   // unfiltered list and the caller has no way to notice.
   for (const key of Object.keys(params)) {
-    if (!KNOWN_PARAMS.has(key)) {
+    if (!known.has(key)) {
       details[key] = `${key} is not a recognised query parameter.`;
     }
   }
@@ -270,7 +363,11 @@ export const parseTicketQuery = (
   // page, pageSize, sort and order have no dropdown that sends "" for "not
   // filtering" — a blank value here can only be a caller's mistake, so it is
   // rejected rather than silently answered with the default (BR-34).
-  const sort = readEnum(params["sort"], SORT_FIELDS, "sort", details, "reject");
+  if (scope === "queue") {
+    readQueueFilters(params, value, details);
+  }
+
+  const sort = readEnum(params["sort"], sortFields, "sort", details, "reject");
 
   if (sort !== undefined) {
     value.sort = sort;
