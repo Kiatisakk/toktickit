@@ -87,6 +87,24 @@ Both regression tests were run against the unfixed source first and failed there
 
 He approved with `LGTM` at 11:23:33Z on 2026-09-16 and merged eight seconds later. Issue #48 was closed by hand, because the base is not the default branch. Recorded on the next feature branch, #53's, as the follow-up docs rule asks.
 
+### PR #61 — Administrator user management (Issue #53)
+
+[PR #61](https://github.com/Kiatisakk/toktickit/pull/61) · reviewed 2026-09-16 · **4 line comments**, verdict **Comment**.
+
+Four findings, all on the screen, all marked as bugs. Three were real; one was a sentence of mine that said more than the handout does.
+
+**Three real, and each was a case the tests never played: the account being edited was also the account doing the editing, or a filter was on.**
+
+*An edited row could stay in a list it no longer matched.* Saving an edit patched the row in place. With a search or role filter active, changing a name, address or role can take the row out of the result, and the list kept showing it. The list is now re-read whenever a search or role is active.
+
+*An Administrator who demoted themselves kept an Administrator screen.* The server applies a role on the next request (BR-15), so every call then answered 403 under a header and navigation that still said Administrator. Saving your own account now re-reads the identity, and the route guard moves you off the screen.
+
+*Setting your own starting password stranded you.* It ends every session you hold, including the one the screen runs on, and the screen stayed put with every call answering 401 and no way to the password change. It now re-reads the identity, which is anonymous, and the guard sends you to sign in — where the new starting password leads straight to Change Password.
+
+All three regression tests were run against the unfixed screen first and failed there.
+
+**One answered rather than applied.** He read `ui-spec.md` §8 — *"no simultaneous filters — all excluded by §8.5"* — as forbidding a search and a role filter together. The handout's §8.5 lists search and "optionally filter users by role" as two separate required functions, and places "multiple simultaneous filters" under *not required*, not under anything forbidden. There is one filter here. But the finding was a fair reading of what I had written: "excluded" said more than "not required" does. The sentence now says what the handout says.
+
 ---
 
 ## Reviews I gave
@@ -181,6 +199,7 @@ Reviewed 2026-09-16, in order, in the terse caveman format at his request for th
 | [#57](https://github.com/Kiatisakk/toktickit/pull/57) | received | 1 | Comment → Approved | Merged |
 | [#59](https://github.com/Kiatisakk/toktickit/pull/59) | received | 17 | Comment → Approved | Merged |
 | [#60](https://github.com/Kiatisakk/toktickit/pull/60) | received | 2 | Comment → Approved | Merged |
+| [#61](https://github.com/Kiatisakk/toktickit/pull/61) | received | 4 | Comment | Open — fixes pushed |
 | [beambeambeam#59](https://github.com/beambeambeam/toktickit/pull/59) | given | 3 | Changes requested → Approved | Merged |
 | [beambeambeam#60](https://github.com/beambeambeam/toktickit/pull/60) | given | 6 | Changes requested → Approved | Merged |
 | [beambeambeam#61](https://github.com/beambeambeam/toktickit/pull/61) | given | 4 | Changes requested | Open |

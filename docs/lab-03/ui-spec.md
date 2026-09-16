@@ -160,7 +160,7 @@ One screen. The handout is emphatic that it stays minimal, and a screen that gro
 
 **List columns.** Name · Email · Role · Status · Edit.
 
-**Controls.** A search field (name or email) and an optional Role filter. **No pagination**, no multi-column sort, no simultaneous filters — all excluded by §8.5.
+**Controls.** A search field (name or email) and an optional Role filter, which combine: a search narrowed to one role is still one filter. **No pagination**, no multi-column sort, and no second filter beyond Role — §8.5 of the handout lists all three as *not required*, and this screen does not build them.
 
 **Status** renders as a badge: *Active* or *Inactive*. Inactive rows are not hidden; deactivation is a state, not a deletion (BR-36).
 

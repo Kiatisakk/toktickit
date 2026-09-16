@@ -363,6 +363,7 @@ const UserForm = ({ panel, onSaved, onCancel }: UserFormProps) => {
  * show — only a hash, which nothing returns.
  */
 const NewInitialPassword = ({ user }: { user: ManagedUser }) => {
+  const auth = useContext(AuthContext);
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [visible, setVisible] = useState(false);
@@ -384,6 +385,17 @@ const NewInitialPassword = ({ user }: { user: ManagedUser }) => {
 
     try {
       await setInitialPassword(user.id, password);
+
+      // Setting your own starting password ends every session you hold,
+      // including the one this screen is running on (BR-37). Re-reading the
+      // identity finds no session, and the route guard sends you to sign in —
+      // where the new starting password leads straight to Change Password.
+      // Staying here instead would leave a screen whose every call answers 401.
+      if (auth?.user?.id === user.id) {
+        await auth.refresh();
+        return;
+      }
+
       setDone(true);
       setOpen(false);
       setPassword("");
@@ -508,15 +520,32 @@ export const UserManagement = () => {
     };
   }, [load, reloadToken]);
 
+  const filtering = search.trim() !== "" || role !== "";
+
   /**
    * The row changes only with what the server returned — never optimistically
-   * (ui-spec.md §8). A created user may not match the current filter, so the
-   * list is re-read rather than guessed at.
+   * (ui-spec.md §8).
+   *
+   * A created user may not match the current search or role, and neither may
+   * an edited one: changing a name, an address or a role can take a row out
+   * of what is being shown. So whenever a search or role is active the list is
+   * re-read rather than patched in place, and only an unfiltered list patches
+   * the row it already holds.
+   *
+   * Saving your *own* account re-reads the identity too. The server applies a
+   * role change on the very next request (BR-15), so an Administrator who
+   * demotes themselves would otherwise keep an Administrator header and
+   * navigation that every call then refuses with 403. With the identity
+   * refreshed, the route guard moves them off this screen.
    */
   const onSaved = (saved: ManagedUser) => {
     setPanel(null);
 
-    if (listing.kind === "loaded" && panel?.mode === "edit") {
+    if (auth?.user?.id === saved.id) {
+      void auth.refresh();
+    }
+
+    if (listing.kind === "loaded" && panel?.mode === "edit" && !filtering) {
       setListing({
         kind: "loaded",
         users: listing.users.map((user) =>
@@ -528,8 +557,6 @@ export const UserManagement = () => {
 
     setReloadToken((token) => token + 1);
   };
-
-  const filtering = search.trim() !== "" || role !== "";
 
   return (
     <AppShell breadcrumbs={[{ label: "User Management" }]}>

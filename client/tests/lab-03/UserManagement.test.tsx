@@ -506,3 +506,118 @@ describe("setting a new initial password", () => {
     );
   });
 });
+
+/* PR #61 review — three paths the first version got wrong. */
+
+const renderAs = (refresh: () => Promise<void>) =>
+  renderWithAuth(<UserManagement />, {
+    context: authContext({ user: { ...ADMIN }, refresh }),
+    path: "/admin/users",
+  });
+
+const listReads = (fetchMock: ReturnType<typeof stubApi>) =>
+  fetchMock.mock.calls.filter(
+    ([, init]) => !init?.method || init.method === "GET"
+  ).length;
+
+describe("after saving an account", () => {
+  it("re-reads the list when a search is active, since the edit may take the row out of it", async () => {
+    const fetchMock = stubApi(() => json({ ...REQUESTER, role: "IT_STAFF" }));
+    renderScreen();
+
+    await screen.findByRole("table");
+    await userEvent.type(screen.getByLabelText(/^Search/u), "Jen");
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.at(-1)?.[0]).toContain("search=Jen");
+    });
+
+    const panel = await openEdit(REQUESTER);
+    const before = listReads(fetchMock);
+
+    await userEvent.selectOptions(
+      within(panel).getByLabelText(/^Role/u),
+      "IT_STAFF"
+    );
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Save Changes" })
+    );
+
+    // Patching the row in place would keep a row the search may no longer
+    // match; the list is asked for again with the same search instead.
+    await waitFor(() => {
+      expect(listReads(fetchMock)).toBeGreaterThan(before);
+    });
+    expect(fetchMock.mock.calls.at(-1)?.[0]).toContain("search=Jen");
+  });
+
+  it("re-reads the signed-in identity when the account saved is your own", async () => {
+    const refresh = vi.fn(() => Promise.resolve());
+    stubApi(() => json({ ...ADMIN, role: "IT_STAFF" }));
+    renderAs(refresh);
+
+    const panel = await openEdit(ADMIN);
+
+    await userEvent.selectOptions(
+      within(panel).getByLabelText(/^Role/u),
+      "IT_STAFF"
+    );
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Save Changes" })
+    );
+
+    // Without this the header and navigation would stay Administrator while
+    // every call answered 403 (BR-15 applies the role on the next request).
+    await waitFor(() => {
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("does not re-read the identity for somebody else's account", async () => {
+    const refresh = vi.fn(() => Promise.resolve());
+    stubApi(() => json({ ...REQUESTER, name: "Jennifer A." }));
+    renderAs(refresh);
+
+    const panel = await openEdit(REQUESTER);
+
+    await userEvent.clear(within(panel).getByLabelText(/^Name/u));
+    await userEvent.type(within(panel).getByLabelText(/^Name/u), "Jennifer A.");
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Save Changes" })
+    );
+
+    await within(table()).findByText("Jennifer A.");
+    expect(refresh).not.toHaveBeenCalled();
+  });
+});
+
+describe("setting your own new initial password", () => {
+  it("re-reads the identity instead of reporting success, because your session has ended", async () => {
+    const refresh = vi.fn(() => Promise.resolve());
+    stubApi(
+      () => ({ ok: true, status: 204, json: async () => null }) as Response
+    );
+    renderAs(refresh);
+
+    const panel = await openEdit(ADMIN);
+
+    await userEvent.click(
+      within(panel).getByRole("button", { name: /Set a New Initial Password/u })
+    );
+    await userEvent.type(
+      within(panel).getByLabelText(/^New initial password/u),
+      "Replaced7!"
+    );
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Set Password" })
+    );
+
+    // The server ended every session this user holds, this one included. The
+    // refreshed identity is anonymous and the route guard sends them to sign in.
+    await waitFor(() => {
+      expect(refresh).toHaveBeenCalledTimes(1);
+    });
+    expect(
+      within(panel).queryByText(/must choose their own/iu)
+    ).not.toBeInTheDocument();
+  });
+});
