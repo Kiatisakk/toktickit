@@ -151,6 +151,26 @@ I said plainly that BR-07 is the better rule — composition requirements are wh
 
 **Three optional notes.** The `@default(Low)` needed to backfill IT Priority outlives the migration, so a future create that forgets the field gets a quietly wrong value; attachment write denial is tested for staff upload but not staff removal or Administrator upload, under a variable named `requesterUpload`; and the new queue-to-detail browser spec is not in `tests.md`. Plus the process note from #61 again: the PR is not linked to its Issue.
 
+### beambeambeam#63–#67 — ownership, status workflow, comments, notes, account lifecycle
+
+Reviewed 2026-09-16, in order, in the terse caveman format at his request for this batch. Five parallel PRs, all branched from the same `lab3-staging` commit.
+
+| PR | Issue | Verdict | Findings |
+| --- | --- | --- | --- |
+| [#63](https://github.com/beambeambeam/toktickit/pull/63) | #52 ownership, IT Priority | Changes requested | 🔴 1 · 🟡 2 |
+| [#64](https://github.com/beambeambeam/toktickit/pull/64) | #53 status workflow | Changes requested | 🟡 2 |
+| [#65](https://github.com/beambeambeam/toktickit/pull/65) | #54 public comments | Changes requested | 🟡 2 |
+| [#66](https://github.com/beambeambeam/toktickit/pull/66) | #55 internal notes | Comment | 🔵 1 |
+| [#67](https://github.com/beambeambeam/toktickit/pull/67) | #57 account lifecycle | Comment | none blocking |
+
+**The one bug.** On #63, *Save Owner* submitted `selectedOwnerId ?? ""`, so pressing it without touching the dropdown sent `ownerId: null` and unassigned the ticket — while the dropdown displayed the current owner. His test always selected an owner first, which is why it never ran the untouched path.
+
+**The rest were specification gaps, most of them his own words.** Owner and IT Priority mutations skipped the in-transaction actor recheck his API contract requires; the status confirmation dialog had none of the focus, Escape and restore behaviour his `ui-spec.md` prescribes; two composers left their validation message unlinked to the field. Three PRs lacked the browser journey their Issue names, and none of the five updated `tests.md`.
+
+**What was checked rather than assumed.** The status matrix, compared edge for edge with his specification. And lock ordering across all five PRs together, since they will land in the same database: the account lifecycle takes an advisory lock, then user rows by id, then owned tickets; every ticket mutation locks users before tickets. Traced for claim, status change and comment against a concurrent deactivation — no cycle. #67 was the most careful work in the batch and the review said so.
+
+**Two verdicts were Comment rather than Approve on purpose.** An approval puts the merge with the approver, and merging five PRs that edit the same routes, OpenAPI document and generated client was not what was asked for. The review raised the merge order as a question instead.
+
 ---
 
 ## Coverage
@@ -165,6 +185,11 @@ I said plainly that BR-07 is the better rule — composition requirements are wh
 | [beambeambeam#60](https://github.com/beambeambeam/toktickit/pull/60) | given | 6 | Changes requested → Approved | Merged |
 | [beambeambeam#61](https://github.com/beambeambeam/toktickit/pull/61) | given | 4 | Changes requested | Open |
 | [beambeambeam#62](https://github.com/beambeambeam/toktickit/pull/62) | given | 4 | Changes requested | Open |
+| [beambeambeam#63](https://github.com/beambeambeam/toktickit/pull/63) | given | 3 | Changes requested | Open |
+| [beambeambeam#64](https://github.com/beambeambeam/toktickit/pull/64) | given | 2 | Changes requested | Open |
+| [beambeambeam#65](https://github.com/beambeambeam/toktickit/pull/65) | given | 2 | Changes requested | Open |
+| [beambeambeam#66](https://github.com/beambeambeam/toktickit/pull/66) | given | 1 | Comment | Open |
+| [beambeambeam#67](https://github.com/beambeambeam/toktickit/pull/67) | given | 0 | Comment | Open |
 
 Checked by listing the Pull Requests from GitHub and searching this file for each number, rather than by reading down the page — which is how two were found missing in Lab 2.
 
