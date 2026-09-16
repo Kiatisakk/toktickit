@@ -75,7 +75,7 @@ He approved with `LGTM` at 15:04:21Z on 2026-09-14 and merged ten seconds later.
 
 ### PR #60 — Requester screens run on the authenticated identity (Issue #48)
 
-[PR #60](https://github.com/Kiatisakk/toktickit/pull/60) · reviewed 2026-09-15 · **2 line comments**, verdict **Comment**.
+[PR #60](https://github.com/Kiatisakk/toktickit/pull/60) · reviewed 2026-09-15 · **2 line comments**, verdict **Comment**, then **Approved** and merged into `lab3-staging` as `3a916b9` by @beambeambeam.
 
 Two findings, both real, and both invisible to the suites for the same reason: each only appears for a caller no existing test played.
 
@@ -84,6 +84,8 @@ Two findings, both real, and both invisible to the suites for the same reason: e
 **IT Staff opening a Requester's ticket were offered Add Attachment and Remove.** The server scopes attachment writes to the ticket's own requester, so both controls could only fail. `AttachmentSection` now takes a required `canModify`, and a non-owner keeps Download and loses the rest. Required rather than defaulted, because a default would decide the answer silently for the next caller.
 
 Both regression tests were run against the unfixed source first and failed there, so neither passes by construction.
+
+He approved with `LGTM` at 11:23:33Z on 2026-09-16 and merged eight seconds later. Issue #48 was closed by hand, because the base is not the default branch. Recorded on the next feature branch, #53's, as the follow-up docs rule asks.
 
 ---
 
@@ -158,7 +160,7 @@ I said plainly that BR-07 is the better rule — composition requirements are wh
 | [#56](https://github.com/Kiatisakk/toktickit/pull/56) | received | 12 | Changes requested → Approved | Merged |
 | [#57](https://github.com/Kiatisakk/toktickit/pull/57) | received | 1 | Comment → Approved | Merged |
 | [#59](https://github.com/Kiatisakk/toktickit/pull/59) | received | 17 | Comment → Approved | Merged |
-| [#60](https://github.com/Kiatisakk/toktickit/pull/60) | received | 2 | Comment | Open — fixes pushed |
+| [#60](https://github.com/Kiatisakk/toktickit/pull/60) | received | 2 | Comment → Approved | Merged |
 | [beambeambeam#59](https://github.com/beambeambeam/toktickit/pull/59) | given | 3 | Changes requested → Approved | Merged |
 | [beambeambeam#60](https://github.com/beambeambeam/toktickit/pull/60) | given | 6 | Changes requested → Approved | Merged |
 | [beambeambeam#61](https://github.com/beambeambeam/toktickit/pull/61) | given | 4 | Changes requested | Open |
