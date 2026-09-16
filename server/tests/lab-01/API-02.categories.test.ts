@@ -1,8 +1,11 @@
 import request from "supertest";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { ACTIVE_REQUESTER } from "../../prisma/accounts.js";
 import { app } from "../../src/app.js";
 import { prisma } from "../../src/prisma.js";
+import type { SessionCookie } from "../lab-03/support/signIn.js";
+import { signIn } from "../lab-03/support/signIn.js";
 
 /**
  * API-02 — Categories endpoint returns the four seeded categories.
@@ -19,19 +22,35 @@ const EXPECTED_CATEGORY_NAMES = [
   "Network",
 ];
 
+/**
+ * Categories are authenticated since Lab 3 (api-spec.md §5). The request carries
+ * a real session; what is asserted about the categories is unchanged.
+ */
+let cookie: SessionCookie = [];
+
+beforeAll(async () => {
+  ({ cookie } = await signIn(
+    ACTIVE_REQUESTER.email,
+    ACTIVE_REQUESTER.password
+  ));
+});
+
+const getCategories = () =>
+  request(app).get("/api/categories").set("Cookie", cookie);
+
 afterAll(async () => {
   await prisma.$disconnect();
 });
 
 describe("GET /api/categories", () => {
   it("returns HTTP 200", async () => {
-    const response = await request(app).get("/api/categories");
+    const response = await getCategories();
 
     expect(response.status).toBe(200);
   });
 
   it("returns the four seeded categories", async () => {
-    const response = await request(app).get("/api/categories");
+    const response = await getCategories();
 
     expect(response.body).toHaveLength(4);
     expect(
@@ -40,7 +59,7 @@ describe("GET /api/categories", () => {
   });
 
   it("returns exactly an id and a name for every category", async () => {
-    const response = await request(app).get("/api/categories");
+    const response = await getCategories();
 
     for (const category of response.body) {
       // displayOrder decides the sort order but is not part of the contract,
@@ -81,7 +100,7 @@ describe("GET /api/categories", () => {
         }),
       ]);
 
-      const response = await request(app).get("/api/categories");
+      const response = await getCategories();
       const names = response.body.map(
         (category: { name: string }) => category.name
       );

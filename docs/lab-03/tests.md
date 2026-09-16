@@ -37,7 +37,7 @@ Eight levels, each answering a question the level above it cannot.
 
 | ID | AC / Rule | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
-| UNIT-01 | BR-19, D-08 | Role-to-query-scope mapping | Requester yields an ownership constraint; IT Staff and Administrator yield none | `server/tests/lab-03/scope.test.ts` | Planned |
+| UNIT-01 | BR-19, D-08 | Role-to-query-scope mapping | Requester yields an ownership constraint; IT Staff and Administrator yield none | `server/tests/lab-03/scope.test.ts` | Pass |
 | UNIT-02 | AC-20, AC-21, BR-25, BR-26 | Status transition matrix, every cell | Each permitted transition allowed; every other refused; `CANCELLED` allows none | `server/tests/lab-03/transitions.test.ts` | Planned |
 | UNIT-03 | AC-10, BR-07 | Password rule evaluation | Too short, too long, and each missing character class rejected with the rule named; a compliant password accepted | `server/tests/lab-03/password.test.ts` | Pass |
 | UNIT-04 | BR-06 | Hash and verify round-trip | A password verifies against its own hash and not against another; the hash is not the password | `server/tests/lab-03/password.test.ts` | Pass |
@@ -53,7 +53,7 @@ Eight levels, each answering a question the level above it cannot.
 | API-03 | AC-06 | Correct password, deactivated account | 403 `ACCOUNT_INACTIVE` | `server/tests/lab-03/auth.api.test.ts` | Pass |
 | API-04 | BR-09 | Wrong password on a deactivated account | 401 `INVALID_CREDENTIALS`, not `ACCOUNT_INACTIVE` | `server/tests/lab-03/auth.api.test.ts` | Pass |
 | API-05 | FR-04 | Current user retrieval | 200 with identity, role and the must-change flag | `server/tests/lab-03/auth.api.test.ts` | Pass |
-| API-06 | AC-02 | The password-change gate | Every endpoint except `me`, `password`, `logout` answers 403 `PASSWORD_CHANGE_REQUIRED` | `server/tests/lab-03/auth.api.test.ts` | Partial — the guard is asserted against a route mounted in the test, because the ticket routes still run on the Lab 2 selector until the selector is deleted. Becomes an assertion about shipped endpoints in that ticket. |
+| API-06 | AC-02 | The password-change gate | Every endpoint except `me`, `password`, `logout` answers 403 `PASSWORD_CHANGE_REQUIRED` | `server/tests/lab-03/auth.api.test.ts` | Pass — asserted against `GET /api/tickets` and `GET /api/categories` since the selector was deleted; the probe route mounted in the test is gone. SEC-06 walks the whole route table. |
 | API-07 | AC-02 | The three permitted endpoints during the gate | All reachable while the flag is set | `server/tests/lab-03/auth.api.test.ts` | Pass |
 | API-08 | AC-07 | Sign-out | 204; the previous cookie then answers 401 | `server/tests/lab-03/auth.api.test.ts` | Pass |
 | API-09 | AC-08 | Expired session | A session past its expiry answers 401 | `server/tests/lab-03/auth.api.test.ts` | Pass |
@@ -61,7 +61,7 @@ Eight levels, each answering a question the level above it cannot.
 | API-11 | AC-10 | Password change validation | Rule failures 400 with the field named; password unchanged | `server/tests/lab-03/auth.api.test.ts` | Pass |
 | API-12 | AC-09 | Password change ends other sessions | Other sessions 401 afterwards; the current one continues | `server/tests/lab-03/auth.api.test.ts` | Pass |
 | API-13 | BR-13 | Sign-out is idempotent | Signing out without a session answers 204 | `server/tests/lab-03/auth.api.test.ts` | Pass |
-| API-14 | AC-03 | A body carrying `requesterId` | Ignored; the ticket is recorded against the authenticated user | `server/tests/lab-03/authorization.api.test.ts` | Planned |
+| API-14 | AC-03 | A body carrying `requesterId` | Ignored; the ticket is recorded against the authenticated user | `server/tests/lab-03/authorization.api.test.ts` | Pass |
 | API-15 | AC-15 | Staff queue returns all requesters' tickets | Tickets from several requesters present | `server/tests/lab-03/staff-queue.api.test.ts` | Planned |
 | API-16 | FR-20 | Queue search, filters and sorting | Each parameter narrows or orders as documented | `server/tests/lab-03/staff-queue.api.test.ts` | Planned |
 | API-17 | FR-21 | Unassigned filter | Returns only tickets with no owner; `ownerId` and `unassigned` together 400 | `server/tests/lab-03/staff-queue.api.test.ts` | Planned |
@@ -88,11 +88,12 @@ Eight levels, each answering a question the level above it cannot.
 | API-38 | AC-33 | Two Administrators deactivating each other at once | At least one refused; an active Administrator remains | `server/tests/lab-03/users-admin.api.test.ts` | Pass — five rounds of two real concurrent requests. Removing `FOR UPDATE` from the handler makes the first round fail with both deactivations succeeding, which is how the test is known to exercise the lock. |
 | API-39 | BR-37 | Setting a new initial password | 204; flag set; the user's sessions ended; sign-in with the new password requires a change | `server/tests/lab-03/users-admin.api.test.ts` | Pass — the old session answers 401, the old password is refused, and the new one signs in with the must-change flag set. |
 | API-40 | BR-20 | Error bodies leak nothing | No stack trace, path or database message on any failure path | `server/tests/lab-03/auth.api.test.ts` | Planned |
-| API-41 | §5 | Reference data now requires a session | Categories and related systems 401 without one; health stays public | `server/tests/lab-03/authorization.api.test.ts` | Planned |
+| API-41 | §5 | Reference data now requires a session | Categories and related systems 401 without one; health stays public | `server/tests/lab-03/authorization.api.test.ts` | Pass |
 | API-42 | BR-23 | IT Priority at creation | A new ticket's IT Priority equals its Requested Priority; changing one afterwards never moves the other | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
 | API-43 | FR-35 | User edit validation | Empty name, malformed email, invalid role and non-boolean active each 400 with the field named in `details` | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
 | API-44 | BR-37 | Reset password validation | A starting password failing the rules 400 with `details.initialPassword`; the user's existing credential unchanged | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
-| API-45 | §8 | Lab 2 list envelope preserved | The ticket list answers `data` and `meta` with `totalItems`, exactly as Lab 2 documents | `server/tests/lab-03/migration.api.test.ts` | Planned |
+| API-45 | §8 | Lab 2 list envelope preserved | The ticket list answers `data` and `meta` with `totalItems`, exactly as Lab 2 documents | `server/tests/lab-03/migration.api.test.ts` | Pass |
+| API-46 | FR-30 | Staff raise and track their own tickets | IT Staff and an Administrator each create a ticket recorded against them, find it in My Tickets, and find no one else's there | `server/tests/lab-03/authorization.api.test.ts` | Pass |
 
 ### Security / authorization
 
@@ -100,21 +101,21 @@ Every test here calls the API directly with a session of the wrong kind. None dr
 
 | ID | AC | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
-| SEC-01 | FR-09 | Every protected endpoint without a session | 401 `UNAUTHENTICATED`, enumerated across the whole route table, excepting `POST /api/auth/logout` which is idempotent and answers 204 | `server/tests/lab-03/authorization.api.test.ts` | Planned |
+| SEC-01 | FR-09 | Every protected endpoint without a session | 401 `UNAUTHENTICATED`, enumerated across the whole route table, excepting `POST /api/auth/logout` which is idempotent and answers 204 | `server/tests/lab-03/authorization.api.test.ts` | Pass — over the route table as it stands. Each later endpoint is added to the same list in the Pull Request that adds it. |
 | SEC-02 | FR-10 | Every role-restricted endpoint with each wrong role | 403 `FORBIDDEN`, enumerated | `server/tests/lab-03/authorization.api.test.ts` | Planned |
-| SEC-03 | AC-03 | Requester supplying another `requesterId` | Authenticated identity applied; no other requester's data returned | `server/tests/lab-03/authorization.api.test.ts` | Planned |
-| SEC-04 | AC-12 | Requester reading another's ticket | 404, byte-identical to a ticket that does not exist | `server/tests/lab-03/authorization.api.test.ts` | Planned |
+| SEC-03 | AC-03 | Requester supplying another `requesterId` | Authenticated identity applied; no other requester's data returned | `server/tests/lab-03/authorization.api.test.ts` | Pass — an undocumented `requesterId` query parameter is refused with 400 `INVALID_QUERY_PARAMETER` (BR-34) and returns no rows. |
+| SEC-04 | AC-12 | Requester reading another's ticket | 404, byte-identical to a ticket that does not exist | `server/tests/lab-03/authorization.api.test.ts` | Pass — for ticket detail and for its attachment list. |
 | SEC-05 | AC-13 | Requester calling the staff queue | 403 `FORBIDDEN` | `server/tests/lab-03/authorization.api.test.ts` | Planned |
-| SEC-06 | AC-02 | Gated user calling a protected endpoint | 403 `PASSWORD_CHANGE_REQUIRED` | `server/tests/lab-03/authorization.api.test.ts` | Planned |
+| SEC-06 | AC-02 | Gated user calling a protected endpoint | 403 `PASSWORD_CHANGE_REQUIRED` | `server/tests/lab-03/authorization.api.test.ts` | Pass — over the route table as it stands, as SEC-01. |
 | SEC-07 | AC-14 | Requester and IT Staff calling Administrator endpoints | 403 `FORBIDDEN` for both | `server/tests/lab-03/users-admin.api.test.ts` | Pass — with a session that is absent (401), a Requester's and an IT Staff member's (403), across all four Administrator endpoints; and nothing changes. Kept beside the other Administrator tests rather than in the authorization suite, which is created by a Pull Request not yet merged when this landed. |
 | SEC-08 | AC-23 | Requester attempting a status change | Refused; no route exists by which a Requester sets status | `server/tests/lab-03/authorization.api.test.ts` | Planned |
 | SEC-09 | AC-04, AC-25 | Requester requesting Internal Notes | 403 with no note content and no indication whether notes exist, on their own ticket and on a ticket with none | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
-| SEC-10 | BR-19 | Ownership resolved in the query | Another requester's attachment download and removal both 404 | `server/tests/lab-03/authorization.api.test.ts` | Planned |
+| SEC-10 | BR-19 | Ownership resolved in the query | Another requester's attachment download and removal both 404 | `server/tests/lab-03/authorization.api.test.ts` | Pass |
 | SEC-11 | BR-05 | Staff and Administrator posting a resolved indication | 403 — it belongs to the Requester | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
 | SEC-12 | BR-06 | No endpoint returns a credential | No password hash in any user-bearing response | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
 | SEC-13 | AC-11 | Role change mid-session | A user demoted from IT Staff is refused staff endpoints on the next request | `server/tests/lab-03/authorization.api.test.ts` | Planned |
-| SEC-14 | BR-41 | The retired header has no effect | Sending `X-Development-Requester-Id` changes nothing; no route reads it | `server/tests/lab-03/authorization.api.test.ts` | Planned |
-| SEC-15 | FR-29 | Staff cannot write another's attachments | IT Staff uploading to, or removing from, a ticket they did not raise answers 404; downloading the same ticket's attachment succeeds | `server/tests/lab-03/authorization.api.test.ts` | Planned |
+| SEC-14 | BR-41 | The retired header has no effect | Sending `X-Development-Requester-Id` changes nothing; no route reads it | `server/tests/lab-03/authorization.api.test.ts` | Pass |
+| SEC-15 | FR-29 | Staff cannot write another's attachments | IT Staff uploading to, or removing from, a ticket they did not raise answers 404; downloading the same ticket's attachment succeeds | `server/tests/lab-03/authorization.api.test.ts` | Pass |
 
 ### UI component
 
@@ -132,8 +133,8 @@ Every test here calls the API directly with a session of the wrong kind. None dr
 | UI-10 | FR-20 | Queue renders rows and controls | Search, filters, sort and pagination present; rows populated | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Planned |
 | UI-11 | FR-21 | Unassigned rendering | An unowned ticket reads *Unassigned*, never an empty cell | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Planned |
 | UI-12 | FR-20 | Queue empty and no-results | Distinct messages; no-results offers Clear Filters | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Planned |
-| UI-13 | AC-34 | Role-dependent navigation | Each role sees only its destinations; unauthorized ones absent, not disabled | `client/tests/lab-03/AppShell.test.tsx` | Planned |
-| UI-14 | FR-04 | Shell shows identity | Name and role badge shown; Logout present; no Change Requester action | `client/tests/lab-03/AppShell.test.tsx` | Partial — name, role (through the shared badge) and Logout pass, and the gated and signed-out header variants omit Change Requester. On the application screens it cannot be absent yet: both identity mechanisms coexist by design for one ticket. Completed by the ticket that deletes the selector. |
+| UI-13 | AC-34 | Role-dependent navigation | Each role sees only its destinations; unauthorized ones absent, not disabled | `client/tests/lab-03/AppShell.test.tsx` | Partial — each role's navigation holds only its own destinations and a missing one is absent rather than disabled: an Administrator sees User Management first, a Requester and IT Staff do not see it at all. The Ticket Queue entry arrives with the ticket that builds the queue (#50). |
+| UI-14 | FR-04 | Shell shows identity | Name and role badge shown; Logout present; no Change Requester action | `client/tests/lab-03/AppShell.test.tsx` | Pass — Change Requester and the “acting as” note are absent from the application shell. |
 | UI-15 | FR-23 | Claim and reassign controls | Claim shown when unassigned; a select of eligible users when assigned | `client/tests/lab-03/StaffTicketDetail.test.tsx` | Planned |
 | UI-16 | AC-20 | Only permitted transitions offered | The status control lists exactly the permitted targets; a cancelled ticket shows it read-only | `client/tests/lab-03/StaffTicketDetail.test.tsx` | Planned |
 | UI-17 | BR-04 | Comments and notes are distinct | Separate headings, standing notes, and the note composer warns before posting | `client/tests/lab-03/StaffTicketDetail.test.tsx` | Planned |
@@ -145,6 +146,7 @@ Every test here calls the API directly with a session of the wrong kind. None dr
 | UI-23 | AC-30 | Duplicate email presentation | Message against the Email field | `client/tests/lab-03/UserManagement.test.tsx` | Pass |
 | UI-24 | AC-31, AC-32 | Refusal presentation | Toggle springs back; the row does not update optimistically; each refusal has its own message | `client/tests/lab-03/UserManagement.test.tsx` | Pass — the switch returns to Active after a refused self-deactivation, role and state return after a refused last-Administrator change, each with its own message, and the row changes only on the server's answer. |
 | UI-25 | §8.3 | Opening a ticket from the queue | Every row and every card exposes the ticket number as a link to the detail, reachable by keyboard | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Planned |
+| UI-26 | AC-02 | The route guard | Signed out goes to sign-in; a pending password change goes to Change Password and nowhere else; Change Password turns away anyone without one; a session check in flight waits rather than redirecting | `client/tests/lab-03/AuthGuard.test.tsx` | Pass — including a screen limited to some roles, which redirects every other signed-in role to My Tickets, after the sign-in and password-change checks. |
 
 ### UI style
 
@@ -176,18 +178,18 @@ Every test here calls the API directly with a session of the wrong kind. None dr
 
 | ID | AC | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
-| MIG-01 | BR-39 | Identifiers survive | Every pre-existing user keeps its id; every ticket's requester still resolves | `server/tests/lab-03/migration.api.test.ts` | Planned |
-| MIG-02 | BR-39 | Attachment relations survive | Uploader and remover references remain valid | `server/tests/lab-03/migration.api.test.ts` | Planned |
+| MIG-01 | BR-39 | Identifiers survive | Every pre-existing user keeps its id; every ticket's requester still resolves | `server/tests/lab-03/migration.api.test.ts` | Pass — the Lab 3 migrations are read for anything that drops, truncates or renumbers users; the foreign key is read from the schema; and a ticket written against a stored id is read back through a signed-in session. |
+| MIG-02 | BR-39 | Attachment relations survive | Uploader and remover references remain valid | `server/tests/lab-03/migration.api.test.ts` | Pass |
 | MIG-03 | BR-24 | The renamed status | Rows previously `PENDING` read as `WAITING_FOR_REQUESTER`; the filter returns them | `server/tests/lab-03/migration.api.test.ts` | Planned |
 | MIG-04 | AC-27 | Existing attachments still reachable | By their owner, and now by staff | `server/tests/lab-03/migration.api.test.ts` | Planned |
 | MIG-05 | BR-43 | The seed restores credentials | Running it twice returns a consumed must-change flag to its seeded state | `server/tests/lab-03/seed.api.test.ts` | Planned |
-| MIG-06 | BR-41 | Nothing client-supplied remains | No route, module or stored value accepts a client-supplied identity | `server/tests/lab-03/authorization.api.test.ts` | Planned |
+| MIG-06 | BR-41 | Nothing client-supplied remains | No route, module or stored value accepts a client-supplied identity | `server/tests/lab-03/authorization.api.test.ts` | Pass — read from the source: no module names the header, the endpoint or the route, the client touches no browser storage, and no server module reads `requesterId` from a body. |
 | MIG-08 | §7 | Password hash backfill | After migration no account has a null hash, and every migrated account is flagged to change it at next sign-in | `server/tests/lab-03/migration.api.test.ts` | Planned |
-| MIG-07 | Lab 2 suite | The Lab 2 suites still pass, after the four changes below | Behaviour assertions are untouched; only setup and the renamed value change | `server/tests/lab-02/`, `client/tests/lab-02/`, `e2e/lab-02/` | Planned |
+| MIG-07 | Lab 2 suite | The Lab 2 suites still pass, after the four changes below | Behaviour assertions are untouched; only setup and the renamed value change | `server/tests/lab-02/`, `client/tests/lab-02/`, `e2e/lab-02/` | Pass — server, client and all three browser viewports. Beyond the four changes below, three server assertions that named the retired `REQUESTER_CONTEXT_REQUIRED` now expect its documented successor, 401 `UNAUTHENTICATED` (api-spec.md §3), and one client test about re-selecting the same requester became one about signing out on the page. |
 
 **What changes in the Lab 2 suites, and what does not.** Four things force an edit, and none of them is an assertion about behaviour:
 
-1. **Identity setup.** Every server test that set the development header signs in instead; every browser test that drove the selector signs in instead.
+1. **Identity setup.** Every server test that set the development header signs in instead; every browser test that drove the selector starts from a session a Playwright setup project saved by signing in through the real screen, and a second person gets a second browser context rather than a Logout — signing out would delete the session every later test reuses.
 2. **The renamed status.** Any fixture or assertion naming `PENDING` becomes `WAITING_FOR_REQUESTER`.
 3. **Reference data now needs a session.** Tests that fetched categories or related systems unauthenticated must authenticate first.
 4. **The selector's own tests.** The suites covering the selection screen and the stored requester context describe a screen that no longer exists. They are deleted, and the ownership and recovery intent they carried is preserved by the Lab 3 authorization tests rather than lost.
@@ -218,7 +220,7 @@ Every criterion in specification.md §9, and the planned tests that cover it. A 
 | AC | Covered by |
 | --- | --- |
 | AC-01 | API-01, E2E-01 |
-| AC-02 | API-06, API-07, SEC-06, UI-09, E2E-02 |
+| AC-02 | API-06, API-07, SEC-06, UI-09, UI-26, E2E-02 |
 | AC-03 | API-14, SEC-03 |
 | AC-04 | SEC-09 |
 | AC-05 | API-02, UI-02, UI-03, E2E-04 |
@@ -254,7 +256,7 @@ Every criterion in specification.md §9, and the planned tests that cover it. A 
 | AC-35 | RESP-01, RESP-02, RESP-03, RESP-04 |
 | AC-36 | UI-05, UI-19 |
 
-**Tests with no acceptance criterion.** UNIT-01, UNIT-04, UNIT-05, API-04, API-05, API-13, API-16, API-17, API-19, API-23, API-26, API-29, API-35, API-39, API-40, API-41, API-42, API-43, API-44, API-45, SEC-01, SEC-02, SEC-10, SEC-11, SEC-12, SEC-14, SEC-15, UI-01, UI-06, UI-10, UI-11, UI-12, UI-14, UI-15, UI-17, UI-25, STYLE-01, STYLE-02, STYLE-04 to STYLE-10, RESP-05, RESP-06, MIG-01, MIG-02, MIG-03, MIG-05, MIG-06, MIG-07, MIG-08 cover business rules or handout requirements that no criterion names. That is a gap in the criteria rather than in the suite, and it is recorded here rather than resolved by attaching a test to an unrelated criterion.
+**Tests with no acceptance criterion.** UNIT-01, UNIT-04, UNIT-05, API-04, API-05, API-13, API-16, API-17, API-19, API-23, API-26, API-29, API-35, API-39, API-40, API-41, API-42, API-43, API-44, API-45, API-46, SEC-01, SEC-02, SEC-10, SEC-11, SEC-12, SEC-14, SEC-15, UI-01, UI-06, UI-10, UI-11, UI-12, UI-14, UI-15, UI-17, UI-25, STYLE-01, STYLE-02, STYLE-04 to STYLE-10, RESP-05, RESP-06, MIG-01, MIG-02, MIG-03, MIG-05, MIG-06, MIG-07, MIG-08 cover business rules or handout requirements that no criterion names. That is a gap in the criteria rather than in the suite, and it is recorded here rather than resolved by attaching a test to an unrelated criterion.
 
 ---
 

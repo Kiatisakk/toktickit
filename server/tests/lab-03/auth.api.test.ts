@@ -1,5 +1,3 @@
-import cookieParser from "cookie-parser";
-import express from "express";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -12,10 +10,6 @@ import {
 import { app } from "../../src/app.js";
 import { hashPassword } from "../../src/auth/password.js";
 import { hashSessionToken, SESSION_COOKIE } from "../../src/auth/session.js";
-import {
-  requirePasswordChangeSatisfied,
-  requireSession,
-} from "../../src/middleware/session.js";
 import { prisma } from "../../src/prisma.js";
 import { signIn } from "./support/signIn.js";
 
@@ -443,30 +437,12 @@ describe("the password-change gate", () => {
   });
 
   /**
-   * The guard is asserted against a route mounted here rather than against a
-   * shipped one, because this ticket is the *expand* half of the identity swap:
-   * the ticket routes still run on the Lab 2 selector and nothing else requires
-   * a session yet. The guard is real, the session is real, and the assertion is
-   * about the guard.
-   *
-   * When the ticket routes move onto the session, this becomes an assertion
-   * about them and this fixture goes away.
+   * Asserted against shipped endpoints. Until the selector was deleted this
+   * used a probe route mounted in the test, because nothing shipped required a
+   * session yet; now every ticket and reference-data route does. SEC-06 walks
+   * the whole route table; these pick one of each kind.
    */
-  const gatedApp = (() => {
-    const probe = express();
-
-    probe.use(cookieParser());
-    probe.get(
-      "/probe",
-      requireSession,
-      requirePasswordChangeSatisfied,
-      (_req, res) => {
-        res.status(200).json({ reached: true });
-      }
-    );
-
-    return probe;
-  })();
+  const GATED = ["/api/tickets", "/api/categories"] as const;
 
   it("API-06 answers 403 PASSWORD_CHANGE_REQUIRED on a gated endpoint", async () => {
     const { cookie } = await signIn(
@@ -474,14 +450,16 @@ describe("the password-change gate", () => {
       MUST_CHANGE_REQUESTER.password
     );
 
-    const response = await request(gatedApp)
-      .get("/probe")
-      .set("Cookie", cookie);
+    const responses = await Promise.all(
+      GATED.map((path) => request(app).get(path).set("Cookie", cookie))
+    );
 
-    expect(response.status).toBe(403);
-    expect(response.body).toMatchObject({
-      error: { code: "PASSWORD_CHANGE_REQUIRED" },
-    });
+    for (const response of responses) {
+      expect(response.status).toBe(403);
+      expect(response.body).toMatchObject({
+        error: { code: "PASSWORD_CHANGE_REQUIRED" },
+      });
+    }
   });
 
   it("API-06 lets the same endpoint through once the flag is cleared", async () => {
@@ -490,7 +468,9 @@ describe("the password-change gate", () => {
       MUST_CHANGE_REQUESTER.password
     );
 
-    const refused = await request(gatedApp).get("/probe").set("Cookie", cookie);
+    const refused = await request(app)
+      .get("/api/tickets")
+      .set("Cookie", cookie);
 
     expect(refused.status).toBe(403);
 
@@ -502,15 +482,15 @@ describe("the password-change gate", () => {
         newPassword: "Replaced1!",
       });
 
-    const allowed = await request(gatedApp)
-      .get("/probe")
+    const allowed = await request(app)
+      .get("/api/tickets")
       .set("Cookie", cookiesOf(changed));
 
     expect(allowed.status).toBe(200);
   });
 
   it("the gate refuses before it asks who you are, when there is no session", async () => {
-    const response = await request(gatedApp).get("/probe");
+    const response = await request(app).get("/api/tickets");
 
     expect(response.status).toBe(401);
     expect(response.body).toMatchObject({ error: { code: "UNAUTHENTICATED" } });

@@ -9,9 +9,9 @@ import {
 import type { AuthenticatedUser } from "../../src/lib/auth";
 
 /**
- * Fixtures for the authenticated screens, beside the requester ones and for
- * the same reason: a screen that reads who is signed in cannot render without a
- * context around it.
+ * Fixtures for every screen that reads who is signed in — which, since the
+ * selector was deleted, is every application screen. None of them can render
+ * without a context around it.
  *
  * Kept in `tests/support/` rather than in a `lab-` folder, so the Vitest glob
  * does not collect it as a suite with no assertions.
@@ -21,6 +21,14 @@ export const JENNIFER_USER: AuthenticatedUser = {
   id: 1,
   name: "Jennifer Anderson",
   email: "jennifer.anderson@example.ac.th",
+  role: "REQUESTER",
+};
+
+/** Requester B — the person switched to when a test proves A's data goes. */
+export const SOMCHAI_USER: AuthenticatedUser = {
+  id: 2,
+  name: "Somchai Wattana",
+  email: "somchai.wattana@example.ac.th",
   role: "REQUESTER",
 };
 

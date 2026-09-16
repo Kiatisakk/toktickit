@@ -45,7 +45,7 @@ const respondWith = (body: unknown) => {
   );
 };
 
-const list = () => fetchTickets(new URLSearchParams(), 1);
+const list = () => fetchTickets(new URLSearchParams());
 
 afterEach(() => {
   vi.unstubAllGlobals();

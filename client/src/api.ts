@@ -11,7 +11,12 @@ async function getJson<T>(path: string, failureMessage: string): Promise<T> {
   let response: Response;
 
   try {
-    response = await fetch(`${API_BASE_URL}${path}`);
+    // Credentials, because the categories half of the check needs a session
+    // since Lab 3 (api-spec.md §5). Without them the browser drops the cookie
+    // across origins, the API answers 401, and a healthy system reports Offline.
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      credentials: "include",
+    });
   } catch {
     // fetch only rejects when the request never reached a server at all.
     throw new ApiError(failureMessage);

@@ -22,12 +22,11 @@ import {
   pathFor,
   writeAttachment,
 } from "../attachments/storage.js";
+import { ownTicketsOf, readableTicketsOf } from "../auth/scope.js";
+import type { SessionUser } from "../auth/session.js";
 import { ErrorCode, sendError, sendInternalError } from "../http/errors.js";
 import { identifier } from "../http/identifier.js";
-import {
-  requesterOf,
-  requireRequesterContext,
-} from "../middleware/requesterContext.js";
+import { currentUser, requireSignedIn } from "../middleware/session.js";
 import { prisma } from "../prisma.js";
 
 export const attachmentsRouter = Router();
@@ -133,23 +132,42 @@ const notFound = (
       );
 
 /**
- * The one ownership question, asked in one place.
+ * The scope questions, asked in one place each.
  *
  * Every attachment route resolves `attachment → ticket → requester`, and the
  * flat `/api/attachments/:id` path does not weaken that, because the check never
- * depended on the URL shape. Returning null for "absent" and for "someone
- * else's" together is what makes the two answer identically at the edge — the
+ * depended on the URL shape. Returning null for "absent" and for "outside your
+ * scope" together is what makes the two answer identically at the edge — the
  * caller cannot accidentally distinguish them because it is never told.
+ *
+ * Two scopes, deliberately (api-spec.md §6). **Reading** — the list and the
+ * download — follows the role: a Requester their own tickets, staff any.
+ * **Changing** — upload and removal — is the ticket's requester only, for every
+ * role: FR-29 lets staff view and download, and nothing asks for them to add a
+ * file under a requester's name or soft-remove a requester's evidence.
  */
-const ownedTicket = async (ticketId: number, requesterId: number) =>
+type Scope = "read" | "own";
+
+const scopeOf = (user: SessionUser, scope: Scope) =>
+  scope === "read" ? readableTicketsOf(user) : ownTicketsOf(user);
+
+const ticketInScope = async (
+  ticketId: number,
+  user: SessionUser,
+  scope: Scope
+) =>
   await prisma.ticket.findFirst({
-    where: { id: ticketId, requesterId },
+    where: { id: ticketId, ...scopeOf(user, scope) },
     select: { id: true },
   });
 
-const ownedAttachment = async (attachmentId: number, requesterId: number) =>
+const attachmentInScope = async (
+  attachmentId: number,
+  user: SessionUser,
+  scope: Scope
+) =>
   await prisma.attachment.findFirst({
-    where: { id: attachmentId, ticket: { requesterId } },
+    where: { id: attachmentId, ticket: scopeOf(user, scope) },
     select: {
       ...ATTACHMENT_SHAPE,
       storedFilename: true,
@@ -171,7 +189,7 @@ const resolveOwnedTicket = async (
   res: Parameters<RequestHandler>[1],
   next: Parameters<RequestHandler>[2]
 ): Promise<void> => {
-  const requester = requesterOf(res);
+  const user = currentUser(res);
   const ticketId = identifier(req.params["id"]);
 
   if (ticketId === null) {
@@ -180,7 +198,7 @@ const resolveOwnedTicket = async (
   }
 
   try {
-    const ticket = await ownedTicket(ticketId, requester.id);
+    const ticket = await ticketInScope(ticketId, user, "own");
 
     if (!ticket) {
       notFound(res, "ticket");
@@ -204,13 +222,13 @@ const requireOwnedTicket: RequestHandler = (req, res, next) => {
   void resolveOwnedTicket(req, res, next);
 };
 
-/** Metadata for one owned ticket, active and removed, newest first. */
+/** Metadata for one readable ticket, active and removed, newest first. */
 attachmentsRouter.get(
   "/tickets/:id/attachments",
-  requireRequesterContext,
+  ...requireSignedIn,
   // oxlint-disable-next-line oxc/no-async-endpoint-handlers
   async (req, res) => {
-    const requester = requesterOf(res);
+    const user = currentUser(res);
     const ticketId = identifier(req.params.id);
 
     if (ticketId === null) {
@@ -219,7 +237,7 @@ attachmentsRouter.get(
     }
 
     try {
-      const ticket = await ownedTicket(ticketId, requester.id);
+      const ticket = await ticketInScope(ticketId, user, "read");
 
       if (!ticket) {
         notFound(res, "ticket");
@@ -251,12 +269,12 @@ attachmentsRouter.get(
  */
 attachmentsRouter.post(
   "/tickets/:id/attachments",
-  requireRequesterContext,
+  ...requireSignedIn,
   requireOwnedTicket,
   acceptFile,
   // oxlint-disable-next-line oxc/no-async-endpoint-handlers
   async (req, res) => {
-    const requester = requesterOf(res);
+    const user = currentUser(res);
     const ticketId = identifier(req.params.id);
 
     if (ticketId === null) {
@@ -328,7 +346,7 @@ attachmentsRouter.post(
               storedFilename,
               mimeType: file.mimetype,
               sizeBytes: file.size,
-              uploadedById: requester.id,
+              uploadedById: user.id,
             },
             select: ATTACHMENT_SHAPE,
           });
@@ -363,7 +381,7 @@ attachmentsRouter.post(
 );
 
 /**
- * Streams one active owned attachment.
+ * Streams one active attachment on a readable ticket.
  *
  * `Content-Disposition: attachment` for every type including images (BR-25,
  * D-08). Serving uploaded content inline from the application's own origin is
@@ -372,10 +390,10 @@ attachmentsRouter.post(
  */
 attachmentsRouter.get(
   "/attachments/:id/download",
-  requireRequesterContext,
+  ...requireSignedIn,
   // oxlint-disable-next-line oxc/no-async-endpoint-handlers
   async (req, res) => {
-    const requester = requesterOf(res);
+    const user = currentUser(res);
     const id = identifier(req.params.id);
 
     if (id === null) {
@@ -384,7 +402,7 @@ attachmentsRouter.get(
     }
 
     try {
-      const attachment = await ownedAttachment(id, requester.id);
+      const attachment = await attachmentInScope(id, user, "read");
 
       if (!attachment) {
         notFound(res, "attachment");
@@ -463,10 +481,10 @@ attachmentsRouter.get(
  */
 attachmentsRouter.delete(
   "/attachments/:id",
-  requireRequesterContext,
+  ...requireSignedIn,
   // oxlint-disable-next-line oxc/no-async-endpoint-handlers
   async (req, res) => {
-    const requester = requesterOf(res);
+    const user = currentUser(res);
     const id = identifier(req.params.id);
 
     if (id === null) {
@@ -479,7 +497,7 @@ attachmentsRouter.delete(
     );
 
     try {
-      const attachment = await ownedAttachment(id, requester.id);
+      const attachment = await attachmentInScope(id, user, "own");
 
       // Ownership is resolved before the reason is complained about. Telling a
       // stranger their reason is too short would confirm the attachment exists.
@@ -522,7 +540,7 @@ attachmentsRouter.delete(
         data: {
           removedAt: new Date(),
           removedReason: reason.value,
-          removedById: requester.id,
+          removedById: user.id,
         },
       });
 

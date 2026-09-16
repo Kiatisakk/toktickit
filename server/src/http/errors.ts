@@ -12,9 +12,9 @@ import type { Response } from "express";
  */
 
 export const ErrorCode = {
-  // Lab 3 authentication and authorization. The four REQUESTER_CONTEXT_* codes
-  // below are retired in the ticket that deletes the selector; while both
-  // identity mechanisms coexist, both sets of codes are reachable.
+  // Lab 3 authentication and authorization. Lab 2's four REQUESTER_CONTEXT_*
+  // codes were deleted with the selector rather than aliased: their situations
+  // are now UNAUTHENTICATED (api-spec.md §3).
   unauthenticated: "UNAUTHENTICATED",
   invalidCredentials: "INVALID_CREDENTIALS",
   accountInactive: "ACCOUNT_INACTIVE",
@@ -24,10 +24,6 @@ export const ErrorCode = {
   lastActiveAdmin: "LAST_ACTIVE_ADMIN",
   cannotDeactivateSelf: "CANNOT_DEACTIVATE_SELF",
   userNotFound: "USER_NOT_FOUND",
-  requesterContextRequired: "REQUESTER_CONTEXT_REQUIRED",
-  requesterContextInvalid: "REQUESTER_CONTEXT_INVALID",
-  requesterContextUnknown: "REQUESTER_CONTEXT_UNKNOWN",
-  requesterContextInactive: "REQUESTER_CONTEXT_INACTIVE",
   validationFailed: "VALIDATION_FAILED",
   invalidQueryParameter: "INVALID_QUERY_PARAMETER",
   requestTooLarge: "REQUEST_TOO_LARGE",

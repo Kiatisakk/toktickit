@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Login } from "../../src/routes/Login";
 import { authContext, renderWithAuth } from "../support/auth";
-import { jsonResponse, respond } from "../support/requester";
+import { jsonResponse, respond } from "../support/http";
 
 /**
  * UI-01 to UI-06 — the sign-in screen.

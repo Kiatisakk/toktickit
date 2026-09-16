@@ -111,3 +111,15 @@ export const requirePasswordChangeSatisfied = (
 
   next();
 };
+
+/**
+ * The guard every ordinary endpoint mounts: a live session, and no password
+ * change outstanding.
+ *
+ * One name for the pair so a route cannot mount the first and forget the
+ * second. Express accepts an array wherever it accepts a handler.
+ */
+export const requireSignedIn = [
+  requireSession,
+  requirePasswordChangeSatisfied,
+] as const;
