@@ -35,7 +35,7 @@ The remaining five were undefined behaviour rather than wrong behaviour: staff `
 
 ### PR #57 — Client test fixtures and workflow rules (Issue #46)
 
-[PR #57](https://github.com/Kiatisakk/toktickit/pull/57) · reviewed 2026-09-10 · **1 finding**, verdict **Comment**.
+[PR #57](https://github.com/Kiatisakk/toktickit/pull/57) · reviewed 2026-09-10 · **1 finding**, verdict **Comment**, then **Approved** and merged into `lab3-staging` as `285c613` by @beambeambeam.
 
 He challenged a claim in `CLAUDE.md` that GitHub exposes no API for linking a Pull Request to its Issue, and named `addCloseIssueReferences`.
 
@@ -45,9 +45,13 @@ The claim came from searching the mutation list for `link|closing|subissue`. The
 
 Fixed in `c546262`. I took his intent rather than his suggested wording, and said so: once the mutation is written into the rule, hedging about "no one-step PR-only API" explains less than showing the call. He also noted the fixture consolidation as mechanical and low risk.
 
+**What the review found that the finding did not say.** Reviewing the rules is what exposed that they were not being followed. `docs/lab-03/` held four of the six files §12 asks for; this file and `ai-use.md` did not exist, five Pull Requests into the sprint — and the rule requiring them had been added by this very branch, three commits earlier. Both were written in `8592bae` and backfilled from `gh api` rather than from notes, which is the reconstruction the rule exists to prevent. `CLAUDE.md` gained the half of the rule that was missing: the two files are created in the first Pull Request that targets a new `<lab>-staging`.
+
+He approved with `LGTM` at 15:47:23Z and merged eleven seconds later. Issue #46 was closed by hand, because the base is not the default branch.
+
 ### PR #59 — Sign in, sign out, and the forced first password change (Issue #47)
 
-[PR #59](https://github.com/Kiatisakk/toktickit/pull/59) · reviewed 2026-09-11 · **15 line comments and 2 in the review body**, verdict **Comment**.
+[PR #59](https://github.com/Kiatisakk/toktickit/pull/59) · reviewed 2026-09-11 · **15 line comments and 2 in the review body**, verdict **Comment**, then **Approved** and merged into `lab3-staging` as `7b1058b` by @beambeambeam.
 
 The largest review of the sprint, on the first Pull Request with real authentication in it. He marked seven findings as bugs or security defects, three as specification gaps, and five as nits. Eleven were accepted and fixed; four were answered with reasons instead.
 
@@ -66,6 +70,20 @@ The largest review of the sprint, on the first Pull Request with real authentica
 **Four I answered rather than applied.** Authenticating the reference-data endpoints now would break the Lab 2 journey #47 is required to keep working, and api-spec.md §5's own stated reason for the change arrives with #48. The seeded demonstration passwords are governed by BR-42, which permits documented local-only credentials — though it also required documenting them, which I had not done, so the README now does. The duplicated password rules follow the Lab 2 precedent for two workspaces with no shared package. And rewriting pushed commit history to a different message style would detach every line comment from its commit, for a rule this repository does not have.
 
 **What I take from it.** Two of the three hidden defects were a test or a check that passed for a reason unrelated to the code being right — a stub that could not fail, and a typecheck against the wrong schema. Both looked exactly like evidence.
+
+He approved with `LGTM` at 15:04:21Z on 2026-09-14 and merged ten seconds later. Issue #47 was closed by hand, because the base is not the default branch.
+
+### PR #60 — Requester screens run on the authenticated identity (Issue #48)
+
+[PR #60](https://github.com/Kiatisakk/toktickit/pull/60) · reviewed 2026-09-15 · **2 line comments**, verdict **Comment**.
+
+Two findings, both real, and both invisible to the suites for the same reason: each only appears for a caller no existing test played.
+
+**The Lab 1 status page reported a healthy system as Offline.** Authenticating the categories endpoint — the change this ticket exists to make — broke `/system-status`, whose verdict needs the categories as well as the health check. Its Lab 1 request helper sent no credentials, so the categories call answered 401. The router carried a comment saying the page "calls only the public health endpoint, so it stays unguarded"; the page calls two endpoints, and the comment was written from memory of it. Fixed by sending credentials and guarding the route like every other screen.
+
+**IT Staff opening a Requester's ticket were offered Add Attachment and Remove.** The server scopes attachment writes to the ticket's own requester, so both controls could only fail. `AttachmentSection` now takes a required `canModify`, and a non-owner keeps Download and loses the rest. Required rather than defaulted, because a default would decide the answer silently for the next caller.
+
+Both regression tests were run against the unfixed source first and failed there, so neither passes by construction.
 
 ---
 
@@ -119,6 +137,18 @@ I said plainly that BR-07 is the better rule — composition requirements are wh
 
 **Two process notes in the body**, because neither has a line: the PR is not linked to #56 — the closing keyword does not link against a non-default base, and `addCloseIssueReferences`, the mutation he taught me on #57, fixes it — and `tests.md` is not in the diff while tests for the slice now exist.
 
+### beambeambeam#62 — Shared Ticket queue and read-only detail (his Issue #51)
+
+[PR #62](https://github.com/beambeambeam/toktickit/pull/62) · reviewed 2026-09-16 · **4 line comments**, verdict **Changes requested** on one of them.
+
+47 files, +3929/−186: the expanded status set, IT Priority, owner and version columns, the staff queue API with strict query parsing, and the queue and read-only detail screens.
+
+**The server was the strongest work of his I have reviewed, and three things I checked rather than assumed.** Severity sorting uses the enum's declared order, and his test tells it apart from alphabetical. Every fixture ticket shares one `ticketDate`, so his date-ordering assertions are really tie-break tests — which I nearly flagged as missing before reading the fixture. And the largest offset his contract allows, about `1.07e11`, is past a 32-bit integer; I ran it against PostgreSQL on his Prisma version and it is accepted.
+
+**The one change requested was his own fix, not carried over.** On #61 he fixed a `403` rendering as a retryable failure (`0d0c9f6`). The new queue and detail pages repeat the original defect, and #51 names the forbidden state in its acceptance criteria. The same branch would also make a stale owner filter recoverable.
+
+**Three optional notes.** The `@default(Low)` needed to backfill IT Priority outlives the migration, so a future create that forgets the field gets a quietly wrong value; attachment write denial is tested for staff upload but not staff removal or Administrator upload, under a variable named `requesterUpload`; and the new queue-to-detail browser spec is not in `tests.md`. Plus the process note from #61 again: the PR is not linked to its Issue.
+
 ---
 
 ## Coverage
@@ -126,12 +156,14 @@ I said plainly that BR-07 is the better rule — composition requirements are wh
 | Pull Request | Direction | Findings | Verdict | State |
 | --- | --- | --- | --- | --- |
 | [#56](https://github.com/Kiatisakk/toktickit/pull/56) | received | 12 | Changes requested → Approved | Merged |
-| [#57](https://github.com/Kiatisakk/toktickit/pull/57) | received | 1 | Comment | Open |
-| [#59](https://github.com/Kiatisakk/toktickit/pull/59) | received | 17 | Comment | Open — fixes pushed |
+| [#57](https://github.com/Kiatisakk/toktickit/pull/57) | received | 1 | Comment → Approved | Merged |
+| [#59](https://github.com/Kiatisakk/toktickit/pull/59) | received | 17 | Comment → Approved | Merged |
+| [#60](https://github.com/Kiatisakk/toktickit/pull/60) | received | 2 | Comment | Open — fixes pushed |
 | [beambeambeam#59](https://github.com/beambeambeam/toktickit/pull/59) | given | 3 | Changes requested → Approved | Merged |
 | [beambeambeam#60](https://github.com/beambeambeam/toktickit/pull/60) | given | 6 | Changes requested → Approved | Merged |
 | [beambeambeam#61](https://github.com/beambeambeam/toktickit/pull/61) | given | 4 | Changes requested | Open |
+| [beambeambeam#62](https://github.com/beambeambeam/toktickit/pull/62) | given | 4 | Changes requested | Open |
 
 Checked by listing the Pull Requests from GitHub and searching this file for each number, rather than by reading down the page — which is how two were found missing in Lab 2.
 
-Pull Requests #58 and #61 onward are not yet open. This file is updated by the Pull Request that receives or gives the review, not at the end of the sprint.
+No Pull Request past #59 is open in this repository yet. This file is updated by the Pull Request that receives or gives the review, not at the end of the sprint.

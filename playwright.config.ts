@@ -1,7 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
+import { storageStateOf } from "./e2e/lab-03/sessions";
+
 /**
- * End-to-end and visual evidence for Lab 2 (§8.8, §12).
+ * End-to-end and visual evidence (Lab 2 §8.8, §12; Lab 3 D-15).
  *
  * This is the only suite in the repository that runs the real application. Every
  * other test imports a module into jsdom, which loads no stylesheet and has no
@@ -25,7 +27,7 @@ const VIEWPORTS = {
 } as const;
 
 export default defineConfig({
-  testDir: "./e2e/lab-02",
+  testDir: "./e2e",
   outputDir: "./test-results",
 
   // The screenshots are evidence, and evidence produced by two workers racing
@@ -52,31 +54,29 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
 
+  /**
+   * `setup` signs in once per account through the real sign-in screen and saves
+   * each session; the three viewports depend on it and start already signed in
+   * as Requester A. A spec that needs someone else opens a second context with
+   * that person's saved session (e2e/lab-03/sessions.ts).
+   */
   projects: [
     {
-      name: "desktop",
+      name: "setup",
+      testMatch: /auth\.setup\.ts$/u,
+      use: { ...devices["Desktop Edge"], channel: "msedge" },
+    },
+    ...(["desktop", "tablet", "mobile"] as const).map((name) => ({
+      name,
+      testMatch: /\.spec\.ts$/u,
+      dependencies: ["setup"],
       use: {
         ...devices["Desktop Edge"],
         channel: "msedge",
-        viewport: VIEWPORTS.desktop,
+        viewport: VIEWPORTS[name],
+        storageState: storageStateOf("jennifer"),
       },
-    },
-    {
-      name: "tablet",
-      use: {
-        ...devices["Desktop Edge"],
-        channel: "msedge",
-        viewport: VIEWPORTS.tablet,
-      },
-    },
-    {
-      name: "mobile",
-      use: {
-        ...devices["Desktop Edge"],
-        channel: "msedge",
-        viewport: VIEWPORTS.mobile,
-      },
-    },
+    })),
   ],
 
   /**

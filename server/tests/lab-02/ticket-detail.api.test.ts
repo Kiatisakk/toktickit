@@ -1,9 +1,10 @@
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { ACTIVE_REQUESTER, SECOND_REQUESTER } from "../../prisma/accounts.js";
 import { app } from "../../src/app.js";
-import { REQUESTER_HEADER } from "../../src/middleware/requesterContext.js";
 import { prisma } from "../../src/prisma.js";
+import { sessionJar, signInAs } from "../lab-03/support/signIn.js";
 
 /**
  * `GET /api/tickets/:id` — ownership at the one place it can actually be
@@ -26,18 +27,20 @@ let ownerB = 0;
 let ticketOfA = 0;
 let ticketOfB = 0;
 
+const sessions = sessionJar();
+
 const asRequester = (id: number) => (r: request.Test) =>
-  r.set(REQUESTER_HEADER, String(id));
+  r.set("Cookie", sessions.cookieOf(id));
 
 beforeAll(async () => {
-  const [a, b] = await prisma.user.findMany({
-    where: { role: "REQUESTER", isActive: true },
-    orderBy: { id: "asc" },
-    take: 2,
-  });
+  // Signed in, not looked up: identity comes from the session now (D-15).
+  const [a, b] = await Promise.all([
+    signInAs(ACTIVE_REQUESTER),
+    signInAs(SECOND_REQUESTER),
+  ]);
 
-  ownerA = a?.id ?? 0;
-  ownerB = b?.id ?? 0;
+  ownerA = sessions.add(a);
+  ownerB = sessions.add(b);
 
   const category = await prisma.category.findFirstOrThrow();
   const system = await prisma.relatedSystem.findFirstOrThrow();
@@ -191,7 +194,9 @@ describe("without a requester", () => {
   it("is refused before ownership is even considered", async () => {
     const response = await request(app).get(`/api/tickets/${ticketOfA}`);
 
-    expect(response.status).toBe(400);
-    expect(response.body.error.code).toBe("REQUESTER_CONTEXT_REQUIRED");
+    // Lab 2 answered 400 REQUESTER_CONTEXT_REQUIRED; that code is retired and
+    // its situation is now 401 UNAUTHENTICATED (api-spec.md §3).
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("UNAUTHENTICATED");
   });
 });

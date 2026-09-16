@@ -3,10 +3,11 @@ import { readdir, unlink } from "node:fs/promises";
 import request from "supertest";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ACTIVE_REQUESTER, SECOND_REQUESTER } from "../../prisma/accounts.js";
 import { app } from "../../src/app.js";
 import { pathFor, UPLOAD_DIR } from "../../src/attachments/storage.js";
-import { REQUESTER_HEADER } from "../../src/middleware/requesterContext.js";
 import { prisma } from "../../src/prisma.js";
+import { sessionJar, signInAs } from "../lab-03/support/signIn.js";
 
 /**
  * The attachment lifecycle, end to end.
@@ -25,8 +26,10 @@ let ownerB = 0;
 let ticketOfA = 0;
 let ticketOfB = 0;
 
+const sessions = sessionJar();
+
 const as = (id: number) => (r: request.Test) =>
-  r.set(REQUESTER_HEADER, String(id));
+  r.set("Cookie", sessions.cookieOf(id));
 
 const attach = (
   ticketId: number,
@@ -81,14 +84,17 @@ beforeEach(async () => {
     where: { summary: { startsWith: PREFIX } },
   });
 
-  const [a, b] = await prisma.user.findMany({
-    where: { role: "REQUESTER", isActive: true },
-    orderBy: { id: "asc" },
-    take: 2,
-  });
+  // Signed in once, not on every test: a sign-in pays for a deliberately slow
+  // key derivation, and identity does not change between tests (D-15).
+  if (ownerA === 0) {
+    const [a, b] = await Promise.all([
+      signInAs(ACTIVE_REQUESTER),
+      signInAs(SECOND_REQUESTER),
+    ]);
 
-  ownerA = a?.id ?? 0;
-  ownerB = b?.id ?? 0;
+    ownerA = sessions.add(a);
+    ownerB = sessions.add(b);
+  }
 
   const category = await prisma.category.findFirstOrThrow();
   const system = await prisma.relatedSystem.findFirstOrThrow();

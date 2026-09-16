@@ -384,7 +384,7 @@
     gap: var(--tkt-space-2);
   }
 
-  /* The current requester stays visible even when navigation is collapsed:
+  /* The signed-in user stays visible even when navigation is collapsed:
      knowing whose data is on screen is what this shell exists to say. */
   .tkt-identity {
     order: 3;
@@ -399,26 +399,7 @@
   }
 }
 
-/* ----------------------------------------------- requester selection -- */
-
-.tkt-select-card {
-  margin: var(--tkt-space-8) auto;
-  max-width: 34rem;
-}
-
-/*
- * The Lab 3 notice. Amber rather than green: §7 reserves warning colour for
- * genuine warnings, and "the identity you just chose is not protected" is one.
- */
-.tkt-notice {
-  background-color: var(--tkt-warning-pale);
-  border: 1px solid var(--tkt-warning);
-  border-radius: var(--tkt-radius-sm);
-  color: var(--tkt-text);
-  font-size: var(--tkt-font-small);
-  margin: var(--tkt-space-4) 0;
-  padding: var(--tkt-space-3);
-}
+/* ----------------------------------------------------------- actions -- */
 
 .tkt-actions {
   display: flex;
@@ -1463,11 +1444,4 @@
 .tkt-password-toggle:disabled {
   color: var(--tkt-text-muted);
   cursor: not-allowed;
-}
-
-/* Only rendered while the two identity mechanisms disagree, which they can do
-   for exactly one ticket. */
-.tkt-identity__acting {
-  font-size: var(--tkt-font-small);
-  opacity: 0.85;
 }

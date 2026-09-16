@@ -1,10 +1,11 @@
 import { expect, test } from "@playwright/test";
 
+import { pageAs } from "../lab-03/sessions";
 import {
   expectNoHorizontalScroll,
   firstTicketLink,
+  openMyTickets,
   shoot,
-  signInAs,
 } from "./support";
 
 /**
@@ -20,8 +21,12 @@ import {
  * screenshot taken by a second run is a picture of a different ticket.
  */
 
+/**
+ * Every page here starts signed in as Requester A — the viewport projects'
+ * saved session. Requester B and the empty-list requester are opened in their
+ * own browser contexts with `pageAs`.
+ */
 const REQUESTER_A = "Jennifer Anderson";
-const REQUESTER_B = "Somchai Wattana";
 
 /** Unique per run, so the same journey can be re-run without colliding. */
 const summaryFor = () => `E2E journey ${Date.now()}`;
@@ -32,8 +37,8 @@ test.describe("the complete Requester journey", () => {
   }, info) => {
     const summary = summaryFor();
 
-    // --- select a Requester -------------------------------------------------
-    await signInAs(page, REQUESTER_A);
+    // --- signed in as Requester A --------------------------------------------
+    await openMyTickets(page);
     await expect(page.getByText(REQUESTER_A)).toBeVisible();
 
     // --- create a Ticket ----------------------------------------------------
@@ -188,16 +193,17 @@ test.describe("the complete Requester journey", () => {
       const id = Number(globalThis.location.pathname.split("/").pop());
       const response = await fetch(
         `http://localhost:3000/api/tickets/${id}/attachments`,
-        { headers: { "X-Development-Requester-Id": "1" } }
+        { credentials: "include" }
       );
       const body = (await response.json()) as { data: { id: number }[] };
 
       return body.data[0]?.id ?? 0;
     });
 
+    // Asked with the owner's own session: the refusal is removal, not
+    // ownership.
     const direct = await page.request.get(
-      `http://localhost:3000/api/attachments/${attachmentId}/download`,
-      { headers: { "X-Development-Requester-Id": "1" } }
+      `http://localhost:3000/api/attachments/${attachmentId}/download`
     );
 
     expect(direct.status()).toBe(404);
@@ -210,9 +216,10 @@ test.describe("the complete Requester journey", () => {
 test.describe("requester isolation", () => {
   /** §14 Part 7: switch from A to B and A's tickets are gone. */
   test("switching Requester empties the previous list", async ({
+    browser,
     page,
   }, info) => {
-    await signInAs(page, REQUESTER_A);
+    await openMyTickets(page);
 
     await expect(firstTicketLink(page)).toBeVisible();
     await shoot(page, "my-tickets", `${info.project.name}-requester-a`);
@@ -223,13 +230,21 @@ test.describe("requester isolation", () => {
 
     expect(aNumbers.length).toBeGreaterThan(0);
 
-    await page.getByRole("button", { name: "Change Requester" }).click();
-    await signInAs(page, REQUESTER_B);
-    await shoot(page, "my-tickets", `${info.project.name}-requester-b`);
+    // Requester B, in a browser session of their own. The list is read only
+    // once it has rendered — the heading alone would pass on a loading state.
+    const asB = await pageAs(browser, info, "somchai");
 
-    const bNumbers = await page
+    await openMyTickets(asB);
+    await expect(
+      firstTicketLink(asB).or(asB.getByText("No tickets yet"))
+    ).toBeVisible();
+    await shoot(asB, "my-tickets", `${info.project.name}-requester-b`);
+
+    const bNumbers = await asB
       .getByRole("link", { name: /^TKT-\d{4}-\d{6}$/u })
       .allTextContents();
+
+    await asB.context().close();
 
     // Not "the list changed" — no ticket number of A's may appear at all.
     for (const number of bNumbers) {
@@ -244,8 +259,11 @@ test.describe("requester isolation", () => {
    * that cannot be demonstrated by clicking — every link on screen already
    * points somewhere allowed.
    */
-  test("another Requester's ticket URL is refused", async ({ page }, info) => {
-    await signInAs(page, REQUESTER_A);
+  test("another Requester's ticket URL is refused", async ({
+    browser,
+    page,
+  }, info) => {
+    await openMyTickets(page);
 
     const link = firstTicketLink(page);
 
@@ -253,14 +271,13 @@ test.describe("requester isolation", () => {
 
     const href = await link.getAttribute("href");
 
-    await page.getByRole("button", { name: "Change Requester" }).click();
-    await signInAs(page, REQUESTER_B);
+    const asB = await pageAs(browser, info, "somchai");
 
-    await page.goto(href ?? "/my-tickets");
+    await asB.goto(href ?? "/my-tickets");
 
-    await expect(page.getByText("Ticket not found")).toBeVisible();
+    await expect(asB.getByText("Ticket not found")).toBeVisible();
     await expect(
-      page.getByText(
+      asB.getByText(
         "This ticket does not exist, or it belongs to another requester."
       )
     ).toBeVisible();
@@ -269,23 +286,26 @@ test.describe("requester isolation", () => {
     // is refused, and an assertion in a test file is not something a reader of
     // the report can see. `ui-spec.md` §10 has named this file all along; it
     // had never been written, because nothing captured it.
-    await shoot(page, "ticket-detail", `${info.project.name}-unauthorized`);
+    await shoot(asB, "ticket-detail", `${info.project.name}-unauthorized`);
+    await asB.context().close();
   });
 });
 
 test.describe("the states Part 6 and Part 7 ask for", () => {
   test("My Tickets has an empty state and a no-results state", async ({
+    browser,
     page,
   }, info) => {
     // Pimchanok is seeded with no tickets precisely so this state is reachable.
-    await signInAs(page, "Pimchanok Srisai");
+    const empty = await pageAs(browser, info, "pimchanok");
 
-    await expect(page.getByText("No tickets yet")).toBeVisible();
-    await shoot(page, "my-tickets", `${info.project.name}-empty`);
+    await openMyTickets(empty);
+    await expect(empty.getByText("No tickets yet")).toBeVisible();
+    await shoot(empty, "my-tickets", `${info.project.name}-empty`);
+    await empty.context().close();
 
     // No-results is a different state, and telling them apart is BR-35.
-    await page.getByRole("button", { name: "Change Requester" }).click();
-    await signInAs(page, REQUESTER_A);
+    await openMyTickets(page);
     await page.getByLabel("Search").fill("nothing will match this string");
 
     await expect(page.getByText("No tickets match your filters")).toBeVisible();
@@ -301,7 +321,7 @@ test.describe("the states Part 6 and Part 7 ask for", () => {
   test("a failed submission keeps everything the person typed", async ({
     page,
   }, info) => {
-    await signInAs(page, REQUESTER_A);
+    await openMyTickets(page);
     await page.goto("/tickets/new");
 
     const summary = summaryFor();
@@ -337,7 +357,7 @@ test.describe("the states Part 6 and Part 7 ask for", () => {
 
 test.describe("no horizontal scrolling at any viewport", () => {
   test("across all three screens", async ({ page }) => {
-    await signInAs(page, REQUESTER_A);
+    await openMyTickets(page);
     await expectNoHorizontalScroll(page, "My Tickets");
 
     await page.goto("/tickets/new");

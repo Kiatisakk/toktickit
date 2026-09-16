@@ -5,31 +5,24 @@ import { describe, expect, it, vi } from "vitest";
 
 import { AppShell } from "../../src/components/AppShell";
 import { AuthContext } from "../../src/context/authContextValue";
-import { RequesterContext } from "../../src/context/requesterContextValue";
 import { authContext, STAFF_USER } from "../support/auth";
-import { requesterContext } from "../support/requester";
 
 /**
- * UI-14 — the shell shows who is signed in.
+ * UI-14 — the shell shows who is signed in, and nothing else about identity.
  *
  * Role-dependent navigation (UI-13, AC-34) is not here: the navigation is still
- * the Lab 2 pair, because this ticket is the expand half and no staff screen
- * exists to link to yet.
+ * the Lab 2 pair until a staff screen exists to link to.
  */
 
 const renderShell = ({
   auth = authContext(),
-  requester = requesterContext(),
 }: {
   auth?: ReturnType<typeof authContext>;
-  requester?: ReturnType<typeof requesterContext>;
 } = {}) =>
   render(
     <MemoryRouter>
       <AuthContext.Provider value={auth}>
-        <RequesterContext.Provider value={requester}>
-          <AppShell>content</AppShell>
-        </RequesterContext.Provider>
+        <AppShell>content</AppShell>
       </AuthContext.Provider>
     </MemoryRouter>
   );
@@ -76,51 +69,24 @@ describe("UI-14 the signed-in identity", () => {
       screen.queryByRole("button", { name: /logout/iu })
     ).not.toBeInTheDocument();
   });
-
-  it("offers a way to sign in when nobody is", () => {
-    // Otherwise the screen is reachable only by typing its URL: during the
-    // expand half nothing else routes to it.
-    renderShell({ auth: authContext({ status: "anonymous", user: null }) });
-
-    expect(screen.getByRole("link", { name: /sign in/iu })).toHaveAttribute(
-      "href",
-      "/login"
-    );
-  });
 });
 
-describe("while both identity mechanisms coexist", () => {
-  it("says who is being acted as when the two differ", () => {
-    // Only possible for the length of this one ticket. Naming it is better
-    // than a header that quietly shows one person while the API acts as
-    // another — which is the exact defect AppShell was already written to
-    // avoid, when it accepted the name as a prop.
-    renderShell({
-      auth: authContext({ user: STAFF_USER }),
-      requester: requesterContext(),
-    });
-
-    expect(
-      screen.getByText(/acting as Jennifer Anderson/iu)
-    ).toBeInTheDocument();
-  });
-
-  it("says nothing extra when they are the same person", () => {
+describe("UI-14 the retired selector", () => {
+  it("offers no Change Requester action on an application screen", () => {
     renderShell();
 
+    expect(
+      screen.queryByRole("button", { name: /change requester/iu })
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/acting as/iu)).not.toBeInTheDocument();
   });
-});
 
-describe("the session check", () => {
-  it("offers no Sign In while it is still resolving", () => {
-    // Otherwise the link flashes at everybody who is already signed in, for as
-    // long as GET /api/auth/me takes to answer.
-    renderShell({ auth: authContext({ status: "resolving", user: null }) });
+  it("never shows a placeholder identity when nobody is signed in", () => {
+    // Lab 2 read "No requester selected" here. With no signed-in user there is
+    // nobody to name, and the guard has already sent the visitor to sign in.
+    renderShell({ auth: authContext({ status: "anonymous", user: null }) });
 
-    expect(
-      screen.queryByRole("link", { name: /sign in/iu })
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/no requester/iu)).not.toBeInTheDocument();
   });
 });
 

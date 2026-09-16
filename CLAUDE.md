@@ -237,8 +237,8 @@ Linking the _branch_ at the Started stage is optional, signals only that work ha
 
 - **Everything reaches `<lab>-staging` through a Pull Request.** Never commit or push directly to `main` or `<lab>-staging` — documentation commits included.
 - Docs while the Issue's code is still in progress: edit them on the **same feature branch**, ship them in the **same PR**. Do not open a second branch.
-- Docs after the code is merged, when the change is substantial: open `docs/<lab>-<topic>` (e.g. `docs/lab2-report`) and a PR for it. A typo or broken link gets the same treatment, just as a fast lane.
-- If a docs PR belongs to an Issue, link it as usual; if there is no Issue, say so in one line in the PR description.
+- Docs after the code is merged — recording how a PR ended in `reviewer.md`, a stale `tests.md` row, a typo: **do not open a PR for it.** Commit it on the next feature branch and let it ride in that branch's PR, saying so in one line in the description. A PR that exists only to record the previous one is noise in the reviewer's queue, and it conflicts with the PR it is recording (#58 did, with #59, and was closed).
+- Only the end-of-sprint report, with no next feature branch to carry it, gets its own `docs/<lab>-<topic>` branch (e.g. `docs/lab2-report`) and PR. Link it to an Issue if it has one; if not, say so in one line.
 
 ## Living documents — updated by the PR that makes them true
 

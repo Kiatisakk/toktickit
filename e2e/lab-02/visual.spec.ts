@@ -6,7 +6,7 @@ import {
   expectNothingClipped,
   firstTicketLink,
   shoot,
-  signInAs,
+  openMyTickets,
   ZEN_GREEN,
 } from "./support";
 
@@ -25,11 +25,11 @@ import {
  * none of it, because none of them could. This file is the answer.
  */
 
-const REQUESTER = "Jennifer Anderson";
+// Every test here runs as Requester A, the viewport projects' saved session.
 
 test.describe("Zen Green tokens, as the browser computes them", () => {
   test("the header is the primary green on every screen", async ({ page }) => {
-    await signInAs(page, REQUESTER);
+    await openMyTickets(page);
 
     const header = page.locator(".tkt-header");
 
@@ -40,7 +40,7 @@ test.describe("Zen Green tokens, as the browser computes them", () => {
   test("the page sits on the page background, not on white", async ({
     page,
   }) => {
-    await signInAs(page, REQUESTER);
+    await openMyTickets(page);
 
     const body = page.locator("body");
 
@@ -48,7 +48,7 @@ test.describe("Zen Green tokens, as the browser computes them", () => {
   });
 
   test("the primary button is the primary green", async ({ page }) => {
-    await signInAs(page, REQUESTER);
+    await openMyTickets(page);
 
     const primary = page.getByRole("button", { name: "Create Ticket" }).first();
 
@@ -66,7 +66,7 @@ test.describe("Zen Green tokens, as the browser computes them", () => {
   test("the ticket list is a surface, not bare text on the background", async ({
     page,
   }, info) => {
-    await signInAs(page, REQUESTER);
+    await openMyTickets(page);
 
     /*
      * Which element carries the surface changes at 768px, and deliberately so:
@@ -88,7 +88,7 @@ test.describe("Zen Green tokens, as the browser computes them", () => {
   }, info) => {
     const onMobile = info.project.name === "mobile";
 
-    await signInAs(page, REQUESTER);
+    await openMyTickets(page);
     await expect(firstTicketLink(page)).toBeVisible();
 
     const heading = page.locator(".tkt-table thead th").first();
@@ -110,7 +110,7 @@ test.describe("Zen Green tokens, as the browser computes them", () => {
   test("the active navigation item is marked, and not only by colour", async ({
     page,
   }) => {
-    await signInAs(page, REQUESTER);
+    await openMyTickets(page);
 
     const active = page.locator(".tkt-nav-link--active");
 
@@ -134,7 +134,7 @@ test.describe("nothing clipped, nothing overflowing", () => {
 
   for (const [name, url] of screens) {
     test(`${name} fits its viewport`, async ({ page }) => {
-      await signInAs(page, REQUESTER);
+      await openMyTickets(page);
       await page.goto(url);
 
       await expectNoHorizontalScroll(page, name);
@@ -145,7 +145,7 @@ test.describe("nothing clipped, nothing overflowing", () => {
   test("ticket detail fits its viewport, attachment names included", async ({
     page,
   }) => {
-    await signInAs(page, REQUESTER);
+    await openMyTickets(page);
 
     const link = firstTicketLink(page);
 
@@ -167,7 +167,7 @@ test.describe("nothing clipped, nothing overflowing", () => {
   }, info) => {
     const onMobile = info.project.name === "mobile";
 
-    await signInAs(page, REQUESTER);
+    await openMyTickets(page);
     await expect(firstTicketLink(page)).toBeVisible();
 
     const scroller = page.locator(".tkt-table-scroll");
@@ -196,7 +196,7 @@ test.describe("the three screens at this viewport", () => {
   test("are captured for the report", async ({ page }, info) => {
     const viewport = info.project.name;
 
-    await signInAs(page, REQUESTER);
+    await openMyTickets(page);
     await shoot(page, "my-tickets", viewport);
 
     await page.goto("/tickets/new");
@@ -218,7 +218,7 @@ test.describe("the list changes presentation at 768px", () => {
   }, info) => {
     const onMobile = info.project.name === "mobile";
 
-    await signInAs(page, REQUESTER);
+    await openMyTickets(page);
 
     // A list with no rows renders the empty state, and then neither the table
     // nor the cards exist — which would pass both assertions below without

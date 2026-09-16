@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ChangePassword } from "../../src/routes/ChangePassword";
 import { authContext, renderWithAuth } from "../support/auth";
-import { jsonResponse } from "../support/requester";
+import { jsonResponse } from "../support/http";
 
 /**
  * UI-07 to UI-09 — the change-password screen.

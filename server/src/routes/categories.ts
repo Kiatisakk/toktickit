@@ -1,11 +1,15 @@
 import { Router } from "express";
 
 import { sendInternalError } from "../http/errors.js";
+import { requireSignedIn } from "../middleware/session.js";
 import { prisma } from "../prisma.js";
 
 export const categoriesRouter = Router();
 
-categoriesRouter.get("/categories", async (_req, res) => {
+// Authenticated since Lab 3. Lab 2 left it open because the selector needed it
+// before any identity existed, and that reason went with the selector
+// (api-spec.md §5).
+categoriesRouter.get("/categories", ...requireSignedIn, async (_req, res) => {
   try {
     const categories = await prisma.category.findMany({
       // Retired categories stop being offered but keep existing, so tickets

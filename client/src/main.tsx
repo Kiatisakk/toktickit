@@ -9,7 +9,6 @@ import "./styles/components.css";
 import "./index.css";
 
 import { AuthProvider } from "./context/AuthContext";
-import { RequesterProvider } from "./context/RequesterContext";
 import { router } from "./routes/router";
 
 const container = document.getElementById("root");
@@ -20,12 +19,8 @@ if (!container) {
 
 createRoot(container).render(
   <StrictMode>
-    {/* Auth outside Requester: the sign-in screen renders before any
-        requester exists, and the selector is on its way out. */}
     <AuthProvider>
-      <RequesterProvider>
-        <RouterProvider router={router} />
-      </RequesterProvider>
+      <RouterProvider router={router} />
     </AuthProvider>
   </StrictMode>
 );
