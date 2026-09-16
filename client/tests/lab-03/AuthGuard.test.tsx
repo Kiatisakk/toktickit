@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { AuthContext } from "../../src/context/authContextValue";
 import { AuthGuard, type GuardedArea } from "../../src/routes/AuthGuard";
-import { authContext } from "../support/auth";
+import { ADMIN_USER, authContext, STAFF_USER } from "../support/auth";
 
 /**
  * UI-26 — the route guard sends each visitor to the screen they may use.
@@ -99,5 +99,70 @@ describe("UI-26 while the session check is still in flight", () => {
     expect(screen.getByText("Loading…")).toBeInTheDocument();
     expect(screen.queryByText("Sign in")).not.toBeInTheDocument();
     expect(screen.queryByText("Protected screen")).not.toBeInTheDocument();
+  });
+});
+
+describe("UI-26 a screen limited to some roles", () => {
+  const renderAdminScreen = (context: ReturnType<typeof authContext>) =>
+    render(
+      <MemoryRouter initialEntries={["/admin/users"]}>
+        <AuthContext.Provider value={context}>
+          <Routes>
+            <Route element={<h1>My Tickets</h1>} path="/my-tickets" />
+            <Route
+              element={
+                <AuthGuard roles={["ADMIN"]}>
+                  <h1>User Management</h1>
+                </AuthGuard>
+              }
+              path="/admin/users"
+            />
+          </Routes>
+        </AuthContext.Provider>
+      </MemoryRouter>
+    );
+
+  it("admits an Administrator", () => {
+    renderAdminScreen(authContext({ user: ADMIN_USER }));
+
+    expect(heading()).toHaveTextContent("User Management");
+  });
+
+  it.each([
+    { who: "a Requester", context: authContext() },
+    { who: "IT Staff", context: authContext({ user: STAFF_USER }) },
+  ])(
+    "redirects $who to My Tickets rather than showing an error",
+    ({ context }) => {
+      // ui-spec.md §8: the destination is absent and the route redirects. The
+      // server still refuses the same user with 403 — this is navigation.
+      renderAdminScreen(context);
+
+      expect(heading()).toHaveTextContent("My Tickets");
+    }
+  );
+
+  it("still sends a signed-out visitor to sign in first", () => {
+    render(
+      <MemoryRouter initialEntries={["/admin/users"]}>
+        <AuthContext.Provider
+          value={authContext({ status: "anonymous", user: null })}
+        >
+          <Routes>
+            <Route element={<h1>Sign in</h1>} path="/login" />
+            <Route
+              element={
+                <AuthGuard roles={["ADMIN"]}>
+                  <h1>User Management</h1>
+                </AuthGuard>
+              }
+              path="/admin/users"
+            />
+          </Routes>
+        </AuthContext.Provider>
+      </MemoryRouter>
+    );
+
+    expect(heading()).toHaveTextContent("Sign in");
   });
 });

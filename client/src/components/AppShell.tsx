@@ -2,6 +2,7 @@ import { type ReactNode, useContext, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router";
 
 import { AuthContext } from "../context/authContextValue";
+import type { Role } from "../lib/auth";
 import { Badge } from "./Badge";
 import { Breadcrumb, type Crumb } from "./Breadcrumb";
 import { Icon, type IconName } from "./Icon";
@@ -25,7 +26,26 @@ interface AppShellProps {
   children: ReactNode;
 }
 
-const NAV_ITEMS: { to: string; label: string; icon: IconName }[] = [
+/**
+ * Every destination, in the order ui-spec.md §2 gives the Administrator's
+ * navigation. `roles` omitted means every signed-in role.
+ *
+ * A destination a role may not use is left out, not disabled (AC-34): a
+ * disabled link still advertises a screen the user cannot have. The Ticket
+ * Queue joins this list with the ticket that builds it.
+ */
+const NAV_ITEMS: {
+  to: string;
+  label: string;
+  icon: IconName;
+  roles?: readonly Role[];
+}[] = [
+  {
+    to: "/admin/users",
+    label: "User Management",
+    icon: "users",
+    roles: ["ADMIN"],
+  },
   { to: "/my-tickets", label: "My Tickets", icon: "ticket" },
   { to: "/tickets/new", label: "Create Ticket", icon: "create" },
 ];
@@ -57,6 +77,11 @@ export const AppShell = ({
   const signedInUser = auth?.user ?? null;
 
   const showNavigation = variant === "application";
+  const navItems = NAV_ITEMS.filter(
+    (item) =>
+      !item.roles ||
+      (signedInUser !== null && item.roles.includes(signedInUser.role))
+  );
   const showIdentity = variant !== "signed-out";
 
   const signOut = () => {
@@ -89,7 +114,7 @@ export const AppShell = ({
                 className={navOpen ? "tkt-nav tkt-nav--open" : "tkt-nav"}
                 id="tkt-primary-nav"
               >
-                {NAV_ITEMS.map((item) => (
+                {navItems.map((item) => (
                   <NavLink
                     className={navLinkClass}
                     key={item.to}

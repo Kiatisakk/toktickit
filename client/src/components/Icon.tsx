@@ -36,6 +36,7 @@ const GLYPHS = {
   check: "check-circle-fill",
   pending: "circle",
   logout: "box-arrow-right",
+  users: "people",
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

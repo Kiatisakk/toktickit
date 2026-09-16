@@ -4,6 +4,7 @@ import { Navigate } from "react-router";
 import { AppShell } from "../components/AppShell";
 import { StateBlock } from "../components/StateBlock";
 import { useAuth } from "../context/useAuth";
+import type { Role } from "../lib/auth";
 
 /**
  * Which screens a guard admits.
@@ -29,12 +30,23 @@ export type GuardedArea = "application" | "password-change";
  */
 export const AuthGuard = ({
   area = "application",
+  roles,
   children,
 }: {
   area?: GuardedArea;
+  /**
+   * The roles that may use this screen. Omitted means every signed-in role.
+   *
+   * A signed-in user outside the list is redirected to My Tickets rather than
+   * shown an error: ui-spec.md §8 says the destination "is absent from
+   * navigation and the route redirects". The server refuses the same user with
+   * 403 on every call the screen would make (BR-17), so this is where they are
+   * sent, not what protects the data.
+   */
+  roles?: readonly Role[];
   children: ReactNode;
 }) => {
-  const { status, mustChangePassword } = useAuth();
+  const { status, mustChangePassword, user } = useAuth();
 
   if (status === "resolving") {
     return (
@@ -57,6 +69,10 @@ export const AuthGuard = ({
   }
 
   if (area === "password-change" && !mustChangePassword) {
+    return <Navigate replace to="/my-tickets" />;
+  }
+
+  if (roles && !(user && roles.includes(user.role))) {
     return <Navigate replace to="/my-tickets" />;
   }
 

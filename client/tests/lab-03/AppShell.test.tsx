@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { AppShell } from "../../src/components/AppShell";
 import { AuthContext } from "../../src/context/authContextValue";
-import { authContext, STAFF_USER } from "../support/auth";
+import { ADMIN_USER, authContext, STAFF_USER } from "../support/auth";
 
 /**
  * UI-14 — the shell shows who is signed in, and nothing else about identity.
@@ -107,4 +107,37 @@ describe("the role badge", () => {
 
     expect(screen.getByText("Administrator")).toHaveClass("tkt-badge");
   });
+});
+
+describe("UI-13 navigation by role", () => {
+  const destinations = () =>
+    screen.getByRole("navigation", { name: "Primary" }).querySelectorAll("a");
+
+  it("offers an Administrator User Management, first, as ui-spec.md orders it", () => {
+    renderShell({ auth: authContext({ user: ADMIN_USER }) });
+
+    expect([...destinations()].map((link) => link.textContent)).toEqual([
+      "User Management",
+      "My Tickets",
+      "Create Ticket",
+    ]);
+  });
+
+  it.each([
+    { who: "a Requester", auth: authContext() },
+    { who: "IT Staff", auth: authContext({ user: STAFF_USER }) },
+  ])(
+    "leaves User Management out for $who — absent, not disabled",
+    ({ auth }) => {
+      renderShell({ auth });
+
+      expect(
+        screen.queryByRole("link", { name: /user management/iu })
+      ).not.toBeInTheDocument();
+      expect([...destinations()].map((link) => link.textContent)).toEqual([
+        "My Tickets",
+        "Create Ticket",
+      ]);
+    }
+  );
 });

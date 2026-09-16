@@ -8,6 +8,7 @@ import { Login } from "./Login";
 import { MyTickets } from "./MyTickets";
 import { NotFound } from "./NotFound";
 import { TicketDetail } from "./TicketDetail";
+import { UserManagement } from "./UserManagement";
 
 /**
  * The route table.
@@ -59,6 +60,16 @@ export const router = createBrowserRouter([
   {
     path: "/tickets/:ticketId",
     element: guarded(<TicketDetail />),
+  },
+  // Administrator only. The destination is absent from every other role's
+  // navigation and the route redirects them (ui-spec.md §8).
+  {
+    path: "/admin/users",
+    element: (
+      <AuthGuard roles={["ADMIN"]}>
+        <UserManagement />
+      </AuthGuard>
+    ),
   },
   {
     path: "/system-status",
