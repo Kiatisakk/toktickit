@@ -1282,6 +1282,65 @@
   margin: 0 0 var(--tkt-space-1);
 }
 
+/* A confirmation that destroys nothing. The red of attachment removal would
+   tell a Requester that telling IT the problem has stopped is dangerous. */
+.tkt-confirm--neutral {
+  background-color: var(--tkt-green-pale);
+  border-color: var(--tkt-green-accent);
+}
+
+/* ----------------------------------------------- Lab 3: public comments -- */
+
+/* Not a status badge (ui-spec.md §6): plain prose on the card, set off by the
+   accent rule so it is prominent without borrowing the lifecycle's colours. */
+.tkt-resolved-indication[data-state="recorded"] {
+  border-left: 4px solid var(--tkt-green-accent);
+}
+
+.tkt-resolved-indication__statement {
+  margin: 0;
+}
+
+.tkt-comments {
+  list-style: none;
+  margin: var(--tkt-space-3) 0 0;
+  padding: 0;
+}
+
+.tkt-comment {
+  border-bottom: 1px solid var(--tkt-border);
+  padding: var(--tkt-space-3) 0;
+}
+
+.tkt-comment__meta {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tkt-space-2);
+  margin: 0;
+}
+
+.tkt-comment__meta time {
+  color: var(--tkt-text-muted);
+  font-size: var(--tkt-font-small);
+}
+
+/* Line breaks as typed, and a long unbroken string wraps rather than pushing
+   the page sideways at mobile width. */
+.tkt-comment__body {
+  margin: var(--tkt-space-2) 0 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.tkt-comment__failure {
+  margin: 0 0 var(--tkt-space-2);
+}
+
+.tkt-comment-composer {
+  margin-top: var(--tkt-space-4);
+}
+
 @media (width <= 767px) {
   .tkt-attachment__actions {
     width: 100%;

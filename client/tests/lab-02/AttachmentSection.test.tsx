@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AttachmentMetadata } from "../../src/lib/api";
 import {
   ATTACHMENT,
+  NO_COMMENTS,
   TICKET,
   jsonResponse,
   renderAt,
@@ -498,7 +499,9 @@ describe("a file the server refuses after it is sent", () => {
           );
         }
 
-        return Promise.resolve(jsonResponse(TICKET));
+        return Promise.resolve(
+          jsonResponse(_url.endsWith("/comments") ? NO_COMMENTS : TICKET)
+        );
       })
     );
 

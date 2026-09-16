@@ -6,6 +6,8 @@ import { AttachmentSection } from "../components/AttachmentSection";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
+import { PublicComments } from "../components/PublicComments";
+import { ResolvedIndication } from "../components/ResolvedIndication";
 import { StateBlock } from "../components/StateBlock";
 import { TextInput } from "../components/TextInput";
 import { useAuth } from "../context/useAuth";
@@ -33,6 +35,11 @@ import { formatWhen } from "../lib/formatWhen";
  * There is no tab strip. Figure 1 shows four — Public Comments, Attachments,
  * Service Actions, Event Log — and §4.2 excludes the features behind three of
  * them. Drawing them disabled would advertise a screen this lab must not build.
+ *
+ * Lab 3 adds two sections rather than tabs: the "problem appears resolved"
+ * indication under the ticket, and Public Comments under the attachments
+ * (ui-spec.md §7). There is no Internal Notes section on this screen at all —
+ * not an empty one, not a disabled one (AC-25).
  */
 
 type Load =
@@ -129,6 +136,14 @@ export const TicketDetail = () => {
     setState((current) =>
       current.kind === "loaded"
         ? { kind: "loaded", ticket: { ...current.ticket, attachments } }
+        : current
+    );
+  };
+
+  const onResolvedIndicated = (resolvedIndicatedAt: string) => {
+    setState((current) =>
+      current.kind === "loaded"
+        ? { kind: "loaded", ticket: { ...current.ticket, resolvedIndicatedAt } }
         : current
     );
   };
@@ -306,12 +321,26 @@ export const TicketDetail = () => {
         </div>
       </div>
 
+      <ResolvedIndication
+        canIndicate={
+          user?.role === "REQUESTER" && ticket.requester.id === user.id
+        }
+        indicatedAt={ticket.resolvedIndicatedAt}
+        onRecorded={onResolvedIndicated}
+        ticketId={ticket.id}
+      />
+
       <AttachmentSection
         attachments={ticket.attachments}
         canModify={user !== null && ticket.requester.id === user.id}
         onChange={onAttachmentsChange}
         ticketId={ticket.id}
       />
+
+      {/* Keyed by ticket so that moving between tickets starts a fresh
+          conversation, composer included, rather than carrying one ticket's
+          half-written comment onto another. */}
+      <PublicComments key={ticket.id} ticketId={ticket.id} />
     </AppShell>
   );
 };

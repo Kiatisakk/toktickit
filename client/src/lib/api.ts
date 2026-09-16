@@ -1,3 +1,5 @@
+import type { Role } from "./auth";
+
 const API_BASE_URL =
   import.meta.env["VITE_API_BASE_URL"] ?? "http://localhost:3000";
 
@@ -427,6 +429,8 @@ export interface AttachmentMetadata {
 export interface TicketDetail extends TicketListRow {
   description: string;
   resolutionSummary: string | null;
+  /** When the Requester said the problem appears resolved, or null (FR-18). */
+  resolvedIndicatedAt: string | null;
   requester: ReferenceItem;
   attachments: AttachmentMetadata[];
 }
@@ -451,6 +455,8 @@ const isTicketDetail = (value: unknown): value is TicketDetail =>
   typeof value["description"] === "string" &&
   (value["resolutionSummary"] === null ||
     typeof value["resolutionSummary"] === "string") &&
+  (value["resolvedIndicatedAt"] === null ||
+    typeof value["resolvedIndicatedAt"] === "string") &&
   isReferenceItem(value["requester"]) &&
   Array.isArray(value["attachments"]) &&
   value["attachments"].every(isAttachment);
@@ -477,6 +483,71 @@ export const fetchTicket = async (
   }
 
   return body;
+};
+
+/* ------------------------------------------------------- public comments -- */
+
+export interface PublicComment {
+  id: number;
+  body: string;
+  author: { id: number; name: string; role: Role };
+  createdAt: string;
+}
+
+const ROLES: readonly string[] = ["REQUESTER", "IT_STAFF", "ADMIN"];
+
+const isPublicComment = (value: unknown): value is PublicComment =>
+  isRecord(value) &&
+  typeof value["id"] === "number" &&
+  typeof value["body"] === "string" &&
+  typeof value["createdAt"] === "string" &&
+  isReferenceItem(value["author"]) &&
+  isRecord(value["author"]) &&
+  ROLES.includes(value["author"]["role"] as string);
+
+/** A ticket's Public Comments, oldest first (api-spec.md §8). */
+export const fetchComments = async (
+  ticketId: number,
+  signal?: AbortSignal
+): Promise<PublicComment[]> => {
+  const body = await apiGet(
+    `/api/tickets/${ticketId}/comments`,
+    signal ? { signal } : {}
+  );
+
+  if (
+    !isRecord(body) ||
+    !Array.isArray(body["data"]) ||
+    !body["data"].every(isPublicComment)
+  ) {
+    throw unexpected("the comments");
+  }
+
+  return body["data"];
+};
+
+/** Posts a Public Comment. Author and time are the server's to decide (BR-29). */
+export const postComment = async (
+  ticketId: number,
+  text: string
+): Promise<PublicComment> => {
+  const body = await apiPost(`/api/tickets/${ticketId}/comments`, {
+    body: text,
+  });
+
+  if (!isPublicComment(body)) {
+    throw unexpected("the comment");
+  }
+
+  return body;
+};
+
+/**
+ * Tells IT the problem appears resolved. `204`, no body — the time it records
+ * is read back with the ticket.
+ */
+export const indicateResolved = async (ticketId: number): Promise<void> => {
+  await apiPost(`/api/tickets/${ticketId}/resolved-indication`, {});
 };
 
 export const uploadAttachment = async (

@@ -180,20 +180,19 @@ describe("a ticket you own", () => {
 
   // Figure 1 draws four tabs and §4.2 excludes the features behind three of
   // them. Drawing them disabled would advertise a screen this lab must not
-  // build.
-  it.each([
-    "Public Comments",
-    "Internal Notes",
-    "Service Actions",
-    "Event Log",
-  ])("does not offer %s", async (excluded) => {
-    vi.stubGlobal("fetch", respond(TICKET));
+  // build. Public Comments left this list in Lab 3, which builds them (#49);
+  // Internal Notes stays, because a Requester must never see them (AC-25).
+  it.each(["Internal Notes", "Service Actions", "Event Log"])(
+    "does not offer %s",
+    async (excluded) => {
+      vi.stubGlobal("fetch", respond(TICKET));
 
-    renderAt();
+      renderAt();
 
-    await screen.findByLabelText("Ticket No.");
-    expect(screen.queryByText(excluded)).toBeNull();
-  });
+      await screen.findByLabelText("Ticket No.");
+      expect(screen.queryByText(excluded)).toBeNull();
+    }
+  );
 });
 
 /**
@@ -235,7 +234,14 @@ describe("the badge fields", () => {
     const { container } = renderAt();
 
     await screen.findByLabelText("Ticket No.");
-    expect(container.querySelectorAll(".tkt-card")).toHaveLength(2);
+
+    // Lab 3 adds two more cards beside it (ui-spec.md §7), so this asks the
+    // question directly rather than by counting.
+    const attachments = screen.getByRole("region", { name: "Attachments" });
+
+    expect(attachments).toHaveClass("tkt-card");
+    expect(attachments.parentElement?.closest(".tkt-card")).toBeNull();
+    expect(container.querySelectorAll(".tkt-card")).toHaveLength(4);
   });
 });
 
