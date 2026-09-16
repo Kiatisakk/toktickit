@@ -49,7 +49,7 @@ interface RequestOptions {
  */
 const send = async (
   path: string,
-  method: "GET" | "POST" | "DELETE",
+  method: "GET" | "POST" | "PATCH" | "DELETE",
   options: RequestOptions & { body?: unknown } = {}
 ): Promise<unknown> => {
   const headers: Record<string, string> = {};
@@ -157,6 +157,12 @@ export const apiPost = (
   body: unknown,
   options: RequestOptions = {}
 ) => send(path, "POST", { ...options, body });
+
+export const apiPatch = (
+  path: string,
+  body: unknown,
+  options: RequestOptions = {}
+) => send(path, "PATCH", { ...options, body });
 
 export const apiDelete = (
   path: string,

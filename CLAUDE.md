@@ -279,9 +279,28 @@ Six files. Fewer than six means the missing ones are going to be written from me
 1. Read the **Files changed** tab against the acceptance criteria on the Issue — not merely whether the code runs.
 2. **One finding per line, all in one review.** A finding attached to the line it is about can be answered and resolved on its own; the same findings in one long comment cannot be tracked or closed individually.
 3. Pick one verdict: **Comment** (questions, no verdict), **Approve** (meets the acceptance criteria), or **Request changes** (say exactly what to fix).
-4. **If I approve, I am the one who clicks "Merge pull request"** — never leave it to the author.
+4. **If I approve, I am the one who clicks "Merge pull request"** — never leave it to the author. **Unless the PR carries the `DO NOT MERGE` label**: then approve, and do not merge (see below).
 5. If I request changes, tell the author so they know to start fixing.
 6. **Never resolve my own findings.** Resolving is the author's move after fixing, and a thread resolved the moment it is raised is a finding deleted.
+
+### `DO NOT MERGE` means nobody merges
+
+A Pull Request labelled **`DO NOT MERGE`** is not merged — not by me after approving Beam's PR, not by Beam on mine, not by a script — however green its checks and however many approvals it has. Approving it is still fine; the merge waits until the label is gone, and only the PR's author removes it.
+
+Check the labels immediately before every merge, on either repository, rather than trusting what they were when the review started:
+
+```bash
+gh pr view <pr> --repo <owner>/<repo> --json labels -q '.labels[].name'
+```
+
+Holding and releasing one of my own PRs:
+
+```bash
+gh pr edit <pr> --add-label "DO NOT MERGE"
+gh pr edit <pr> --remove-label "DO NOT MERGE"
+```
+
+If the label is present and a merge was asked for anyway, say that the PR is labelled `DO NOT MERGE` and ask rather than merging.
 
 ### Submitting a review from the command line
 

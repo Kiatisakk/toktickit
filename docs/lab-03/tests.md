@@ -79,19 +79,19 @@ Eight levels, each answering a question the level above it cannot.
 | API-29 | BR-29 | Author and timestamp are server-side | Values supplied in the body are ignored | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
 | API-30 | AC-26 | Empty and whitespace-only body | 400 `VALIDATION_FAILED` | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
 | API-31 | AC-27 | Staff read a requester's attachments | Metadata listed and content downloadable | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
-| API-32 | AC-28 | Administrator user list | Name, email, role and state returned; search and role filter narrow it | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
-| API-33 | AC-29 | User creation | 201; the user can sign in and is required to change the password | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
-| API-34 | AC-30 | Duplicate email on create and on edit | 409 `EMAIL_ALREADY_EXISTS` | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
-| API-35 | FR-35 | Editing name, email, role and state | Each persists; one role only | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
-| API-36 | AC-31 | Self-deactivation | 409 `CANNOT_DEACTIVATE_SELF`; account still active | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
-| API-37 | AC-32 | Last active Administrator | The sole Administrator demoting themselves 409 `LAST_ACTIVE_ADMIN` — reachable precisely because self-demotion is not caught by the self-check | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
-| API-38 | AC-33 | Two Administrators deactivating each other at once | At least one refused; an active Administrator remains | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
-| API-39 | BR-37 | Setting a new initial password | 204; flag set; the user's sessions ended; sign-in with the new password requires a change | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
+| API-32 | AC-28 | Administrator user list | Name, email, role and state returned; search and role filter narrow it | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
+| API-33 | AC-29 | User creation | 201; the user can sign in and is required to change the password | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
+| API-34 | AC-30 | Duplicate email on create and on edit | 409 `EMAIL_ALREADY_EXISTS` | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
+| API-35 | FR-35 | Editing name, email, role and state | Each persists; one role only | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
+| API-36 | AC-31 | Self-deactivation | 409 `CANNOT_DEACTIVATE_SELF`; account still active | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
+| API-37 | AC-32 | Last active Administrator | The sole Administrator demoting themselves 409 `LAST_ACTIVE_ADMIN` — reachable precisely because self-demotion is not caught by the self-check | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
+| API-38 | AC-33 | Two Administrators deactivating each other at once | At least one refused; an active Administrator remains | `server/tests/lab-03/users-admin.api.test.ts` | Pass — five rounds of two real concurrent requests. Removing `FOR UPDATE` from the handler makes the first round fail with both deactivations succeeding, which is how the test is known to exercise the lock. |
+| API-39 | BR-37 | Setting a new initial password | 204; flag set; the user's sessions ended; sign-in with the new password requires a change | `server/tests/lab-03/users-admin.api.test.ts` | Pass — the old session answers 401, the old password is refused, and the new one signs in with the must-change flag set. |
 | API-40 | BR-20 | Error bodies leak nothing | No stack trace, path or database message on any failure path | `server/tests/lab-03/auth.api.test.ts` | Planned |
 | API-41 | §5 | Reference data now requires a session | Categories and related systems 401 without one; health stays public | `server/tests/lab-03/authorization.api.test.ts` | Pass |
 | API-42 | BR-23 | IT Priority at creation | A new ticket's IT Priority equals its Requested Priority; changing one afterwards never moves the other | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
-| API-43 | FR-35 | User edit validation | Empty name, malformed email, invalid role and non-boolean active each 400 with the field named in `details` | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
-| API-44 | BR-37 | Reset password validation | A starting password failing the rules 400 with `details.initialPassword`; the user's existing credential unchanged | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
+| API-43 | FR-35 | User edit validation | Empty name, malformed email, invalid role and non-boolean active each 400 with the field named in `details` | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
+| API-44 | BR-37 | Reset password validation | A starting password failing the rules 400 with `details.initialPassword`; the user's existing credential unchanged | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
 | API-45 | §8 | Lab 2 list envelope preserved | The ticket list answers `data` and `meta` with `totalItems`, exactly as Lab 2 documents | `server/tests/lab-03/migration.api.test.ts` | Pass |
 | API-46 | FR-30 | Staff raise and track their own tickets | IT Staff and an Administrator each create a ticket recorded against them, find it in My Tickets, and find no one else's there | `server/tests/lab-03/authorization.api.test.ts` | Pass |
 
@@ -107,12 +107,12 @@ Every test here calls the API directly with a session of the wrong kind. None dr
 | SEC-04 | AC-12 | Requester reading another's ticket | 404, byte-identical to a ticket that does not exist | `server/tests/lab-03/authorization.api.test.ts` | Pass — for ticket detail and for its attachment list. |
 | SEC-05 | AC-13 | Requester calling the staff queue | 403 `FORBIDDEN` | `server/tests/lab-03/authorization.api.test.ts` | Planned |
 | SEC-06 | AC-02 | Gated user calling a protected endpoint | 403 `PASSWORD_CHANGE_REQUIRED` | `server/tests/lab-03/authorization.api.test.ts` | Pass — over the route table as it stands, as SEC-01. |
-| SEC-07 | AC-14 | Requester and IT Staff calling Administrator endpoints | 403 `FORBIDDEN` for both | `server/tests/lab-03/authorization.api.test.ts` | Planned |
+| SEC-07 | AC-14 | Requester and IT Staff calling Administrator endpoints | 403 `FORBIDDEN` for both | `server/tests/lab-03/users-admin.api.test.ts` | Pass — with a session that is absent (401), a Requester's and an IT Staff member's (403), across all four Administrator endpoints; and nothing changes. Kept beside the other Administrator tests rather than in the authorization suite, which is created by a Pull Request not yet merged when this landed. |
 | SEC-08 | AC-23 | Requester attempting a status change | Refused; no route exists by which a Requester sets status | `server/tests/lab-03/authorization.api.test.ts` | Planned |
 | SEC-09 | AC-04, AC-25 | Requester requesting Internal Notes | 403 with no note content and no indication whether notes exist, on their own ticket and on a ticket with none | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
 | SEC-10 | BR-19 | Ownership resolved in the query | Another requester's attachment download and removal both 404 | `server/tests/lab-03/authorization.api.test.ts` | Pass |
 | SEC-11 | BR-05 | Staff and Administrator posting a resolved indication | 403 — it belongs to the Requester | `server/tests/lab-03/comments-notes.api.test.ts` | Planned |
-| SEC-12 | BR-06 | No endpoint returns a credential | No password hash in any user-bearing response | `server/tests/lab-03/users-admin.api.test.ts` | Planned |
+| SEC-12 | BR-06 | No endpoint returns a credential | No password hash in any user-bearing response | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
 | SEC-13 | AC-11 | Role change mid-session | A user demoted from IT Staff is refused staff endpoints on the next request | `server/tests/lab-03/authorization.api.test.ts` | Planned |
 | SEC-14 | BR-41 | The retired header has no effect | Sending `X-Development-Requester-Id` changes nothing; no route reads it | `server/tests/lab-03/authorization.api.test.ts` | Pass |
 | SEC-15 | FR-29 | Staff cannot write another's attachments | IT Staff uploading to, or removing from, a ticket they did not raise answers 404; downloading the same ticket's attachment succeeds | `server/tests/lab-03/authorization.api.test.ts` | Pass |
@@ -133,7 +133,7 @@ Every test here calls the API directly with a session of the wrong kind. None dr
 | UI-10 | FR-20 | Queue renders rows and controls | Search, filters, sort and pagination present; rows populated | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Planned |
 | UI-11 | FR-21 | Unassigned rendering | An unowned ticket reads *Unassigned*, never an empty cell | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Planned |
 | UI-12 | FR-20 | Queue empty and no-results | Distinct messages; no-results offers Clear Filters | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Planned |
-| UI-13 | AC-34 | Role-dependent navigation | Each role sees only its destinations; unauthorized ones absent, not disabled | `client/tests/lab-03/AppShell.test.tsx` | Planned |
+| UI-13 | AC-34 | Role-dependent navigation | Each role sees only its destinations; unauthorized ones absent, not disabled | `client/tests/lab-03/AppShell.test.tsx` | Partial — each role's navigation holds only its own destinations and a missing one is absent rather than disabled: an Administrator sees User Management first, a Requester and IT Staff do not see it at all. The Ticket Queue entry arrives with the ticket that builds the queue (#50). |
 | UI-14 | FR-04 | Shell shows identity | Name and role badge shown; Logout present; no Change Requester action | `client/tests/lab-03/AppShell.test.tsx` | Pass — Change Requester and the “acting as” note are absent from the application shell. |
 | UI-15 | FR-23 | Claim and reassign controls | Claim shown when unassigned; a select of eligible users when assigned | `client/tests/lab-03/StaffTicketDetail.test.tsx` | Planned |
 | UI-16 | AC-20 | Only permitted transitions offered | The status control lists exactly the permitted targets; a cancelled ticket shows it read-only | `client/tests/lab-03/StaffTicketDetail.test.tsx` | Planned |
@@ -141,12 +141,12 @@ Every test here calls the API directly with a session of the wrong kind. None dr
 | UI-18 | AC-25 | A Requester's detail has no notes section | Absent entirely, not empty and not disabled | `client/tests/lab-03/RequesterTicketDetail.test.tsx` | Planned |
 | UI-19 | AC-36 | Composer failure preserves text | Typed content survives a failed post | `client/tests/lab-03/StaffTicketDetail.test.tsx` | Planned |
 | UI-20 | AC-22 | Resolved indication | Confirmed before firing; replaced afterwards by a statement of when | `client/tests/lab-03/RequesterTicketDetail.test.tsx` | Planned |
-| UI-21 | AC-28 | User list renders | Name, email, role, status and an Edit action per row | `client/tests/lab-03/UserManagement.test.tsx` | Planned |
-| UI-22 | AC-29 | Create form | One role as a select; rules panel on the initial password | `client/tests/lab-03/UserManagement.test.tsx` | Planned |
-| UI-23 | AC-30 | Duplicate email presentation | Message against the Email field | `client/tests/lab-03/UserManagement.test.tsx` | Planned |
-| UI-24 | AC-31, AC-32 | Refusal presentation | Toggle springs back; the row does not update optimistically; each refusal has its own message | `client/tests/lab-03/UserManagement.test.tsx` | Planned |
+| UI-21 | AC-28 | User list renders | Name, email, role, status and an Edit action per row | `client/tests/lab-03/UserManagement.test.tsx` | Pass |
+| UI-22 | AC-29 | Create form | One role as a select; rules panel on the initial password | `client/tests/lab-03/UserManagement.test.tsx` | Pass |
+| UI-23 | AC-30 | Duplicate email presentation | Message against the Email field | `client/tests/lab-03/UserManagement.test.tsx` | Pass |
+| UI-24 | AC-31, AC-32 | Refusal presentation | Toggle springs back; the row does not update optimistically; each refusal has its own message | `client/tests/lab-03/UserManagement.test.tsx` | Pass — the switch returns to Active after a refused self-deactivation, role and state return after a refused last-Administrator change, each with its own message, and the row changes only on the server's answer. An edit re-reads the list while a search or role is active; saving or resetting your own account re-reads the identity (PR #61 review). |
 | UI-25 | §8.3 | Opening a ticket from the queue | Every row and every card exposes the ticket number as a link to the detail, reachable by keyboard | `client/tests/lab-03/StaffTicketQueue.test.tsx` | Planned |
-| UI-26 | AC-02 | The route guard | Signed out goes to sign-in; a pending password change goes to Change Password and nowhere else; Change Password turns away anyone without one; a session check in flight waits rather than redirecting | `client/tests/lab-03/AuthGuard.test.tsx` | Pass |
+| UI-26 | AC-02 | The route guard | Signed out goes to sign-in; a pending password change goes to Change Password and nowhere else; Change Password turns away anyone without one; a session check in flight waits rather than redirecting | `client/tests/lab-03/AuthGuard.test.tsx` | Pass — including a screen limited to some roles, which redirects every other signed-in role to My Tickets, after the sign-in and password-change checks. |
 
 ### UI style
 

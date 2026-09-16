@@ -32,6 +32,13 @@ export const SOMCHAI_USER: AuthenticatedUser = {
   role: "REQUESTER",
 };
 
+export const ADMIN_USER: AuthenticatedUser = {
+  id: 16,
+  name: "Wanida Thongchai",
+  email: "wanida.thongchai@example.ac.th",
+  role: "ADMIN",
+};
+
 export const STAFF_USER: AuthenticatedUser = {
   id: 11,
   name: "Michael Brown",

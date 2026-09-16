@@ -1445,3 +1445,60 @@
   color: var(--tkt-text-muted);
   cursor: not-allowed;
 }
+
+/* ------------------------------------------------ user management -- */
+
+/* The create and edit form sits in a panel above the list (ui-spec.md §8), and
+   stays single-column at every width, narrowing rather than reflowing. */
+.tkt-user-panel {
+  margin-bottom: var(--tkt-space-6);
+  max-width: 40rem;
+}
+
+.tkt-user-panel__password {
+  border-top: 1px solid var(--tkt-border);
+  margin-top: var(--tkt-space-6);
+  padding-top: var(--tkt-space-4);
+}
+
+/* The Active toggle. A native checkbox with role="switch", so it is announced
+   as on or off and toggles with Space; the label beside it carries the name.
+   Sized to the touch-target token so it meets 44px in the mobile band. */
+.tkt-switch-field {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tkt-space-3);
+  margin-bottom: var(--tkt-space-4);
+  min-height: var(--tkt-touch-target);
+}
+
+.tkt-switch {
+  accent-color: var(--tkt-green);
+  height: 1.5rem;
+  margin: 0;
+  width: 1.5rem;
+}
+
+.tkt-switch-field .tkt-field-error {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+/* The one success message on the screen: a new starting password was set.
+   Text carries the meaning; the tint only separates it from a refusal. */
+.tkt-form-success {
+  background-color: var(--tkt-green-pale);
+  border: 1px solid var(--tkt-green);
+  border-radius: var(--tkt-radius-sm);
+  color: var(--tkt-text);
+  margin-bottom: var(--tkt-space-4);
+  padding: var(--tkt-space-3);
+}
+
+/* Account status. Active reuses the green `.tkt-badge--active` above; an
+   inactive account is shown, not hidden — deactivation is a state (BR-36). */
+.tkt-badge--inactive {
+  background-color: var(--tkt-readonly);
+  color: var(--tkt-text-muted);
+}

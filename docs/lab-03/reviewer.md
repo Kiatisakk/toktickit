@@ -75,7 +75,7 @@ He approved with `LGTM` at 15:04:21Z on 2026-09-14 and merged ten seconds later.
 
 ### PR #60 — Requester screens run on the authenticated identity (Issue #48)
 
-[PR #60](https://github.com/Kiatisakk/toktickit/pull/60) · reviewed 2026-09-15 · **2 line comments**, verdict **Comment**.
+[PR #60](https://github.com/Kiatisakk/toktickit/pull/60) · reviewed 2026-09-15 · **2 line comments**, verdict **Comment**, then **Approved** and merged into `lab3-staging` as `3a916b9` by @beambeambeam.
 
 Two findings, both real, and both invisible to the suites for the same reason: each only appears for a caller no existing test played.
 
@@ -84,6 +84,26 @@ Two findings, both real, and both invisible to the suites for the same reason: e
 **IT Staff opening a Requester's ticket were offered Add Attachment and Remove.** The server scopes attachment writes to the ticket's own requester, so both controls could only fail. `AttachmentSection` now takes a required `canModify`, and a non-owner keeps Download and loses the rest. Required rather than defaulted, because a default would decide the answer silently for the next caller.
 
 Both regression tests were run against the unfixed source first and failed there, so neither passes by construction.
+
+He approved with `LGTM` at 11:23:33Z on 2026-09-16 and merged eight seconds later. Issue #48 was closed by hand, because the base is not the default branch. Recorded on the next feature branch, #53's, as the follow-up docs rule asks.
+
+### PR #61 — Administrator user management (Issue #53)
+
+[PR #61](https://github.com/Kiatisakk/toktickit/pull/61) · reviewed 2026-09-16 · **4 line comments**, verdict **Comment**.
+
+Four findings, all on the screen, all marked as bugs. Three were real; one was a sentence of mine that said more than the handout does.
+
+**Three real, and each was a case the tests never played: the account being edited was also the account doing the editing, or a filter was on.**
+
+*An edited row could stay in a list it no longer matched.* Saving an edit patched the row in place. With a search or role filter active, changing a name, address or role can take the row out of the result, and the list kept showing it. The list is now re-read whenever a search or role is active.
+
+*An Administrator who demoted themselves kept an Administrator screen.* The server applies a role on the next request (BR-15), so every call then answered 403 under a header and navigation that still said Administrator. Saving your own account now re-reads the identity, and the route guard moves you off the screen.
+
+*Setting your own starting password stranded you.* It ends every session you hold, including the one the screen runs on, and the screen stayed put with every call answering 401 and no way to the password change. It now re-reads the identity, which is anonymous, and the guard sends you to sign in — where the new starting password leads straight to Change Password.
+
+All three regression tests were run against the unfixed screen first and failed there.
+
+**One answered rather than applied.** He read `ui-spec.md` §8 — *"no simultaneous filters — all excluded by §8.5"* — as forbidding a search and a role filter together. The handout's §8.5 lists search and "optionally filter users by role" as two separate required functions, and places "multiple simultaneous filters" under *not required*, not under anything forbidden. There is one filter here. But the finding was a fair reading of what I had written: "excluded" said more than "not required" does. The sentence now says what the handout says.
 
 ---
 
@@ -149,6 +169,26 @@ I said plainly that BR-07 is the better rule — composition requirements are wh
 
 **Three optional notes.** The `@default(Low)` needed to backfill IT Priority outlives the migration, so a future create that forgets the field gets a quietly wrong value; attachment write denial is tested for staff upload but not staff removal or Administrator upload, under a variable named `requesterUpload`; and the new queue-to-detail browser spec is not in `tests.md`. Plus the process note from #61 again: the PR is not linked to its Issue.
 
+### beambeambeam#63–#67 — ownership, status workflow, comments, notes, account lifecycle
+
+Reviewed 2026-09-16, in order, in the terse caveman format at his request for this batch. Five parallel PRs, all branched from the same `lab3-staging` commit.
+
+| PR | Issue | Verdict | Findings |
+| --- | --- | --- | --- |
+| [#63](https://github.com/beambeambeam/toktickit/pull/63) | #52 ownership, IT Priority | Changes requested | 🔴 1 · 🟡 2 |
+| [#64](https://github.com/beambeambeam/toktickit/pull/64) | #53 status workflow | Changes requested | 🟡 2 |
+| [#65](https://github.com/beambeambeam/toktickit/pull/65) | #54 public comments | Changes requested | 🟡 2 |
+| [#66](https://github.com/beambeambeam/toktickit/pull/66) | #55 internal notes | Comment | 🔵 1 |
+| [#67](https://github.com/beambeambeam/toktickit/pull/67) | #57 account lifecycle | Comment | none blocking |
+
+**The one bug.** On #63, *Save Owner* submitted `selectedOwnerId ?? ""`, so pressing it without touching the dropdown sent `ownerId: null` and unassigned the ticket — while the dropdown displayed the current owner. His test always selected an owner first, which is why it never ran the untouched path.
+
+**The rest were specification gaps, most of them his own words.** Owner and IT Priority mutations skipped the in-transaction actor recheck his API contract requires; the status confirmation dialog had none of the focus, Escape and restore behaviour his `ui-spec.md` prescribes; two composers left their validation message unlinked to the field. Three PRs lacked the browser journey their Issue names, and none of the five updated `tests.md`.
+
+**What was checked rather than assumed.** The status matrix, compared edge for edge with his specification. And lock ordering across all five PRs together, since they will land in the same database: the account lifecycle takes an advisory lock, then user rows by id, then owned tickets; every ticket mutation locks users before tickets. Traced for claim, status change and comment against a concurrent deactivation — no cycle. #67 was the most careful work in the batch and the review said so.
+
+**Two verdicts were Comment rather than Approve on purpose.** An approval puts the merge with the approver, and merging five PRs that edit the same routes, OpenAPI document and generated client was not what was asked for. The review raised the merge order as a question instead.
+
 ---
 
 ## Coverage
@@ -158,11 +198,17 @@ I said plainly that BR-07 is the better rule — composition requirements are wh
 | [#56](https://github.com/Kiatisakk/toktickit/pull/56) | received | 12 | Changes requested → Approved | Merged |
 | [#57](https://github.com/Kiatisakk/toktickit/pull/57) | received | 1 | Comment → Approved | Merged |
 | [#59](https://github.com/Kiatisakk/toktickit/pull/59) | received | 17 | Comment → Approved | Merged |
-| [#60](https://github.com/Kiatisakk/toktickit/pull/60) | received | 2 | Comment | Open — fixes pushed |
+| [#60](https://github.com/Kiatisakk/toktickit/pull/60) | received | 2 | Comment → Approved | Merged |
+| [#61](https://github.com/Kiatisakk/toktickit/pull/61) | received | 4 | Comment | Open — fixes pushed |
 | [beambeambeam#59](https://github.com/beambeambeam/toktickit/pull/59) | given | 3 | Changes requested → Approved | Merged |
 | [beambeambeam#60](https://github.com/beambeambeam/toktickit/pull/60) | given | 6 | Changes requested → Approved | Merged |
 | [beambeambeam#61](https://github.com/beambeambeam/toktickit/pull/61) | given | 4 | Changes requested | Open |
 | [beambeambeam#62](https://github.com/beambeambeam/toktickit/pull/62) | given | 4 | Changes requested | Open |
+| [beambeambeam#63](https://github.com/beambeambeam/toktickit/pull/63) | given | 3 | Changes requested | Open |
+| [beambeambeam#64](https://github.com/beambeambeam/toktickit/pull/64) | given | 2 | Changes requested | Open |
+| [beambeambeam#65](https://github.com/beambeambeam/toktickit/pull/65) | given | 2 | Changes requested | Open |
+| [beambeambeam#66](https://github.com/beambeambeam/toktickit/pull/66) | given | 1 | Comment | Open |
+| [beambeambeam#67](https://github.com/beambeambeam/toktickit/pull/67) | given | 0 | Comment | Open |
 
 Checked by listing the Pull Requests from GitHub and searching this file for each number, rather than by reading down the page — which is how two were found missing in Lab 2.
 

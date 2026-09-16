@@ -4,6 +4,7 @@ import type { Express, NextFunction, Request, Response } from "express";
 import express from "express";
 
 import { ErrorCode, sendError, sendInternalError } from "./http/errors.js";
+import { adminUsersRouter } from "./routes/adminUsers.js";
 import { attachmentsRouter } from "./routes/attachments.js";
 import { authRouter } from "./routes/auth.js";
 import { categoriesRouter } from "./routes/categories.js";
@@ -60,6 +61,7 @@ export const createApp = (): Express => {
   app.use("/api", relatedSystemsRouter);
   app.use("/api", ticketsRouter);
   app.use("/api", attachmentsRouter);
+  app.use("/api", adminUsersRouter);
 
   // Anything under /api that matched no route is neither a missing ticket nor
   // anything else domain-specific, and saying TICKET_NOT_FOUND here would make

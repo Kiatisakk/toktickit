@@ -3,13 +3,13 @@ import { useNavigate } from "react-router";
 
 import { AppShell } from "../components/AppShell";
 import { Button } from "../components/Button";
-import { Icon } from "../components/Icon";
 import { PasswordInput } from "../components/PasswordInput";
+import { PasswordRules } from "../components/PasswordRules";
 import { StateBlock } from "../components/StateBlock";
 import { useAuth } from "../context/useAuth";
 import { ApiError } from "../lib/api";
 import { changePassword } from "../lib/auth";
-import { meetsEveryRule, PASSWORD_RULES } from "../lib/passwordRules";
+import { meetsEveryRule } from "../lib/passwordRules";
 
 /**
  * Choosing a new password (ui-spec.md §4).
@@ -166,33 +166,7 @@ export const ChangePassword = () => {
               visible={visible.next}
             />
 
-            <ul
-              aria-label="Password requirements"
-              className="tkt-password-rules"
-            >
-              {PASSWORD_RULES.map((rule) => {
-                const met = rule.satisfiedBy(newPassword);
-
-                return (
-                  <li
-                    className={
-                      met
-                        ? "tkt-password-rule tkt-password-rule--met"
-                        : "tkt-password-rule"
-                    }
-                    key={rule.id}
-                  >
-                    <Icon name={met ? "check" : "pending"} />
-                    {/* The state is in the text as well as the icon: a colour
-                        and a tick are not available to a screen reader. */}
-                    <span>{rule.label}</span>
-                    <span className="tkt-visually-hidden">
-                      {met ? " — met" : " — not yet met"}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+            <PasswordRules password={newPassword} />
 
             <PasswordInput
               autoComplete="new-password"
