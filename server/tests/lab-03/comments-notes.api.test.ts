@@ -358,6 +358,37 @@ describe("the resolved indication", () => {
     expect(mine.body.currentStatus).toBe("IN_PROGRESS");
   });
 
+  it("API-27 the staff queue row carries the time too", async () => {
+    const { ticketNumber } = await prisma.ticket.findUniqueOrThrow({
+      where: { id: ticketOfA },
+      select: { ticketNumber: true },
+    });
+    const row = async () => {
+      const response = await as(staff)(
+        request(app).get("/api/staff/tickets").query({ search: ticketNumber })
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toHaveLength(1);
+
+      return response.body.data[0];
+    };
+
+    // An explicit null, never an absent key (api-spec.md §7).
+    expect(await row()).toHaveProperty("resolvedIndicatedAt", null);
+
+    await indicate(requesterA, ticketOfA);
+
+    const detail = await as(requesterA)(
+      request(app).get(`/api/tickets/${ticketOfA}`)
+    );
+
+    const indicated = await row();
+
+    expect(indicated.resolvedIndicatedAt).toBe(detail.body.resolvedIndicatedAt);
+    expect(detail.body.resolvedIndicatedAt).not.toBeNull();
+  });
+
   it("API-27 a status in the body changes nothing", async () => {
     const response = await indicate(requesterA, ticketOfA).send({
       currentStatus: "RESOLVED",
