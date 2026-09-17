@@ -12,6 +12,7 @@ import { prisma } from "../prisma.js";
 import {
   LIST_SHAPE,
   readTicketPage,
+  TICKET_SHAPE,
   ticketListWhere,
 } from "../tickets/ticketList.js";
 import { claimTicketNumber } from "../tickets/ticketNumber.js";
@@ -19,25 +20,6 @@ import { parseTicketQuery } from "../tickets/ticketQuery.js";
 import { validateTicketInput } from "../tickets/validation.js";
 
 export const ticketsRouter = Router();
-
-/** Everything a client is given about one ticket. */
-const TICKET_SHAPE = {
-  id: true,
-  ticketNumber: true,
-  summary: true,
-  description: true,
-  requestedPriority: true,
-  itPriority: true,
-  currentStatus: true,
-  resolutionSummary: true,
-  resolvedIndicatedAt: true,
-  createdAt: true,
-  updatedAt: true,
-  category: { select: { id: true, name: true } },
-  relatedSystem: { select: { id: true, name: true } },
-  requester: { select: { id: true, name: true } },
-  ticketOwner: { select: { id: true, name: true } },
-} as const;
 
 /**
  * Raised inside the creation transaction when a referenced row is missing or
@@ -133,8 +115,12 @@ ticketsRouter.post("/tickets", ...requireSignedIn, async (req, res) => {
           summary: input.value.summary,
           description: input.value.description,
           requestedPriority: input.value.requestedPriority,
-          // currentStatus defaults to NEW, itPriority, ticketOwner and
-          // resolutionSummary stay null. Lab 2 has nothing that can set them.
+          // IT Priority starts as a copy of what the Requester asked for
+          // (BR-23). From here the two are independent: only staff change this
+          // one, and changing it never touches the Requester's (BR-22).
+          itPriority: input.value.requestedPriority,
+          // currentStatus defaults to NEW; ticketOwner and resolutionSummary
+          // stay null until staff act on the ticket.
         },
         select: TICKET_SHAPE,
       });
