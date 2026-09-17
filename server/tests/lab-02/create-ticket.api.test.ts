@@ -112,10 +112,15 @@ describe("creating a valid ticket", () => {
 
   // BR-06 and decision D-04: the columns exist so the detail screen can render
   // the fields the illustration shows, and nothing in Lab 2 can populate them.
-  it("leaves IT priority, ticket owner and resolution summary unset", async () => {
-    const response = await create(body());
+  it("copies Requested Priority into IT Priority, and leaves the staff fields unset", async () => {
+    const response = await create(body({ requestedPriority: "HIGH" }));
 
-    expect(response.body.itPriority).toBeNull();
+    // IT Priority arrived as a copy in Lab 3 (BR-23): a ticket nobody has
+    // triaged still carries IT's view of urgency, which is the Requester's
+    // until staff change it. Owner and resolution summary stay unset, because
+    // nothing at creation can set them.
+    expect(response.body.itPriority).toBe("HIGH");
+    expect(response.body.requestedPriority).toBe("HIGH");
     expect(response.body.ticketOwner).toBeNull();
     expect(response.body.resolutionSummary).toBeNull();
   });

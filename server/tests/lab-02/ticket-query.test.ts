@@ -111,15 +111,25 @@ describe("filters", () => {
     expect(detailsOf({ itPriority })).toHaveProperty("itPriority");
   });
 
-  it.each(["NEW", "OPEN", "IN_PROGRESS", "PENDING", "RESOLVED", "CLOSED"])(
-    "accepts status %s",
-    (value) => {
-      expect(valueOf({ status: value }).status).toBe(value);
-    }
-  );
+  // The eight of BR-24. `PENDING` left this list in Lab 3, which renamed it
+  // `WAITING_FOR_REQUESTER`, and two more arrived with the staff workflow.
+  it.each([
+    "NEW",
+    "OPEN",
+    "IN_PROGRESS",
+    "WAITING_FOR_REQUESTER",
+    "RESOLVED",
+    "CLOSED",
+    "REOPENED",
+    "CANCELLED",
+  ])("accepts status %s", (value) => {
+    expect(valueOf({ status: value }).status).toBe(value);
+  });
 
-  it("rejects a status outside the enum", () => {
-    expect(detailsOf({ status: "ARCHIVED" })).toHaveProperty("status");
+  it.each(["ARCHIVED", "PENDING"])("rejects status %s", (value) => {
+    // `PENDING` is refused like any other value outside the enum: after the
+    // rename it names nothing (MIG-03).
+    expect(detailsOf({ status: value })).toHaveProperty("status");
   });
 });
 
