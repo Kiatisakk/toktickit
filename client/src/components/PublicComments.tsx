@@ -117,11 +117,18 @@ export const PublicComments = ({ ticketId }: PublicCommentsProps) => {
 
       // Success: the entry lands at the foot of the list — oldest first, so
       // the newest is last — and the composer clears.
-      setState((current) =>
-        current.kind === "loaded"
-          ? { kind: "loaded", comments: [...current.comments, comment] }
-          : current
-      );
+      //
+      // Only a loaded list can take the entry directly. While the list is still
+      // loading, or after it failed, there is nothing to append to — and
+      // clearing the composer then would make a posted comment vanish from the
+      // screen (review of PR #63). So the list is read again instead: the read
+      // in flight is abandoned, and the fresh one includes the new comment.
+      if (state.kind === "loaded") {
+        setState({ kind: "loaded", comments: [...state.comments, comment] });
+      } else {
+        setReloadToken((token) => token + 1);
+      }
+
       setText("");
     } catch (error) {
       // Failure: the typed text stays exactly where it was. Losing a paragraph

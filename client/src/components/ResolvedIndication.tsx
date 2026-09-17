@@ -38,6 +38,30 @@ export const ResolvedIndication = ({
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  /**
+   * Recorded, but the time could not be read back. Held here rather than handed
+   * up as a time, because the only time on hand would be this device's clock,
+   * and the statement would present it as the server's (review of PR #63).
+   */
+  const [recordedTimeUnknown, setRecordedTimeUnknown] = useState(false);
+
+  if (recordedTimeUnknown && !indicatedAt) {
+    return (
+      <section
+        aria-labelledby="tkt-resolved-indication"
+        className="tkt-card tkt-resolved-indication"
+        data-state="recorded"
+      >
+        <h2 className="tkt-section-title" id="tkt-resolved-indication">
+          Problem appears resolved
+        </h2>
+        <p className="tkt-resolved-indication__statement">
+          You told IT the problem appears resolved. IT will decide whether to
+          resolve the ticket.
+        </p>
+      </section>
+    );
+  }
 
   if (indicatedAt) {
     return (
@@ -80,20 +104,24 @@ export const ResolvedIndication = ({
     }
 
     // The endpoint answers 204, so the time it recorded is read back with the
-    // ticket. If that read fails the indication still happened — say so with
-    // this device's clock rather than reporting a success as a failure.
-    let recordedAt = new Date().toISOString();
+    // ticket. If that read fails, the indication still happened and is said to
+    // have — but without a time, because no time the server recorded is known.
+    let recordedAt: string | null = null;
 
     try {
-      recordedAt =
-        (await fetchTicket(ticketId)).resolvedIndicatedAt ?? recordedAt;
+      recordedAt = (await fetchTicket(ticketId)).resolvedIndicatedAt;
     } catch {
-      // Keep the local time. See above.
+      // No time. See above.
     }
 
     setBusy(false);
     setConfirming(false);
-    onRecorded(recordedAt);
+
+    if (recordedAt) {
+      onRecorded(recordedAt);
+    } else {
+      setRecordedTimeUnknown(true);
+    }
   };
 
   return (

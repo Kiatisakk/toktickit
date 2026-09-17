@@ -361,6 +361,124 @@ describe("Public Comments", () => {
   });
 });
 
+/**
+ * Raised in review on PR #63. Both are a success the screen handled as if the
+ * step before it had also gone well: a comment posted while the list had not
+ * loaded, and an indication recorded when its time could not be read back.
+ */
+describe("review of PR #63", () => {
+  const POSTED: PublicComment = {
+    id: 5,
+    body: "Posted before the list arrived.",
+    author: { id: 1, name: "Jennifer Anderson", role: "REQUESTER" },
+    createdAt: "2026-09-17T08:00:00.000Z",
+  };
+
+  it.each(["failed", "still loading"] as const)(
+    "a comment posted while the list is %s is shown, not lost",
+    async (situation) => {
+      let reads = 0;
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn((url: string, init?: RequestInit) => {
+          if (init?.method === "POST") {
+            return Promise.resolve(jsonResponse(POSTED, 201));
+          }
+
+          if (!url.endsWith("/comments")) {
+            return Promise.resolve(jsonResponse(TICKET));
+          }
+
+          reads += 1;
+
+          if (reads > 1) {
+            return Promise.resolve(jsonResponse({ data: [POSTED] }));
+          }
+
+          return situation === "failed"
+            ? Promise.resolve(
+                jsonResponse(
+                  {
+                    error: { code: "INTERNAL_ERROR", message: "No comments." },
+                  },
+                  500
+                )
+              )
+            : new Promise<Response>(() => undefined);
+        })
+      );
+
+      renderAt();
+
+      const composer = await screen.findByLabelText(/add a comment/iu);
+
+      if (situation === "failed") {
+        await screen.findByText("No comments.");
+      }
+
+      await user().type(composer, POSTED.body);
+      await user().click(screen.getByRole("button", { name: "Post Comment" }));
+
+      const list = await screen.findByRole("list", { name: /oldest first/iu });
+
+      expect(within(list).getByText(POSTED.body)).toBeInTheDocument();
+      expect(composer).toHaveValue("");
+    }
+  );
+
+  it("an indication whose time cannot be read back is confirmed without inventing one", async () => {
+    let ticketReads = 0;
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string, init?: RequestInit) => {
+        if (init?.method === "POST") {
+          return Promise.resolve(jsonResponse(null, 204));
+        }
+
+        if (url.endsWith("/comments")) {
+          return Promise.resolve(jsonResponse(NO_COMMENTS));
+        }
+
+        ticketReads += 1;
+
+        return ticketReads === 1
+          ? Promise.resolve(jsonResponse(TICKET))
+          : Promise.resolve(
+              jsonResponse(
+                { error: { code: "INTERNAL_ERROR", message: "No." } },
+                500
+              )
+            );
+      })
+    );
+
+    renderAt();
+
+    await screen.findByText("No comments yet.");
+    await user().click(
+      screen.getByRole("button", { name: "Problem appears resolved" })
+    );
+    await user().click(screen.getByRole("button", { name: "Yes, tell IT" }));
+
+    const region = await screen.findByRole("region", {
+      name: "Problem appears resolved",
+    });
+
+    await waitFor(() =>
+      expect(region).toHaveTextContent(
+        "You told IT the problem appears resolved."
+      )
+    );
+    expect(region.querySelector("time")).toBeNull();
+    expect(region).not.toHaveTextContent(/ on /u);
+    expect(
+      screen.queryByRole("button", { name: "Problem appears resolved" })
+    ).toBeNull();
+  });
+});
+
 describe("UI-20 the resolved indication", () => {
   const button = () =>
     screen.getByRole("button", { name: "Problem appears resolved" });
