@@ -248,7 +248,7 @@ Full detail is in [ui-spec.md](ui-spec.md). In summary:
 
 **User** gains two columns: a password hash, and a flag recording that a password change is required before the application may be used. Nothing else about the model changes. The role enumeration already contains all three roles and the activation flag already exists — both were added in Lab 2 for this sprint, which is why there is no data migration here.
 
-**Ticket** gains one column: a nullable timestamp recording that the Requester indicated the problem appears resolved.
+**Ticket** gains one column: a nullable timestamp, `resolvedIndicatedAt`, recording that the Requester indicated the problem appears resolved.
 
 ### New models
 

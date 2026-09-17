@@ -83,6 +83,10 @@ model User {
   /// set an owner until IT Staff exist.
   ownedTickets Ticket[] @relation("TicketOwner")
 
+  /// Public Comments this user wrote. Kept when the user is deactivated, so a
+  /// conversation never loses a speaker (BR-36).
+  publicComments PublicComment[]
+
   // The selector reads active users on every load.
   @@index([isActive])
 }
@@ -201,12 +205,19 @@ model Ticket {
   /// which is what an empty field looks like rather than an absent one.
   resolutionSummary String?
 
+  /// When the Requester said the problem appears resolved (FR-18). A timestamp
+  /// and not a status, because BR-05 forbids a Requester setting one (D-10).
+  /// Set once: indicating twice keeps the first time (BR-27).
+  resolvedIndicatedAt DateTime?
+
   /// `createdAt` is what the UI labels "Ticket Date". One timestamp, one
   /// meaning; a separate date column would only be able to disagree with it.
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   attachments Attachment[]
+
+  publicComments PublicComment[]
 
   // Every My Tickets query filters on owner and orders by creation time. This
   // is the one index the sprint cannot do without.
@@ -303,4 +314,32 @@ model Session {
   /// Ending a user's other sessions is one statement, and this is what makes it
   /// one statement rather than a scan (BR-14).
   @@index([userId])
+}
+
+/// A message on a ticket that its Requester can read (BR-04).
+///
+/// A table of its own rather than a visibility flag shared with Internal Notes
+/// (D-09): no query on this model can reach note content, whatever it forgets
+/// to filter.
+///
+/// Append-only (BR-28) — no `updatedAt`, because nothing may change a row.
+model PublicComment {
+  id Int @id @default(autoincrement())
+
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  /// From the session, never from the request body (BR-29).
+  authorId Int
+  author   User @relation(fields: [authorId], references: [id])
+
+  /// Trimmed, 1 to 5000 characters (BR-30). Stored as text and rendered as
+  /// text (BR-31).
+  body String
+
+  /// From the server clock (BR-29).
+  createdAt DateTime @default(now())
+
+  // A ticket's conversation is read oldest first, with id breaking a tie.
+  @@index([ticketId, createdAt, id])
 }

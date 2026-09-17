@@ -30,6 +30,7 @@ const TICKET_SHAPE = {
   itPriority: true,
   currentStatus: true,
   resolutionSummary: true,
+  resolvedIndicatedAt: true,
   createdAt: true,
   updatedAt: true,
   category: { select: { id: true, name: true } },

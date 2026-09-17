@@ -25,9 +25,9 @@ import { signInAs } from "./support/signIn.js";
  * and never through the interface: a control the interface hides is feedback,
  * not a boundary (BR-17), so the boundary is asserted where it lives.
  *
- * Covers SEC-01, SEC-03, SEC-04, SEC-05, SEC-06, SEC-10, SEC-14, SEC-15,
- * API-14, API-41, API-46 and MIG-06. The Administrator and status rows in the
- * same table arrive with the endpoints they test.
+ * Covers SEC-01, SEC-03, SEC-04, SEC-05, SEC-06, SEC-08, SEC-10, SEC-14,
+ * SEC-15, API-14, API-41, API-46 and MIG-06. The Administrator and staff
+ * status rows in the same table arrive with the endpoints they test.
  */
 
 const PREFIX = "AUTHZ-TEST";
@@ -158,6 +158,9 @@ const protectedRoutes = (): {
   { method: "delete", path: `/api/attachments/${attachmentOfA}` },
   { method: "get", path: "/api/staff/tickets" },
   { method: "get", path: "/api/staff/owners" },
+  { method: "get", path: `/api/tickets/${ticketOfA}/comments` },
+  { method: "post", path: `/api/tickets/${ticketOfA}/comments` },
+  { method: "post", path: `/api/tickets/${ticketOfA}/resolved-indication` },
 ];
 
 describe("without a session", () => {
@@ -525,5 +528,47 @@ describe("the retired mechanism is gone from the source", () => {
     expect(
       await offenders(["server/src"], /body\s*(?:\.|\[\s*["'])requesterId/u)
     ).toStrictEqual([]);
+  });
+});
+
+describe("a Requester and the ticket status", () => {
+  it("SEC-08 no route lets a Requester set a status, on their own ticket", async () => {
+    // Every shape a client might guess. None is a route, so each is refused by
+    // the catch-all rather than by a guard that could be forgotten (AC-23).
+    const ticket = `/api/tickets/${ticketOfA}`;
+    const attempts = await Promise.all([
+      as(requesterA)(request(app).patch(ticket)).send({
+        currentStatus: "RESOLVED",
+      }),
+      as(requesterA)(request(app).put(ticket)).send({
+        currentStatus: "CLOSED",
+      }),
+      as(requesterA)(request(app).patch(`${ticket}/status`)).send({
+        status: "RESOLVED",
+      }),
+      as(requesterA)(request(app).post(`${ticket}/status`)).send({
+        status: "CLOSED",
+      }),
+    ]);
+
+    for (const response of attempts) {
+      expect(response.status).toBe(404);
+      expect(response.body.error.code).toBe("ROUTE_NOT_FOUND");
+    }
+
+    // The one endpoint a Requester may use on the lifecycle's edge records a
+    // timestamp and ignores a status sent with it (API-27).
+    const indication = await as(requesterA)(
+      request(app).post(`${ticket}/resolved-indication`)
+    ).send({ currentStatus: "RESOLVED" });
+
+    expect(indication.status).toBe(204);
+
+    const stored = await prisma.ticket.findUniqueOrThrow({
+      where: { id: ticketOfA },
+      select: { currentStatus: true },
+    });
+
+    expect(stored.currentStatus).toBe("NEW");
   });
 });

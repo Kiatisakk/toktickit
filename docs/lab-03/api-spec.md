@@ -164,7 +164,7 @@ Categories and related systems required no authentication in Lab 2 because the s
 
 ## 6. Requester tickets and attachments
 
-Paths, request shapes, response shapes and status codes are **unchanged from Lab 2**. The only difference is where identity comes from: the session cookie rather than the request header. This is Lab 2's BR-36 being honoured literally (BR-40).
+Paths, request shapes, response shapes and status codes are **unchanged from Lab 2**, with one addition: `GET /api/tickets/:id` carries `resolvedIndicatedAt` (§8). The only difference is where identity comes from: the session cookie rather than the request header. This is Lab 2's BR-36 being honoured literally (BR-40).
 
 | Endpoint | Roles | Scope |
 | --- | --- | --- |
@@ -245,10 +245,11 @@ The queue also accepts three sort fields the Requester list does not: `itPriorit
   "createdAt": "…", "updatedAt": "…",
   "category": { "id": 3, "name": "Network" }, "relatedSystem": { "id": 3, "name": "VPN" },
   "ticketOwner": { "id": 11, "name": "Michael Brown" },
-  "requester": { "id": 1, "name": "Jennifer Anderson" } }
+  "requester": { "id": 1, "name": "Jennifer Anderson" },
+  "resolvedIndicatedAt": null }
 ```
 
-`ticketOwner` is `null` for an unowned ticket — an explicit value, never an absent key. The "problem appears resolved" timestamp joins each item with the endpoint that records it (§8), in the same Pull Request as its column.
+`ticketOwner` is `null` for an unowned ticket — an explicit value, never an absent key. `resolvedIndicatedAt` is the time the Requester indicated the problem appears resolved (§8), and is likewise `null`, never absent, until they do.
 
 ### `GET /api/staff/owners`
 
@@ -323,7 +324,9 @@ Any authenticated user, scoped exactly like ticket detail: a Requester on their 
 
 Internal Notes use the identical two shapes and the identical failures, on their own paths. The list envelope is `data`, matching every other collection in this API.
 
-Author and timestamp are taken from the session and the server clock; both are ignored if supplied (BR-29).
+Author and timestamp are taken from the session and the server clock; both are ignored if supplied, as are an `id` and a `ticketId` (BR-29).
+
+**Scope before content.** The ticket is looked up in the caller's scope before the body is read, so a Requester posting to someone else's ticket receives `404` whatever they sent — an empty body there is not answered `400`, which would confirm the ticket exists.
 
 Body is 1–5000 characters after trimming; whitespace-only is refused with `400 VALIDATION_FAILED` (BR-30, AC-26).
 
@@ -337,11 +340,15 @@ Same body rules as comments. Both resources are append-only: there is no `PATCH`
 
 ### `POST /api/tickets/:id/resolved-indication`
 
-**Requester only**, and only on a ticket they own. Any other role receives `403 FORBIDDEN`.
+**Requester only**, and only on a ticket they own. Any other role receives `403 FORBIDDEN` — including IT Staff or an Administrator on a ticket they raised themselves, since the indication is the word of the person who reported the problem (specification.md §5). The role is checked before the ticket: a Requester on a ticket that is not theirs receives `404 TICKET_NOT_FOUND`.
 
-**204** — records the timestamp. The ticket's status is unchanged (BR-05, BR-27, AC-22).
+**204**, no body — records the timestamp. The ticket's status is unchanged (BR-05, BR-27, AC-22). Any request body is ignored, a status in it included.
 
-Sending it twice is idempotent. There is no endpoint by which a Requester can set a status; the attempt has no route to make (AC-23).
+Sending it twice is idempotent, and **the first time stands**: the second call answers `204` and changes nothing, because BR-27 sets the timestamp once. The write is conditional on the timestamp being unset, so two calls racing each other cannot both record.
+
+The recorded time is read back as `resolvedIndicatedAt` on `GET /api/tickets/:id` — an ISO timestamp, or `null` until indicated — for the Requester and for staff alike.
+
+There is no endpoint by which a Requester can set a status; the attempt has no route to make (AC-23).
 
 ---
 

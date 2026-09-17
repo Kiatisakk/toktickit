@@ -33,10 +33,15 @@ export const LIST_SHAPE = {
   ticketOwner: { select: { id: true, name: true } },
 } as const;
 
-/** The queue also says whose ticket each row is — the list is everyone's. */
+/**
+ * The queue also says whose ticket each row is — the list is everyone's — and
+ * whether its Requester has said the problem appears resolved (api-spec.md §7),
+ * which is what staff scan a queue for.
+ */
 export const QUEUE_SHAPE = {
   ...LIST_SHAPE,
   requester: { select: { id: true, name: true } },
+  resolvedIndicatedAt: true,
 } as const;
 
 /**
