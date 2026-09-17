@@ -8,6 +8,11 @@ import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
 import { PublicComments } from "../components/PublicComments";
 import { ResolvedIndication } from "../components/ResolvedIndication";
+import {
+  ItPriorityControl,
+  OwnerControl,
+  StatusControl,
+} from "../components/StaffTicketControls";
 import { StateBlock } from "../components/StateBlock";
 import { TextInput } from "../components/TextInput";
 import { useAuth } from "../context/useAuth";
@@ -140,6 +145,15 @@ export const TicketDetail = () => {
     );
   };
 
+  // IT Staff and Administrators act on the ticket here; everyone else reads it
+  // (ui-spec.md §6). The API refuses the same three operations to a Requester
+  // whatever this decides, so this is which controls to draw, not who may act.
+  const staffControls = user?.role === "IT_STAFF" || user?.role === "ADMIN";
+
+  const onTicketChanged = (updated: Detail) => {
+    setState({ kind: "loaded", ticket: updated });
+  };
+
   const onResolvedIndicated = (resolvedIndicatedAt: string) => {
     setState((current) =>
       current.kind === "loaded"
@@ -252,28 +266,40 @@ export const TicketDetail = () => {
               <Badge kind="priority" value={ticket.requestedPriority} />
             </div>
           </div>
-          <div className="tkt-field-group">
-            <span className="tkt-field-label">IT Priority</span>
-            <div className="tkt-readonly-badge">
-              <Badge
-                emptyLabel="Not set until IT triages this ticket"
-                kind="priority"
-                value={ticket.itPriority}
-              />
+          {staffControls ? (
+            <ItPriorityControl onUpdated={onTicketChanged} ticket={ticket} />
+          ) : (
+            <div className="tkt-field-group">
+              <span className="tkt-field-label">IT Priority</span>
+              <div className="tkt-readonly-badge">
+                <Badge
+                  emptyLabel="Not set until IT triages this ticket"
+                  kind="priority"
+                  value={ticket.itPriority}
+                />
+              </div>
             </div>
-          </div>
-          <div className="tkt-field-group">
-            <span className="tkt-field-label">Current Status</span>
-            <div className="tkt-readonly-badge">
-              <Badge kind="status" value={ticket.currentStatus} />
+          )}
+          {staffControls ? (
+            <StatusControl onUpdated={onTicketChanged} ticket={ticket} />
+          ) : (
+            <div className="tkt-field-group">
+              <span className="tkt-field-label">Current Status</span>
+              <div className="tkt-readonly-badge">
+                <Badge kind="status" value={ticket.currentStatus} />
+              </div>
             </div>
-          </div>
+          )}
 
-          <TextInput
-            label="Ticket Owner"
-            readOnly
-            value={ticket.ticketOwner?.name ?? "Not yet assigned"}
-          />
+          {staffControls ? (
+            <OwnerControl onUpdated={onTicketChanged} ticket={ticket} />
+          ) : (
+            <TextInput
+              label="Ticket Owner"
+              readOnly
+              value={ticket.ticketOwner?.name ?? "Not yet assigned"}
+            />
+          )}
           <div className="tkt-span-3">
             <TextInput label="Summary" readOnly value={ticket.summary} />
           </div>
