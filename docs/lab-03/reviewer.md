@@ -121,6 +121,23 @@ Three findings on the queue screen, all marked as risks. All three were real, an
 
 The four regression tests were run against the unfixed screen first and failed there.
 
+He approved with `LGTM` at 02:25:58Z on 2026-09-17 and merged seven seconds later as `f6b2320`. Issue #50 was closed by hand. Recorded on the next feature branch, #49's.
+
+### PR #63 — Requester comments and the resolved indication (Issue #49)
+
+[PR #63](https://github.com/Kiatisakk/toktickit/pull/63) · reviewed 2026-09-17 · **2 line comments**, verdict **Changes requested**.
+
+Two findings, both marked as bugs, both real, both fixed. **Each was a success handled as though the step before it had also succeeded.**
+
+*A comment could vanish.* A post that succeeded while the list was still loading, or after the list had failed, left the list untouched, because there was nothing to append to, and then cleared the composer. The comment was saved and appeared nowhere on screen. The list is now read again in that case, and the new comment comes back with it.
+
+*The screen could present this device's clock as the server's.* After recording the indication, the time is read back from the ticket. If that read failed, the screen fell back to `new Date()`, and the statement *"You told IT … on <time>"* then showed a time the server never recorded. My own code comment defended that as better than reporting a success as a failure. It was a fabricated time. The statement is now made without a time.
+
+The three regression tests were run against the unfixed screen first and failed there.
+
+The branch also needed `lab3-staging` merged in, because #62 had landed first. The three conflicts were two branches appending to the same lists, and both sides were kept. With #62 in, this PR could keep the promise #62's contract made for it: the queue row now carries `resolvedIndicatedAt`.
+
+
 ---
 
 ## Reviews I gave
@@ -216,7 +233,8 @@ Reviewed 2026-09-16, in order, in the terse caveman format at his request for th
 | [#59](https://github.com/Kiatisakk/toktickit/pull/59) | received | 17 | Comment → Approved | Merged |
 | [#60](https://github.com/Kiatisakk/toktickit/pull/60) | received | 2 | Comment → Approved | Merged |
 | [#61](https://github.com/Kiatisakk/toktickit/pull/61) | received | 4 | Comment → Approved | Merged |
-| [#62](https://github.com/Kiatisakk/toktickit/pull/62) | received | 3 | Changes requested | Open — fixes pushed |
+| [#62](https://github.com/Kiatisakk/toktickit/pull/62) | received | 3 | Changes requested → Approved | Merged |
+| [#63](https://github.com/Kiatisakk/toktickit/pull/63) | received | 2 | Changes requested | Open — fixes pushed |
 | [beambeambeam#59](https://github.com/beambeambeam/toktickit/pull/59) | given | 3 | Changes requested → Approved | Merged |
 | [beambeambeam#60](https://github.com/beambeambeam/toktickit/pull/60) | given | 6 | Changes requested → Approved | Merged |
 | [beambeambeam#61](https://github.com/beambeambeam/toktickit/pull/61) | given | 4 | Changes requested | Open |

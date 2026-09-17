@@ -245,10 +245,11 @@ The queue also accepts three sort fields the Requester list does not: `itPriorit
   "createdAt": "…", "updatedAt": "…",
   "category": { "id": 3, "name": "Network" }, "relatedSystem": { "id": 3, "name": "VPN" },
   "ticketOwner": { "id": 11, "name": "Michael Brown" },
-  "requester": { "id": 1, "name": "Jennifer Anderson" } }
+  "requester": { "id": 1, "name": "Jennifer Anderson" },
+  "resolvedIndicatedAt": null }
 ```
 
-`ticketOwner` is `null` for an unowned ticket — an explicit value, never an absent key. The "problem appears resolved" timestamp joins each item with the endpoint that records it (§8), in the same Pull Request as its column.
+`ticketOwner` is `null` for an unowned ticket — an explicit value, never an absent key. `resolvedIndicatedAt` is the time the Requester indicated the problem appears resolved (§8), and is likewise `null`, never absent, until they do.
 
 ### `GET /api/staff/owners`
 
