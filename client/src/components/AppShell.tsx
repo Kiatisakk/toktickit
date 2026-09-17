@@ -31,8 +31,7 @@ interface AppShellProps {
  * navigation. `roles` omitted means every signed-in role.
  *
  * A destination a role may not use is left out, not disabled (AC-34): a
- * disabled link still advertises a screen the user cannot have. The Ticket
- * Queue joins this list with the ticket that builds it.
+ * disabled link still advertises a screen the user cannot have.
  */
 const NAV_ITEMS: {
   to: string;
@@ -40,6 +39,12 @@ const NAV_ITEMS: {
   icon: IconName;
   roles?: readonly Role[];
 }[] = [
+  {
+    to: "/staff/tickets",
+    label: "Ticket Queue",
+    icon: "queue",
+    roles: ["IT_STAFF", "ADMIN"],
+  },
   {
     to: "/admin/users",
     label: "User Management",

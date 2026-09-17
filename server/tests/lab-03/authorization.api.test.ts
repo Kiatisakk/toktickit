@@ -25,9 +25,9 @@ import { signInAs } from "./support/signIn.js";
  * and never through the interface: a control the interface hides is feedback,
  * not a boundary (BR-17), so the boundary is asserted where it lives.
  *
- * Covers SEC-01, SEC-03, SEC-04, SEC-06, SEC-10, SEC-14, SEC-15, API-14,
- * API-41, API-46 and MIG-06. The staff-queue, Administrator and status rows in
- * the same table arrive with the endpoints they test.
+ * Covers SEC-01, SEC-03, SEC-04, SEC-05, SEC-06, SEC-10, SEC-14, SEC-15,
+ * API-14, API-41, API-46 and MIG-06. The Administrator and status rows in the
+ * same table arrive with the endpoints they test.
  */
 
 const PREFIX = "AUTHZ-TEST";
@@ -156,6 +156,8 @@ const protectedRoutes = (): {
   { method: "post", path: `/api/tickets/${ticketOfA}/attachments` },
   { method: "get", path: `/api/attachments/${attachmentOfA}/download` },
   { method: "delete", path: `/api/attachments/${attachmentOfA}` },
+  { method: "get", path: "/api/staff/tickets" },
+  { method: "get", path: "/api/staff/owners" },
 ];
 
 describe("without a session", () => {
@@ -343,6 +345,36 @@ describe("the ownership boundary", () => {
     });
 
     expect(row.removedAt).toBeNull();
+  });
+});
+
+describe("the staff queue", () => {
+  it.each(["/api/staff/tickets", "/api/staff/owners"])(
+    "SEC-05 a Requester calling %s directly is refused 403 FORBIDDEN (AC-13)",
+    async (endpoint) => {
+      const response = await as(requesterA)(request(app).get(endpoint));
+
+      expect(response.status).toBe(403);
+      expect(response.body.error.code).toBe("FORBIDDEN");
+    }
+  );
+
+  it("SEC-05 the refusal comes before the query is read, so a bad query still answers 403", async () => {
+    // A Requester must not learn the queue's parameter rules from its 400s.
+    const response = await as(requesterA)(
+      request(app).get("/api/staff/tickets").query({ sort: "nonsense" })
+    );
+
+    expect(response.status).toBe(403);
+  });
+
+  it.each([
+    { who: "IT Staff", pick: () => staff },
+    { who: "an Administrator", pick: () => admin },
+  ])("$who may read it", async ({ pick }) => {
+    const response = await as(pick())(request(app).get("/api/staff/tickets"));
+
+    expect(response.status).toBe(200);
   });
 });
 
