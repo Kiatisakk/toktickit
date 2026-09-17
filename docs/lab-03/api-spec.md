@@ -164,7 +164,7 @@ Categories and related systems required no authentication in Lab 2 because the s
 
 ## 6. Requester tickets and attachments
 
-Paths, request shapes, response shapes and status codes are **unchanged from Lab 2**, with one addition: `GET /api/tickets/:id` carries `resolvedIndicatedAt` (§8). The only difference is where identity comes from: the session cookie rather than the request header. This is Lab 2's BR-36 being honoured literally (BR-40).
+Paths, request shapes, response shapes and status codes are **unchanged from Lab 2**, with one addition: `GET /api/tickets/:id` carries `resolvedIndicatedAt` (§8). `POST /api/tickets` now answers with `itPriority` equal to the `requestedPriority` it was sent, because IT Priority starts as a copy of it (BR-23); nothing in the request changes. The only difference is where identity comes from: the session cookie rather than the request header. This is Lab 2's BR-36 being honoured literally (BR-40).
 
 | Endpoint | Roles | Scope |
 | --- | --- | --- |
@@ -295,6 +295,8 @@ Requested Priority is never touched (BR-22, BR-23, AC-19).
 | Ticket is `CANCELLED` | 400 | `INVALID_STATUS_TRANSITION` |
 
 The permitted transitions are in specification.md §5. The response returns the ticket's new state. A refused transition leaves the ticket unchanged (AC-20, AC-21).
+
+The change is written conditionally on the status the transition was checked against. Two staff moving one ticket at the same moment therefore cannot both apply: the second matches no row and is answered `400 INVALID_STATUS_TRANSITION`, saying the ticket moved, rather than overwriting the first with a transition that was never permitted from where the ticket now is.
 
 ---
 

@@ -135,6 +135,8 @@ Two findings, both marked as bugs, both real, both fixed. **Each was a success h
 
 The three regression tests were run against the unfixed screen first and failed there.
 
+He approved with `LGTM` at 16:31:31Z on 2026-09-17 and merged seven seconds later as `492d04a`. Issue #49 was closed by hand. Recorded on the next feature branch, #51's.
+
 The branch also needed `lab3-staging` merged in, because #62 had landed first. The three conflicts were two branches appending to the same lists, and both sides were kept. With #62 in, this PR could keep the promise #62's contract made for it: the queue row now carries `resolvedIndicatedAt`.
 
 
@@ -234,7 +236,7 @@ Reviewed 2026-09-16, in order, in the terse caveman format at his request for th
 | [#60](https://github.com/Kiatisakk/toktickit/pull/60) | received | 2 | Comment → Approved | Merged |
 | [#61](https://github.com/Kiatisakk/toktickit/pull/61) | received | 4 | Comment → Approved | Merged |
 | [#62](https://github.com/Kiatisakk/toktickit/pull/62) | received | 3 | Changes requested → Approved | Merged |
-| [#63](https://github.com/Kiatisakk/toktickit/pull/63) | received | 2 | Changes requested | Open — fixes pushed |
+| [#63](https://github.com/Kiatisakk/toktickit/pull/63) | received | 2 | Changes requested → Approved | Merged |
 | [beambeambeam#59](https://github.com/beambeambeam/toktickit/pull/59) | given | 3 | Changes requested → Approved | Merged |
 | [beambeambeam#60](https://github.com/beambeambeam/toktickit/pull/60) | given | 6 | Changes requested → Approved | Merged |
 | [beambeambeam#61](https://github.com/beambeambeam/toktickit/pull/61) | given | 4 | Changes requested | Open |
