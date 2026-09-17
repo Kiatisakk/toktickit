@@ -411,6 +411,58 @@ export const fetchTickets = async (
   return { data: body["data"], meta: body["meta"] };
 };
 
+/* ------------------------------------------------------------ the queue -- */
+
+/** A queue row also says whose ticket it is: the queue is everyone's. */
+export interface QueueRow extends TicketListRow {
+  requester: ReferenceItem;
+}
+
+export interface QueueResponse {
+  data: QueueRow[];
+  meta: TicketListMeta;
+}
+
+const isQueueRow = (value: unknown): value is QueueRow =>
+  isTicketRow(value) && isRecord(value) && isReferenceItem(value["requester"]);
+
+/** The staff Ticket Queue (api-spec.md §7). IT Staff and Administrators only. */
+export const fetchStaffTickets = async (
+  query: URLSearchParams,
+  signal?: AbortSignal
+): Promise<QueueResponse> => {
+  const suffix = query.toString();
+  const body = await apiGet(
+    `/api/staff/tickets${suffix ? `?${suffix}` : ""}`,
+    signal ? { signal } : {}
+  );
+
+  if (
+    !isRecord(body) ||
+    !Array.isArray(body["data"]) ||
+    !body["data"].every(isQueueRow) ||
+    !isMeta(body["meta"])
+  ) {
+    throw new ApiError(
+      "UNEXPECTED_RESPONSE",
+      "The TokTickIT API returned the ticket queue in an unexpected format.",
+      0
+    );
+  }
+
+  return { data: body["data"], meta: body["meta"] };
+};
+
+/** Who may own a ticket — the choices the queue's Owner filter offers. */
+export const fetchStaffOwners = async (
+  signal?: AbortSignal
+): Promise<ReferenceItem[]> =>
+  expectArrayOf(
+    await apiGet("/api/staff/owners", signal ? { signal } : {}),
+    isReferenceItem,
+    "ticket owners"
+  );
+
 /* ------------------------------------------------------------ attachments -- */
 
 export interface AttachmentMetadata {

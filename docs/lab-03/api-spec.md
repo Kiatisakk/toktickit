@@ -190,7 +190,7 @@ Unchanged from Lab 2 and reused by the staff queue (D-12).
 
 | Parameter | Values | Blank value |
 | --- | --- | --- |
-| `search` | Free text, matched against ticket number and summary | Treated as absent |
+| `search` | Free text, matched literally against ticket number and summary — `%` and `_` are characters, not wildcards (D-19) | Treated as absent |
 | `categoryId` | Positive integer | Treated as absent |
 | `requestedPriority` | `LOW` \| `MEDIUM` \| `HIGH` | Treated as absent |
 | `itPriority` | `LOW` \| `MEDIUM` \| `HIGH` | Treated as absent |
@@ -231,11 +231,30 @@ The queue. Same query contract as §6, with additional filters:
 | `unassigned` | `true` — tickets with no owner |
 | `requesterId` | Positive integer — tickets raised by that user |
 
-`ownerId` and `unassigned` are mutually exclusive; sending both answers `400 INVALID_QUERY_PARAMETER`.
+`ownerId` and `unassigned` are mutually exclusive; sending both answers `400 INVALID_QUERY_PARAMETER`. `unassigned` accepts exactly `true` — `false` would be a second way of saying "no filter". All three filters, like the others, treat a blank value as absent.
 
-The queue also accepts three sort fields the Requester list does not: `itPriority`, `currentStatus` and `ticketOwner`. They are added to the shared parser's allowlist rather than parsed separately, which is what D-12 means by extending it — a Requester sending them is refused, because they are not in the Requester scope's allowlist.
+The queue also accepts three sort fields the Requester list does not: `itPriority`, `currentStatus` and `ticketOwner`. They are added to the shared parser's allowlist rather than parsed separately, which is what D-12 means by extending it — a Requester sending them, or any of the three filters, to `GET /api/tickets` is refused, because they are not in the Requester scope's allowlist. `ticketOwner` orders by the owner's name, which is what the column shows; `itPriority` and `currentStatus` order by severity and lifecycle, not alphabetically. Every sort keeps `id` as the last key.
 
-Each item carries the ticket's requester, owner (or `null`), both priorities, status, and the "problem appears resolved" timestamp (or `null`).
+**Roles.** IT Staff and Administrators. A Requester is refused `403 FORBIDDEN` before the query string is read, so the queue's parameter rules are not disclosed to them (AC-13).
+
+**Response** — the same envelope as §6. Each item is a list row with the ticket's requester added:
+
+```json
+{ "id": 7, "ticketNumber": "TKT-2026-000007", "summary": "…",
+  "requestedPriority": "HIGH", "itPriority": "HIGH", "currentStatus": "IN_PROGRESS",
+  "createdAt": "…", "updatedAt": "…",
+  "category": { "id": 3, "name": "Network" }, "relatedSystem": { "id": 3, "name": "VPN" },
+  "ticketOwner": { "id": 11, "name": "Michael Brown" },
+  "requester": { "id": 1, "name": "Jennifer Anderson" } }
+```
+
+`ticketOwner` is `null` for an unowned ticket — an explicit value, never an absent key. The "problem appears resolved" timestamp joins each item with the endpoint that records it (§8), in the same Pull Request as its column.
+
+### `GET /api/staff/owners`
+
+IT Staff and Administrators. Returns every account a ticket may be owned by — active IT Staff and Administrators (BR-21) — as `[{ id, name }]`, ordered by name then id. Nothing else about the account is returned.
+
+The queue's Owner filter needs the names to offer, and assigning ownership needs the same list, so it is one endpoint rather than a second read of the Administrator user list, which a staff member may not call.
 
 ### `PATCH /api/staff/tickets/:id/owner`
 
@@ -430,5 +449,5 @@ Read against specification.md §5's matrix. `403` means the role is refused; `40
 | `/api/tickets/:id/comments` | Own → 404 otherwise | Any | Any |
 | `/api/tickets/:id/resolved-indication` | Own → 404 otherwise | 403 | 403 |
 | `/api/tickets/:id/notes` | **403** | Any | Any |
-| `/api/staff/*` | **403** | Yes | Yes |
+| `/api/staff/*` — queue, owners and ticket operations | **403** | Yes | Yes |
 | `/api/admin/*` | **403** | **403** | Yes |

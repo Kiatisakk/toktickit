@@ -7,6 +7,7 @@ import { CreateTicket } from "./CreateTicket";
 import { Login } from "./Login";
 import { MyTickets } from "./MyTickets";
 import { NotFound } from "./NotFound";
+import { StaffTicketQueue } from "./StaffTicketQueue";
 import { TicketDetail } from "./TicketDetail";
 import { UserManagement } from "./UserManagement";
 
@@ -60,6 +61,16 @@ export const router = createBrowserRouter([
   {
     path: "/tickets/:ticketId",
     element: guarded(<TicketDetail />),
+  },
+  // IT Staff and Administrators. A Requester is redirected, and the API refuses
+  // them 403 regardless (AC-13).
+  {
+    path: "/staff/tickets",
+    element: (
+      <AuthGuard roles={["IT_STAFF", "ADMIN"]}>
+        <StaffTicketQueue />
+      </AuthGuard>
+    ),
   },
   // Administrator only. The destination is absent from every other role's
   // navigation and the route redirects them (ui-spec.md §8).

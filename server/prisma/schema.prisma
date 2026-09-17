@@ -222,6 +222,14 @@ model Ticket {
   // Every My Tickets query filters on owner and orders by creation time. This
   // is the one index the sprint cannot do without.
   @@index([requesterId, createdAt(sort: Desc)])
+
+  // The staff queue reads every ticket in its default order — newest first,
+  // id as the tie-break — so the index above, which leads with requesterId,
+  // cannot serve it (specification.md §7).
+  @@index([createdAt(sort: Desc), id(sort: Desc)])
+
+  // The Unassigned filter and the Owner filter (FR-21).
+  @@index([ticketOwnerId])
 }
 
 /// The per-year counter behind Ticket Number.

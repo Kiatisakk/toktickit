@@ -37,6 +37,7 @@ const GLYPHS = {
   pending: "circle",
   logout: "box-arrow-right",
   users: "people",
+  queue: "list-task",
 } as const;
 
 export type IconName = keyof typeof GLYPHS;

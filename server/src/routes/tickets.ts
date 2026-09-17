@@ -9,32 +9,16 @@ import { ErrorCode, sendError, sendInternalError } from "../http/errors.js";
 import { identifier } from "../http/identifier.js";
 import { currentUser, requireSignedIn } from "../middleware/session.js";
 import { prisma } from "../prisma.js";
+import {
+  LIST_SHAPE,
+  readTicketPage,
+  ticketListWhere,
+} from "../tickets/ticketList.js";
 import { claimTicketNumber } from "../tickets/ticketNumber.js";
 import { parseTicketQuery } from "../tickets/ticketQuery.js";
 import { validateTicketInput } from "../tickets/validation.js";
 
 export const ticketsRouter = Router();
-
-/**
- * What a row in the list carries.
- *
- * Deliberately without `description`: the list shows a summary, and sending a
- * five-thousand-character body for every row of every page to render one line
- * of it is a cost with no reader.
- */
-const LIST_SHAPE = {
-  id: true,
-  ticketNumber: true,
-  summary: true,
-  requestedPriority: true,
-  itPriority: true,
-  currentStatus: true,
-  createdAt: true,
-  updatedAt: true,
-  category: { select: { id: true, name: true } },
-  relatedSystem: { select: { id: true, name: true } },
-  ticketOwner: { select: { id: true, name: true } },
-} as const;
 
 /** Everything a client is given about one ticket. */
 const TICKET_SHAPE = {
@@ -195,70 +179,9 @@ ticketsRouter.get("/tickets", ...requireSignedIn, async (req, res) => {
     // Ownership is a `where` clause, not a filter applied afterwards. Fetching
     // and then discarding would page over other people's rows and report their
     // count. "My tickets" for every role, staff included (FR-30, D-07).
-    const where = {
-      ...ownTicketsOf(user),
-      ...(query.categoryId === undefined
-        ? {}
-        : { categoryId: query.categoryId }),
-      ...(query.requestedPriority === undefined
-        ? {}
-        : { requestedPriority: query.requestedPriority }),
-      ...(query.itPriority === undefined
-        ? {}
-        : { itPriority: query.itPriority }),
-      ...(query.status === undefined ? {} : { currentStatus: query.status }),
-      ...(query.search === undefined
-        ? {}
-        : {
-            OR: [
-              {
-                ticketNumber: {
-                  contains: query.search,
-                  mode: "insensitive" as const,
-                },
-              },
-              {
-                summary: {
-                  contains: query.search,
-                  mode: "insensitive" as const,
-                },
-              },
-            ],
-          }),
-    };
+    const where = { ...ticketListWhere(query), ...ownTicketsOf(user) };
 
-    // One snapshot for both reads. Run separately they see different states,
-    // so a ticket created between them makes totalItems disagree with the rows
-    // actually returned — the metadata would claim a page that is not there.
-    // Repeatable read rather than the default: under read committed each
-    // statement takes its own snapshot even inside one transaction, which is
-    // the very thing being avoided.
-    const [totalItems, data] = await prisma.$transaction(
-      [
-        prisma.ticket.count({ where }),
-        prisma.ticket.findMany({
-          where,
-          // The immutable id is always the last key. Without it two tickets
-          // sharing a createdAt have no defined order between them, so the
-          // same row can appear on two pages or on none (BR-32).
-          orderBy: [{ [query.sort]: query.order }, { id: "desc" }],
-          skip: (query.page - 1) * query.pageSize,
-          take: query.pageSize,
-          select: LIST_SHAPE,
-        }),
-      ],
-      { isolationLevel: "RepeatableRead" }
-    );
-
-    res.status(200).json({
-      data,
-      meta: {
-        page: query.page,
-        pageSize: query.pageSize,
-        totalItems,
-        totalPages: Math.ceil(totalItems / query.pageSize),
-      },
-    });
+    res.status(200).json(await readTicketPage(where, query, LIST_SHAPE));
   } catch (error) {
     sendInternalError(res, "Failed to list tickets", error);
   }
