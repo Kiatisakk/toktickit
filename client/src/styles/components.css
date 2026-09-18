@@ -1356,6 +1356,27 @@
   margin-top: var(--tkt-space-4);
 }
 
+/* ------------------------------------------------- Lab 3: internal notes -- */
+
+/* A surface of its own, not the page background and not the plain white
+   card Public Comments sits on — the tint is one of three independent
+   signals that this is Internal Notes, alongside the heading text and the
+   lock icon (ui-spec.md §6). */
+.tkt-card--notes {
+  background-color: var(--tkt-info-pale);
+  border-color: var(--tkt-info);
+}
+
+.tkt-card--notes .tkt-section-title {
+  align-items: center;
+  display: flex;
+  gap: var(--tkt-space-2);
+}
+
+.tkt-card--notes .tkt-section-title .tkt-icon {
+  color: var(--tkt-info);
+}
+
 @media (width <= 767px) {
   .tkt-attachment__actions {
     width: 100%;

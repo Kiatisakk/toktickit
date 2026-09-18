@@ -457,7 +457,9 @@ describe("posting and reading Internal Notes", () => {
     // ticketOfA has notes from prior tests in this file's ticket lifecycle,
     // but each test gets a fresh ticket via beforeEach, so create explicitly
     // both a ticket of A with notes and one with none.
-    await postNote(staff, ticketOfA, { body: "A note the Requester must not see." });
+    await postNote(staff, ticketOfA, {
+      body: "A note the Requester must not see.",
+    });
 
     const withoutNotesTicket = await createTicket(requesterA.id);
 
@@ -519,9 +521,7 @@ describe("posting and reading Internal Notes", () => {
   it("without a session every notes endpoint answers 401", async () => {
     const answers = await Promise.all([
       request(app).get(`/api/tickets/${ticketOfA}/notes`),
-      request(app)
-        .post(`/api/tickets/${ticketOfA}/notes`)
-        .send({ body: "x" }),
+      request(app).post(`/api/tickets/${ticketOfA}/notes`).send({ body: "x" }),
     ]);
 
     for (const response of answers) {

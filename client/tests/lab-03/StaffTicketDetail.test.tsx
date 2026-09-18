@@ -1,8 +1,9 @@
 import { screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { configure } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type { InternalNote } from "../../src/lib/api";
 import {
   permittedTargets,
   STATUS_LABELS,
@@ -14,7 +15,12 @@ import {
   renderAt,
   TICKET,
 } from "../lab-02/ticketDetailHarness";
-import { ADMIN_USER, authContext, JENNIFER_USER, STAFF_USER } from "../support/auth";
+import {
+  ADMIN_USER,
+  authContext,
+  JENNIFER_USER,
+  STAFF_USER,
+} from "../support/auth";
 
 /**
  * UI-15 and UI-16 — the IT Staff Ticket Detail (ui-spec.md §6, Issue #51).
@@ -39,10 +45,21 @@ interface Call {
   body: unknown;
 }
 
+/** The default Internal Note a successful post answers with. */
+const postedNote = (call: Call, id = 900): InternalNote => ({
+  id,
+  body: (call.body as { body: string }).body,
+  author: { id: STAFF_USER.id, name: STAFF_USER.name, role: STAFF_USER.role },
+  createdAt: "2026-09-18T04:00:00.000Z",
+});
+
 const api = ({
   ticket = TICKET as typeof TICKET & { ticketOwner: unknown },
   onPatch = (_call: Call, current: unknown): Promise<Response> =>
     Promise.resolve(jsonResponse(current)),
+  notes = [] as InternalNote[],
+  onPostNote = (call: Call): Promise<Response> =>
+    Promise.resolve(jsonResponse(postedNote(call), 201)),
 } = {}) => {
   const calls: Call[] = [];
   let current: Record<string, unknown> = { ...ticket };
@@ -53,8 +70,9 @@ const api = ({
       const method = init?.method ?? "GET";
       const body =
         typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
+      const call = { url, method, body };
 
-      calls.push({ url, method, body });
+      calls.push(call);
 
       if (method === "PATCH") {
         // The endpoint answers with the whole ticket, so the screen redraws
@@ -76,11 +94,22 @@ const api = ({
           delete current["status"];
         }
 
-        return onPatch({ url, method, body }, current);
+        return onPatch(call, current);
       }
 
       if (url.endsWith("/comments")) {
         return Promise.resolve(jsonResponse(NO_COMMENTS));
+      }
+
+      // The unrecognised-GET fallback below answers with the ticket, which
+      // is not a valid Internal Notes response — so `/notes` is handled
+      // explicitly, for both the read and the post.
+      if (method === "GET" && url.endsWith("/notes")) {
+        return Promise.resolve(jsonResponse({ data: notes }));
+      }
+
+      if (method === "POST" && url.endsWith("/notes")) {
+        return onPostNote(call);
       }
 
       if (url.endsWith("/staff/owners")) {
@@ -260,23 +289,26 @@ describe("UI-16 only permitted transitions are offered", () => {
     TICKET_STATUSES.filter((status) => status !== "CANCELLED").map(
       (status) => [status] as const
     )
-  )("from %s, the control lists exactly the permitted targets", async (from) => {
-    api({ ticket: { ...TICKET, currentStatus: from } });
+  )(
+    "from %s, the control lists exactly the permitted targets",
+    async (from) => {
+      api({ ticket: { ...TICKET, currentStatus: from } });
 
-    asStaff();
+      asStaff();
 
-    const control = await screen.findByRole("combobox", {
-      name: /current status/iu,
-    });
-    const offered = within(control)
-      .getAllByRole("option")
-      .map((option) => option.textContent)
-      .filter((label) => label !== "Move to…");
+      const control = await screen.findByRole("combobox", {
+        name: /current status/iu,
+      });
+      const offered = within(control)
+        .getAllByRole("option")
+        .map((option) => option.textContent)
+        .filter((label) => label !== "Move to…");
 
-    expect(offered).toStrictEqual(
-      permittedTargets(from).map((target) => STATUS_LABELS[target])
-    );
-  });
+      expect(offered).toStrictEqual(
+        permittedTargets(from).map((target) => STATUS_LABELS[target])
+      );
+    }
+  );
 
   it("sends the chosen status and redraws from the response", async () => {
     const { calls } = api({ ticket: { ...TICKET, currentStatus: "NEW" } });
@@ -377,7 +409,11 @@ describe("STYLE-09 a Requester sees none of it", () => {
 
     await screen.findByLabelText("Ticket No.");
 
-    for (const name of [/ticket owner/iu, /it priority/iu, /current status/iu]) {
+    for (const name of [
+      /ticket owner/iu,
+      /it priority/iu,
+      /current status/iu,
+    ]) {
       expect(screen.queryByRole("combobox", { name })).toBeNull();
     }
 
@@ -399,5 +435,95 @@ describe("STYLE-09 a Requester sees none of it", () => {
     expect(
       screen.getByRole("combobox", { name: /current status/iu })
     ).toBeInTheDocument();
+  });
+});
+
+describe("UI-17 Public Comments and Internal Notes are distinct (BR-04, Issue #52)", () => {
+  it("gives each section its own heading, the notes heading a lock icon, and both standing notes", async () => {
+    api();
+
+    asStaff();
+
+    const commentsHeading = await screen.findByRole("heading", {
+      name: "Public Comments",
+    });
+    const notesHeading = screen.getByRole("heading", {
+      name: /internal notes/iu,
+    });
+
+    expect(commentsHeading).toBeInTheDocument();
+    expect(notesHeading).toBeInTheDocument();
+
+    // The icon is decorative (aria-hidden), so it plays no part in the
+    // accessible name above — it is a second, independent signal.
+    expect(notesHeading.querySelector(".bi-lock-fill")).toBeInTheDocument();
+    expect(commentsHeading.querySelector(".bi-lock-fill")).toBeNull();
+
+    // The standing note beside each heading, worded oppositely so neither
+    // reads as the other with the colour removed.
+    expect(screen.getByText("Visible to the Requester")).toBeInTheDocument();
+    expect(
+      screen.getByText("Not visible to the Requester")
+    ).toBeInTheDocument();
+  });
+
+  it("draws the notes composer button as secondary, beside the comments composer's primary", async () => {
+    api();
+
+    asStaff();
+
+    const postComment = await screen.findByRole("button", {
+      name: "Post Comment",
+    });
+    const postNote = screen.getByRole("button", { name: "Post Note" });
+
+    expect(postComment).toHaveClass("tkt-btn--primary");
+    expect(postNote).toHaveClass("tkt-btn--secondary");
+  });
+
+  it("repeats the restriction at the note composer itself", async () => {
+    api();
+
+    asStaff();
+
+    await screen.findByRole("button", { name: "Post Note" });
+
+    // The standing note beside the heading is not the only place it is
+    // said: the composer's own hint states it again, at the point of
+    // posting, where a lapse would actually cause harm.
+    expect(
+      screen.getByText("Up to 5000 characters. Not visible to the Requester.")
+    ).toBeInTheDocument();
+  });
+});
+
+describe("UI-19 the note composer preserves typed text on failure (AC-36, Issue #52)", () => {
+  it("keeps what was typed when posting a note fails", async () => {
+    api({
+      onPostNote: () =>
+        Promise.resolve(
+          jsonResponse(
+            {
+              error: {
+                code: "INTERNAL_ERROR",
+                message: "Something went wrong. Please try again.",
+              },
+            },
+            500
+          )
+        ),
+    });
+
+    asStaff();
+
+    const noteField = await screen.findByLabelText(/add a note/iu);
+
+    await user().type(noteField, "Escalating this to the network team.");
+    await user().click(screen.getByRole("button", { name: "Post Note" }));
+
+    expect(
+      await screen.findByText("Something went wrong. Please try again.")
+    ).toBeInTheDocument();
+    expect(noteField).toHaveValue("Escalating this to the network team.");
   });
 });

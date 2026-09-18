@@ -632,6 +632,56 @@ export const postComment = async (
   return body;
 };
 
+/* --------------------------------------------------------- internal notes -- */
+
+/** The same shape as a Public Comment, on a separate endpoint (D-09). */
+export type InternalNote = PublicComment;
+
+const isInternalNote = isPublicComment;
+
+/**
+ * A ticket's Internal Notes, oldest first (api-spec.md §8).
+ *
+ * IT Staff and Administrator only — a Requester calling this is refused
+ * `403 FORBIDDEN` by the server before the ticket is even looked up (BR-32),
+ * which `apiGet` surfaces as an `ApiError` like any other failure.
+ */
+export const fetchNotes = async (
+  ticketId: number,
+  signal?: AbortSignal
+): Promise<InternalNote[]> => {
+  const body = await apiGet(
+    `/api/tickets/${ticketId}/notes`,
+    signal ? { signal } : {}
+  );
+
+  if (
+    !isRecord(body) ||
+    !Array.isArray(body["data"]) ||
+    !body["data"].every(isInternalNote)
+  ) {
+    throw unexpected("the notes");
+  }
+
+  return body["data"];
+};
+
+/** Posts an Internal Note. Author and time are the server's to decide (BR-29). */
+export const postNote = async (
+  ticketId: number,
+  text: string
+): Promise<InternalNote> => {
+  const body = await apiPost(`/api/tickets/${ticketId}/notes`, {
+    body: text,
+  });
+
+  if (!isInternalNote(body)) {
+    throw unexpected("the note");
+  }
+
+  return body;
+};
+
 /**
  * Tells IT the problem appears resolved. `204`, no body — the time it records
  * is read back with the ticket.

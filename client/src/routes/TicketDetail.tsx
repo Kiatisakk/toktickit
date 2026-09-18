@@ -6,6 +6,7 @@ import { AttachmentSection } from "../components/AttachmentSection";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
+import { InternalNotes } from "../components/InternalNotes";
 import { PublicComments } from "../components/PublicComments";
 import { ResolvedIndication } from "../components/ResolvedIndication";
 import {
@@ -43,8 +44,12 @@ import { formatWhen } from "../lib/formatWhen";
  *
  * Lab 3 adds two sections rather than tabs: the "problem appears resolved"
  * indication under the ticket, and Public Comments under the attachments
- * (ui-spec.md §7). There is no Internal Notes section on this screen at all —
- * not an empty one, not a disabled one (AC-25).
+ * (ui-spec.md §7). For a Requester there is no Internal Notes section on this
+ * screen at all — not an empty one, not a disabled one (AC-25).
+ *
+ * IT Staff and an Administrator open the same route (ui-spec.md §6): the
+ * three operational fields above go live, and Internal Notes appears beneath
+ * Public Comments, gated on the same `staffControls` check as those fields.
  */
 
 type Load =
@@ -365,8 +370,19 @@ export const TicketDetail = () => {
 
       {/* Keyed by ticket so that moving between tickets starts a fresh
           conversation, composer included, rather than carrying one ticket's
-          half-written comment onto another. */}
-      <PublicComments key={ticket.id} ticketId={ticket.id} />
+          half-written comment onto another. Distinct key prefixes: the two
+          sections are siblings, and an identical key on both would be a
+          duplicate-key warning at best and a misattributed remount at
+          worst. */}
+      <PublicComments key={`comments-${ticket.id}`} ticketId={ticket.id} />
+
+      {/* Staff and Administrators only — a Requester never renders this,
+          not even disabled or empty (AC-25). The endpoint enforces the same
+          boundary independently (BR-32), so this is a display decision, not
+          the security boundary. */}
+      {staffControls ? (
+        <InternalNotes key={`notes-${ticket.id}`} ticketId={ticket.id} />
+      ) : null}
     </AppShell>
   );
 };

@@ -38,6 +38,8 @@ const GLYPHS = {
   logout: "box-arrow-right",
   users: "people",
   queue: "list-task",
+  // Internal Notes' heading (ui-spec.md §6): not visible to the Requester.
+  lock: "lock-fill",
 } as const;
 
 export type IconName = keyof typeof GLYPHS;
