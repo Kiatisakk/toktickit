@@ -70,7 +70,17 @@ test.describe("the Administrator screen", () => {
 
     // --- list, search, role filter ---------------------------------------------
     await admin.goto("/admin/users");
-    await expect(visibleText(admin, ADMINISTRATOR.name)).toBeVisible();
+    // The row, not the name: the signed-in Administrator's name is also in the
+    // header, so a page-wide match could pass on an empty list. Review of
+    // PR #66. A row is a table row on desktop and tablet, a card on mobile.
+    const adminRow = admin
+      .locator(".tkt-list")
+      .locator("tr, .tkt-ticket-card")
+      .filter({ hasText: ADMINISTRATOR.email })
+      .locator("visible=true");
+
+    await expect(adminRow).toHaveCount(1);
+    await expect(adminRow).toContainText(ADMINISTRATOR.name);
     await shoot(admin, info, "user-management", "list");
 
     await admin.getByLabel("Search").fill("jennifer");

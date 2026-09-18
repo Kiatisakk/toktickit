@@ -1093,7 +1093,7 @@
     min-height: var(--tkt-touch-target);
   }
 
-  /* Four controls that are not sized from --tkt-control-height anywhere, so
+  /* Controls that are not sized from --tkt-control-height anywhere, so
      raising the token at the top of this block never reached them: the nav
      toggle and nav links (~30px/38px tall with no min-height at all), the
      breadcrumb link (no padding, so an icon-only crumb's hit area was the
@@ -1106,7 +1106,11 @@
   .tkt-nav-toggle,
   .tkt-nav-link,
   .tkt-breadcrumb__item a,
-  .tkt-ticket-card__head a {
+  .tkt-ticket-card__head a,
+  /* The brand is a link home, and was 30px tall here — found once RESP-06
+     measured the header as well as <main> (review of PR #66). It is already
+     an inline-flex row, so the extra height centres its text. */
+  .tkt-brand {
     min-height: var(--tkt-control-height);
     min-width: var(--tkt-control-height);
   }

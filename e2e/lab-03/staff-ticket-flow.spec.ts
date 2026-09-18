@@ -203,6 +203,15 @@ test.describe("the staff journey and the conversation it produces", () => {
     await shoot(staff, info, "staff-ticket-detail", "assigned");
     await staff.unroute("**/api/staff/tickets/*/owner");
 
+    // Release, and see it take (AC-18): the owner clears to Unassigned and
+    // Claim comes back. Then claim again, because the rest of the journey is
+    // work an owner does. Review of PR #66: only asserting Release was visible
+    // would let owner-clearing regress unnoticed.
+    await staff.getByRole("button", { name: "Release" }).click();
+    await expect(staff.getByText("Unassigned")).toBeVisible();
+    await staff.getByRole("button", { name: "Claim" }).click();
+    await expect(staff.getByRole("button", { name: "Release" })).toBeVisible();
+
     // --- attachments: read-only from here (canModify is the Requester only) ---
     await expect(
       staff.locator(".tkt-attachment").first().getByText("evidence.pdf")
@@ -210,8 +219,20 @@ test.describe("the staff journey and the conversation it produces", () => {
     await shoot(staff, info, "staff-ticket-detail", "attachments");
 
     // --- IT Priority ----------------------------------------------------------
-    await staff.getByLabel("IT Priority").selectOption("HIGH");
+    // The ticket was raised HIGH and IT Priority starts as a copy (BR-23), so
+    // choosing HIGH here would change nothing. LOW is a real change, and the
+    // point of AC-19 is that the Requester's HIGH survives it. Review of PR #66.
     await expect(staff.getByLabel("IT Priority")).toHaveValue("HIGH");
+    await staff.getByLabel("IT Priority").selectOption("LOW");
+    await expect(staff.getByLabel("IT Priority")).toHaveValue("LOW");
+    await staff.reload();
+    await expect(staff.getByLabel("IT Priority")).toHaveValue("LOW");
+    await expect(
+      staff
+        .getByText("Requested Priority", { exact: true })
+        .locator("xpath=ancestor::*[contains(@class,'tkt-field-group')][1]")
+        .getByText("High", { exact: true })
+    ).toBeVisible();
     await shoot(staff, info, "staff-ticket-detail", "it-priority");
 
     // --- advance status (AC-20) -----------------------------------------------

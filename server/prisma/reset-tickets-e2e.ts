@@ -1,3 +1,6 @@
+import { unlink } from "node:fs/promises";
+
+import { pathFor } from "../src/attachments/storage.js";
 import { prisma } from "../src/prisma.js";
 import { assertTestDatabase } from "./testDatabaseOnly.js";
 
@@ -27,6 +30,31 @@ import { assertTestDatabase } from "./testDatabaseOnly.js";
  */
 try {
   assertTestDatabase();
+
+  // The attachment rows cascade with their tickets, but the bytes they point
+  // at live in `server/uploads`, which no cascade reaches. Unlinked first, or
+  // every run leaves its uploads behind with nothing left to name them.
+  // Review of PR #66.
+  const stored = await prisma.attachment.findMany({
+    select: { storedFilename: true },
+  });
+  let unlinked = 0;
+
+  await Promise.all(
+    stored.map(async ({ storedFilename }) => {
+      try {
+        await unlink(pathFor(storedFilename));
+        unlinked += 1;
+      } catch (error) {
+        // Already gone is the state this is trying to reach.
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+          throw error;
+        }
+      }
+    })
+  );
+
+  console.log(`Removed ${unlinked} uploaded file(s) from server/uploads.`);
 
   const { count } = await prisma.ticket.deleteMany({});
 

@@ -211,11 +211,11 @@ export const createTicketFor = async (
  * Fails if any interactive control in the mobile band falls under the 44px
  * minimum ui-spec.md §10 sets for touch targets.
  *
- * Scoped to buttons and links inside `<main>`: the skip-link and other
- * screen-reader-only affordances are deliberately smaller than a touch target
- * because nothing ever touches them, and counting them here would fail the
- * one part of the page doing accessibility correctly (mirrors the reasoning
- * in `e2e/lab-02/support.ts`'s `expectNothingClipped`).
+ * Every visible control on the page — the header's Menu toggle and Logout,
+ * the breadcrumb and the navigation included, not only `<main>`. Review of
+ * PR #66: scanning `<main>` alone let an undersized header control pass.
+ * Screen-reader-only affordances are still skipped: nothing ever touches them,
+ * and they are small on purpose.
  */
 export const expectTouchTargetsMeetMinimum = async (
   page: Page
@@ -226,9 +226,14 @@ export const expectTouchTargetsMeetMinimum = async (
     const found: string[] = [];
 
     for (const node of globalThis.document.querySelectorAll<HTMLElement>(
-      "main button, main a, main input, main select"
+      "button, a[href], input:not([type=hidden]), select, textarea"
     )) {
-      if (node.closest(".tkt-visually-hidden")) {
+      // A file input is drawn by the label styled as its button, which is
+      // measured in its own right; the input itself is hidden on purpose.
+      if (
+        node.closest(".tkt-visually-hidden") ||
+        (node instanceof HTMLInputElement && node.type === "file")
+      ) {
         continue;
       }
 

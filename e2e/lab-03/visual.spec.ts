@@ -47,9 +47,17 @@ test.describe("Zen Green tokens on Lab 3's new screens (RESP-05)", () => {
     await expect(header).toBeVisible();
     expect(await computed(header, "background-color")).toBe(ZEN_GREEN.primary);
 
-    const active = staff.locator('[aria-current="page"]').first();
+    // Scoped to the navigation and counted exactly: the breadcrumb carries
+    // aria-current too, and `.first()` would let a missing or a doubled active
+    // link pass. Review of PR #66. The underline is asserted, not assumed —
+    // ui-spec.md §10 says the active state is marked by more than colour.
+    const active = staff.locator('.tkt-nav [aria-current="page"]');
 
     await expect(active).toHaveCount(1);
+    await expect(active).toHaveText(/Ticket Queue/u);
+    expect(await computed(active, "border-bottom-color")).toBe(
+      ZEN_GREEN.accent
+    );
 
     const admin = await pageAs(browser, info, "wanida");
 
@@ -245,6 +253,12 @@ test.describe("touch targets in the mobile band (RESP-06)", () => {
     const staff = await pageAs(browser, info, "michael");
 
     await staff.goto("/staff/tickets");
+    await expectTouchTargetsMeetMinimum(staff);
+
+    // The navigation is collapsed behind Menu in this band, so its links are
+    // not on screen to measure until it is opened.
+    await staff.getByRole("button", { name: /menu/iu }).click();
+    await expect(staff.locator(".tkt-nav--open")).toBeVisible();
     await expectTouchTargetsMeetMinimum(staff);
 
     const admin = await pageAs(browser, info, "wanida");
