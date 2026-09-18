@@ -1,3 +1,5 @@
+import { unlink } from "node:fs/promises";
+
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -8,13 +10,14 @@ import {
   SECOND_REQUESTER,
 } from "../../prisma/accounts.js";
 import { app } from "../../src/app.js";
+import { pathFor } from "../../src/attachments/storage.js";
 import { prisma } from "../../src/prisma.js";
 import { STATUSES } from "../../src/tickets/domain.js";
 import type { SignedInUser } from "./support/signIn.js";
 import { signInAs } from "./support/signIn.js";
 
 /**
- * API-20 to API-26 — what IT Staff do to a ticket (api-spec.md §7).
+ * API-20 to API-26, API-31, API-42 — what IT Staff do to a ticket (api-spec.md §7).
  *
  * Every fixture ticket is created directly, so a test can start from any status
  * in the lifecycle without walking the whole matrix to get there. The matrix
@@ -34,8 +37,28 @@ let sequence = 0;
 const as = (who: SignedInUser) => (r: request.Test) =>
   r.set("Cookie", who.cookie);
 
-const removeFixtures = () =>
-  prisma.ticket.deleteMany({ where: { summary: { startsWith: PREFIX } } });
+const removeFixtures = async () => {
+  const stored = await prisma.attachment.findMany({
+    where: { ticket: { summary: { startsWith: PREFIX } } },
+    select: { storedFilename: true },
+  });
+
+  await Promise.all(
+    stored.map(async (row) => {
+      try {
+        await unlink(pathFor(row.storedFilename));
+      } catch {
+        // Rows created directly have no bytes on disk.
+      }
+    })
+  );
+
+  // Attachment rows cascade from the ticket delete below; the unlink above is
+  // what the cascade cannot do.
+  await prisma.ticket.deleteMany({
+    where: { summary: { startsWith: PREFIX } },
+  });
+};
 
 const createTicket = async (
   overrides: {
@@ -394,6 +417,117 @@ describe("status", () => {
     const after = await stored(id);
 
     expect(["OPEN", "CANCELLED"]).toContain(after.currentStatus);
+  });
+});
+
+describe("a requester's attachments, read by staff (AC-27)", () => {
+  const PDF = Buffer.from("%PDF-1.4\nstaff detail suite\n%%EOF\n");
+
+  it("API-31 staff list the metadata and download the bytes", async () => {
+    const id = await createTicket({ ticketOwnerId: null });
+
+    const uploaded = await as(requester)(
+      request(app).post(`/api/tickets/${id}/attachments`)
+    ).attach("file", PDF, {
+      filename: "report.pdf",
+      contentType: "application/pdf",
+    });
+
+    expect(uploaded.status).toBe(201);
+    expect(uploaded.body).toMatchObject({
+      originalFilename: "report.pdf",
+      mimeType: "application/pdf",
+      status: "ACTIVE",
+    });
+
+    const attachmentId = uploaded.body.id as number;
+
+    const listing = await as(staff)(
+      request(app).get(`/api/tickets/${id}/attachments`)
+    );
+
+    expect(listing.status).toBe(200);
+    const row = (listing.body.data as Record<string, unknown>[]).find(
+      (one) => one["id"] === attachmentId
+    );
+
+    expect(row).toMatchObject({
+      id: attachmentId,
+      originalFilename: "report.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: PDF.length,
+      uploadedBy: { id: requester.id, name: ACTIVE_REQUESTER.name },
+      status: "ACTIVE",
+    });
+    // The name on disk is an internal detail and never leaves (BR-24).
+    expect(row).not.toHaveProperty("storedFilename");
+
+    const download = await as(staff)(
+      request(app).get(`/api/attachments/${attachmentId}/download`)
+    );
+
+    expect(download.status).toBe(200);
+    expect(download.headers["content-type"]).toContain("application/pdf");
+    expect(download.headers["content-disposition"]).toContain("report.pdf");
+    expect(Number(download.headers["content-length"])).toBe(PDF.length);
+    // Binary bodies arrive as a Buffer, not text.
+    expect(
+      Buffer.from(download.body as Uint8Array).toString("utf-8")
+    ).toContain("%PDF-1.4");
+  });
+
+  it("API-31 the staff ticket detail carries the same attachment", async () => {
+    const id = await createTicket({ ticketOwnerId: staff.id });
+
+    const uploaded = await as(requester)(
+      request(app).post(`/api/tickets/${id}/attachments`)
+    ).attach("file", PDF, {
+      filename: "detail.pdf",
+      contentType: "application/pdf",
+    });
+
+    const detail = await as(staff)(request(app).get(`/api/tickets/${id}`));
+
+    expect(detail.status).toBe(200);
+    expect(detail.body.attachments).toMatchObject([
+      { id: uploaded.body.id, originalFilename: "detail.pdf" },
+    ]);
+  });
+});
+
+describe("IT Priority at creation (BR-23)", () => {
+  it("API-42 a new ticket's IT Priority equals its Requested Priority, and moving one never moves the other", async () => {
+    const [category, system] = await Promise.all([
+      prisma.category.findFirstOrThrow({ where: { isActive: true } }),
+      prisma.relatedSystem.findFirstOrThrow({ where: { isActive: true } }),
+    ]);
+
+    const created = await as(requester)(request(app).post("/api/tickets")).send(
+      {
+        categoryId: category.id,
+        relatedSystemId: system.id,
+        summary: `${PREFIX} IT Priority starts as a copy`,
+        description: "Raised by the staff operations suite.",
+        requestedPriority: "HIGH",
+      }
+    );
+
+    expect(created.status).toBe(201);
+    expect(created.body.itPriority).toBe("HIGH");
+    expect(created.body.requestedPriority).toBe("HIGH");
+
+    const id = created.body.id as number;
+
+    // Checked by writing both columns: the test failed.
+    const moved = await patch(staff, id, "it-priority", { itPriority: "LOW" });
+
+    expect(moved.status).toBe(200);
+    expect(moved.body.itPriority).toBe("LOW");
+    expect(moved.body.requestedPriority).toBe("HIGH");
+    expect(await stored(id)).toMatchObject({
+      itPriority: "LOW",
+      requestedPriority: "HIGH",
+    });
   });
 });
 

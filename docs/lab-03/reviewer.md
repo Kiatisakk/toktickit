@@ -169,6 +169,8 @@ Six findings, all marked as risks, all real, all fixed. **Five of them were a te
 
 *The reset deleted ticket rows but not their uploaded files.* It now unlinks each stored file first. The ~440 files already orphaned in `server/uploads` before this fix are left alone: nothing records which database they belonged to.
 
+He approved with `LGTM` at 19:52:19Z on 2026-09-18 and merged twelve seconds later as `cdefb2d`. Issue #54 was closed by hand, because the base is not the default branch. Recorded on the next feature branch, #55's — this one, which is why the Coverage table below read Open until now.
+
 ---
 
 ## Reviews I gave
@@ -268,7 +270,7 @@ Reviewed 2026-09-16, in order, in the terse caveman format at his request for th
 | [#63](https://github.com/Kiatisakk/toktickit/pull/63) | received | 2 | Changes requested → Approved | Merged |
 | [#64](https://github.com/Kiatisakk/toktickit/pull/64) | received | 0 | Approved | Merged |
 | [#65](https://github.com/Kiatisakk/toktickit/pull/65) | received | 0 | Approved | Merged |
-| [#66](https://github.com/Kiatisakk/toktickit/pull/66) | received | 6 | Comment | Open — fixes pushed |
+| [#66](https://github.com/Kiatisakk/toktickit/pull/66) | received | 6 | Comment → Approved | Merged |
 | [beambeambeam#59](https://github.com/beambeambeam/toktickit/pull/59) | given | 3 | Changes requested → Approved | Merged |
 | [beambeambeam#60](https://github.com/beambeambeam/toktickit/pull/60) | given | 6 | Changes requested → Approved | Merged |
 | [beambeambeam#61](https://github.com/beambeambeam/toktickit/pull/61) | given | 4 | Changes requested | Open |
@@ -281,4 +283,10 @@ Reviewed 2026-09-16, in order, in the terse caveman format at his request for th
 
 Checked by listing the Pull Requests from GitHub and searching this file for each number, rather than by reading down the page — which is how two were found missing in Lab 2.
 
-No Pull Request past #59 is open in this repository yet. This file is updated by the Pull Request that receives or gives the review, not at the end of the sprint.
+### PR #58 — docs-only follow-up recording how #57 ended (no Issue)
+
+[PR #58](https://github.com/Kiatisakk/toktickit/pull/58) · approved with `LGTM` by @beambeambeam on 2026-09-11, then **closed unmerged** on 2026-09-14: it conflicted with #59, which had landed first. The commit it carried moved onto #48's branch, and the workflow rule changed with it — post-merge docs now ride the next feature branch instead of getting a PR of their own. Kept here so the listing check above finds every number.
+
+| [#58](https://github.com/Kiatisakk/toktickit/pull/58) | — | 0 | Approved | Closed, unmerged (conflicted with #59) |
+
+No Pull Request past #66 is open in this repository yet. This file is updated by the Pull Request that receives or gives the review, not at the end of the sprint.

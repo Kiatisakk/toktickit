@@ -736,3 +736,41 @@ describe("POST /api/auth/password", () => {
     expect(row.passwordHash?.startsWith("scrypt$")).toBe(true);
   });
 });
+
+describe("BR-20 error bodies", () => {
+  it("API-40 no failure path leaks a stack trace, path or database message", async () => {
+    const { cookie } = await signIn(
+      ACTIVE_REQUESTER.email,
+      ACTIVE_REQUESTER.password
+    );
+
+    const answers = await Promise.all([
+      request(app).post("/api/auth/login").send({
+        email: "nobody@example.com",
+        password: "Wrong1!x",
+      }),
+      request(app).get("/api/tickets/99999999").set("Cookie", cookie),
+      request(app).post("/api/tickets").set("Cookie", cookie).send({}),
+      request(app).get("/api/staff/tickets").set("Cookie", cookie),
+      request(app).get("/api/does-not-exist").set("Cookie", cookie),
+      request(app)
+        .post("/api/tickets/99999999/attachments")
+        .set("Cookie", cookie)
+        .attach("file", Buffer.from("x"), {
+          filename: "x.pdf",
+          contentType: "application/pdf",
+        }),
+    ]);
+
+    // What a leak looks like: a V8 stack frame, an ORM or database complaint,
+    // a filesystem path, or a module filename with a line number.
+    const leak =
+      /stack|prisma|postgres|constraint|violates|ENOENT|node_modules|\.ts:|\.js:|at\s+\S+\s*\(/iu;
+
+    for (const response of answers) {
+      expect(response.status).toBeGreaterThanOrEqual(400);
+      expect(Object.keys(response.body)).toStrictEqual(["error"]);
+      expect(JSON.stringify(response.body)).not.toMatch(leak);
+    }
+  });
+});
