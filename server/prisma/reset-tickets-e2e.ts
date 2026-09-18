@@ -1,4 +1,5 @@
 import { prisma } from "../src/prisma.js";
+import { assertTestDatabase } from "./testDatabaseOnly.js";
 
 /**
  * Wipes every Ticket row so the end-to-end suite can prove the staff queue's
@@ -25,6 +26,8 @@ import { prisma } from "../src/prisma.js";
  * so a ticket number never repeats within one `toktickit_test`.
  */
 try {
+  assertTestDatabase();
+
   const { count } = await prisma.ticket.deleteMany({});
 
   console.log(

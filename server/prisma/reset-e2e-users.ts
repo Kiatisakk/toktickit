@@ -1,4 +1,5 @@
 import { prisma } from "../src/prisma.js";
+import { assertTestDatabase } from "./testDatabaseOnly.js";
 
 /**
  * Removes the account the administration journey creates, before it creates
@@ -20,6 +21,8 @@ import { prisma } from "../src/prisma.js";
  * never been given a ticket, a comment or a note, so deleting it cascades
  * nothing that matters (only its own Session rows, per schema.prisma).
  */
+assertTestDatabase();
+
 const { count } = await prisma.user.deleteMany({
   where: { email: { contains: "e2e.newhire." } },
 });
