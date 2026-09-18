@@ -4,7 +4,9 @@ import type { Browser, Page, TestInfo } from "@playwright/test";
 
 import {
   ACTIVE_REQUESTER,
+  ACTIVE_STAFF,
   accountByEmail,
+  ADMINISTRATOR,
   SECOND_REQUESTER,
 } from "../../server/prisma/accounts";
 
@@ -23,6 +25,10 @@ export const SIGNED_IN = {
   somchai: SECOND_REQUESTER,
   /** Seeded with no tickets, so the empty state is reachable. */
   pimchanok: accountByEmail("pimchanok.srisai@example.ac.th"),
+  /** IT Staff, for the staff journey (Lab 3 §14). */
+  michael: ACTIVE_STAFF,
+  /** The sole Administrator, for the administration journey (Lab 3 §14). */
+  wanida: ADMINISTRATOR,
 } as const;
 
 export type SignedInAs = keyof typeof SIGNED_IN;
