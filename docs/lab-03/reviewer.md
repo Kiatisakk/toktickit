@@ -139,6 +139,11 @@ He approved with `LGTM` at 16:31:31Z on 2026-09-17 and merged seven seconds late
 
 The branch also needed `lab3-staging` merged in, because #62 had landed first. The three conflicts were two branches appending to the same lists, and both sides were kept. With #62 in, this PR could keep the promise #62's contract made for it: the queue row now carries `resolvedIndicatedAt`.
 
+### PR #64 — IT Staff take a ticket and advance it (Issue #51)
+
+[PR #64](https://github.com/Kiatisakk/toktickit/pull/64) · reviewed 2026-09-18 · **0 line comments**, verdict **Approved**.
+
+He approved with `LGTM` at 01:35:36Z and merged at 03:16:04Z as `57076ae`. Issue #51 was closed by hand. Recorded on the next feature branch, #52's.
 
 ---
 
@@ -237,6 +242,7 @@ Reviewed 2026-09-16, in order, in the terse caveman format at his request for th
 | [#61](https://github.com/Kiatisakk/toktickit/pull/61) | received | 4 | Comment → Approved | Merged |
 | [#62](https://github.com/Kiatisakk/toktickit/pull/62) | received | 3 | Changes requested → Approved | Merged |
 | [#63](https://github.com/Kiatisakk/toktickit/pull/63) | received | 2 | Changes requested → Approved | Merged |
+| [#64](https://github.com/Kiatisakk/toktickit/pull/64) | received | 0 | Approved | Merged |
 | [beambeambeam#59](https://github.com/beambeambeam/toktickit/pull/59) | given | 3 | Changes requested → Approved | Merged |
 | [beambeambeam#60](https://github.com/beambeambeam/toktickit/pull/60) | given | 6 | Changes requested → Approved | Merged |
 | [beambeambeam#61](https://github.com/beambeambeam/toktickit/pull/61) | given | 4 | Changes requested | Open |
