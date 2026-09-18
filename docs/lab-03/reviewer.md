@@ -151,6 +151,24 @@ He approved with `LGTM` at 01:35:36Z and merged at 03:16:04Z as `57076ae`. Issue
 
 He approved with `LGTM` at 12:25:10Z and merged at 14:36:56Z as `f562c96`. Issue #52 was closed by hand. Recorded on the next feature branch, #54's.
 
+### PR #66 — End-to-end journeys and visual evidence (Issue #54)
+
+[PR #66](https://github.com/Kiatisakk/toktickit/pull/66) · reviewed 2026-09-18 · **6 line comments**, verdict **Comment**.
+
+Six findings, all marked as risks, all real, all fixed. **Five of them were a test that could pass without proving what its name says.**
+
+*IT Priority "changed" to the value it already had.* The journey's ticket was raised High, and IT Priority starts as a copy, so selecting High changed nothing. It now changes to Low, and asserts after a reload that Requested Priority is still High.
+
+*Release was seen but never pressed.* It is now clicked, the owner clears to Unassigned, and the ticket is claimed again for the rest of the journey.
+
+*The active-navigation check matched the breadcrumb too*, and `.first()` let a missing or doubled active link pass. It is now scoped to the navigation, counted exactly, and the accent underline is asserted.
+
+*The touch-target check only measured `<main>`.* Widened to every visible control, with the collapsed menu opened. **It immediately found a real defect:** the brand link in the header was 30 px tall on mobile. Raised to the touch-target height with the other header controls.
+
+*The Administrator's name was matched page-wide*, where the header also shows it. The assertion now finds the Administrator's own row in the list, by email.
+
+*The reset deleted ticket rows but not their uploaded files.* It now unlinks each stored file first. The ~440 files already orphaned in `server/uploads` before this fix are left alone: nothing records which database they belonged to.
+
 ---
 
 ## Reviews I gave
@@ -250,6 +268,7 @@ Reviewed 2026-09-16, in order, in the terse caveman format at his request for th
 | [#63](https://github.com/Kiatisakk/toktickit/pull/63) | received | 2 | Changes requested → Approved | Merged |
 | [#64](https://github.com/Kiatisakk/toktickit/pull/64) | received | 0 | Approved | Merged |
 | [#65](https://github.com/Kiatisakk/toktickit/pull/65) | received | 0 | Approved | Merged |
+| [#66](https://github.com/Kiatisakk/toktickit/pull/66) | received | 6 | Comment | Open — fixes pushed |
 | [beambeambeam#59](https://github.com/beambeambeam/toktickit/pull/59) | given | 3 | Changes requested → Approved | Merged |
 | [beambeambeam#60](https://github.com/beambeambeam/toktickit/pull/60) | given | 6 | Changes requested → Approved | Merged |
 | [beambeambeam#61](https://github.com/beambeambeam/toktickit/pull/61) | given | 4 | Changes requested | Open |
