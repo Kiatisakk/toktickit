@@ -87,6 +87,9 @@ model User {
   /// conversation never loses a speaker (BR-36).
   publicComments PublicComment[]
 
+  /// Internal Notes this user wrote (D-09).
+  internalNotes InternalNote[]
+
   // The selector reads active users on every load.
   @@index([isActive])
 }
@@ -230,6 +233,8 @@ model Ticket {
 
   publicComments PublicComment[]
 
+  internalNotes InternalNote[]
+
   // Every My Tickets query filters on owner and orders by creation time. This
   // is the one index the sprint cannot do without.
   @@index([requesterId, createdAt(sort: Desc)])
@@ -352,5 +357,34 @@ model PublicComment {
   createdAt DateTime @default(now())
 
   // A ticket's conversation is read oldest first, with id breaking a tie.
+  @@index([ticketId, createdAt, id])
+}
+
+/// A message on a ticket that only IT Staff and an Administrator can read
+/// (BR-04).
+///
+/// The same shape as PublicComment, in a table of its own (D-09): the
+/// requester-facing endpoints never name this model, so a query that forgets a
+/// visibility filter has no note content to leak in the first place.
+///
+/// Append-only (BR-28) — no `updatedAt`, because nothing may change a row.
+model InternalNote {
+  id Int @id @default(autoincrement())
+
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  /// From the session, never from the request body (BR-29).
+  authorId Int
+  author   User @relation(fields: [authorId], references: [id])
+
+  /// Trimmed, 1 to 5000 characters (BR-30). Stored as text and rendered as
+  /// text (BR-31).
+  body String
+
+  /// From the server clock (BR-29).
+  createdAt DateTime @default(now())
+
+  // A ticket's notes are read oldest first, with id breaking a tie.
   @@index([ticketId, createdAt, id])
 }

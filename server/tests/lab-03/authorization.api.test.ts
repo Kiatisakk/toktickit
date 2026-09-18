@@ -163,6 +163,8 @@ const protectedRoutes = (): {
   { method: "get", path: `/api/tickets/${ticketOfA}/comments` },
   { method: "post", path: `/api/tickets/${ticketOfA}/comments` },
   { method: "post", path: `/api/tickets/${ticketOfA}/resolved-indication` },
+  { method: "get", path: `/api/tickets/${ticketOfA}/notes` },
+  { method: "post", path: `/api/tickets/${ticketOfA}/notes` },
 ];
 
 describe("without a session", () => {
