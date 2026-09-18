@@ -54,7 +54,11 @@ const postedNote = (call: Call, id = 900): InternalNote => ({
 });
 
 const api = ({
-  ticket = TICKET as typeof TICKET & { ticketOwner: unknown },
+  // Typed loosely on purpose. Inferred from TICKET, whose owner and IT
+  // Priority are null, the default made every test that passed a real owner or
+  // priority a type error — invisible to Vitest, which does not typecheck, and
+  // fatal to `tsc -b`, which the build runs.
+  ticket = TICKET as Record<string, unknown>,
   onPatch = (_call: Call, current: unknown): Promise<Response> =>
     Promise.resolve(jsonResponse(current)),
   notes = [] as InternalNote[],
