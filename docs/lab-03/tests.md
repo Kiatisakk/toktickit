@@ -167,12 +167,12 @@ Every test here calls the API directly with a session of the wrong kind. None dr
 
 | ID | AC | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
-| RESP-01 | AC-35 | No horizontal page scroll | Every new screen, all three viewports | `e2e/lab-03/visual.spec.ts` | Planned |
-| RESP-02 | AC-35 | Nothing clipped | No text clipped at any viewport, screen-reader-only text excepted | `e2e/lab-03/visual.spec.ts` | Planned |
-| RESP-03 | AC-35 | Queue becomes cards below 768 px | Table absent and cards present on mobile; the reverse above; asserted from both sides | `e2e/lab-03/visual.spec.ts` | Planned |
-| RESP-04 | AC-35 | Sorting reachable on mobile | The sort control is present once the table is gone | `e2e/lab-03/visual.spec.ts` | Planned |
-| RESP-05 | §1 | Zen Green palette | Header, primary buttons and active navigation read the handout §7 greens from the live browser | `e2e/lab-03/visual.spec.ts` | Planned |
-| RESP-06 | §10 | Touch targets | Interactive targets at least 44 px in the mobile band | `e2e/lab-03/visual.spec.ts` | Planned |
+| RESP-01 | AC-35 | No horizontal page scroll | Every new screen, all three viewports | `e2e/lab-03/visual.spec.ts` | Pass — zero page overflow asserted on Login, Change Password, the Ticket Queue, both Ticket Detail views and User Management (list and open form), at desktop, tablet and mobile. |
+| RESP-02 | AC-35 | Nothing clipped | No text clipped at any viewport, screen-reader-only text excepted | `e2e/lab-03/visual.spec.ts` | Pass — the same six screens asserted with no label, button, link or cell wider than its own container. |
+| RESP-03 | AC-35 | Queue becomes cards below 768 px | Table absent and cards present on mobile; the reverse above; asserted from both sides | `e2e/lab-03/visual.spec.ts` | Pass — a ticket is created first so the row is a precondition rather than an empty list passing vacuously, then `.tkt-table` and `.tkt-cards` are each asserted visible or absent by viewport. |
+| RESP-04 | AC-35 | Sorting reachable on mobile | The sort control is present once the table is gone | `e2e/lab-03/visual.spec.ts` | Pass — the mobile "Sort by" select is asserted visible below 768 px, and the header's sort button asserted visible at and above it. |
+| RESP-05 | §1 | Zen Green palette | Header, primary buttons and active navigation read the handout §7 greens from the live browser | `e2e/lab-03/visual.spec.ts` | Pass — the Ticket Queue header, its `aria-current` navigation marker and User Management's Create User button all read the handout's primary green from `getComputedStyle`. |
+| RESP-06 | §10 | Touch targets | Interactive targets at least 44 px in the mobile band | `e2e/lab-03/visual.spec.ts` | Pass — every button, link, input and select under `<main>` on the Ticket Queue and User Management is asserted at least 44 px tall in the mobile project only. |
 
 ### Migration and regression
 
@@ -200,16 +200,16 @@ Everything else stays: the assertions about what the product does are exactly th
 
 | ID | AC | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
-| E2E-01 | AC-01 | Sign in and land in the application | Identity and role shown in the shell | `e2e/lab-03/authentication.spec.ts` | Planned |
-| E2E-02 | AC-02 | Initial password login and change | Normal screens open only after a valid change | `e2e/lab-03/authentication.spec.ts` | Planned |
-| E2E-03 | AC-07 | Sign out blocks direct access | A protected URL after sign-out returns to login | `e2e/lab-03/authentication.spec.ts` | Planned |
-| E2E-04 | AC-05, AC-06 | Invalid and inactive sign-in | Each shows its own message | `e2e/lab-03/authentication.spec.ts` | Planned |
-| E2E-05 | AC-15 to AC-22 | The staff journey | Find in the queue, open, claim, set IT Priority, advance status, comment, note | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
-| E2E-06 | AC-29 | Administrator creates a user who then signs in | The new user is forced to change the password on first sign-in | `e2e/lab-03/user-administration.spec.ts` | Planned |
-| E2E-07 | AC-31, AC-32 | Administrator safety rules in the interface | Self-deactivation and last-Administrator both refused with their own messages | `e2e/lab-03/user-administration.spec.ts` | Planned |
-| E2E-08 | AC-24 | Requester and staff converse | A staff Public Comment appears on the Requester's ticket, and the reverse | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
-| E2E-09 | AC-12 | Cross-requester refusal in the browser | Requester B opening Requester A's ticket URL sees the not-found state | `e2e/lab-03/authentication.spec.ts` | Planned |
-| E2E-10 | AC-22 | Requester indicates resolved, staff sees it | The indication appears on the staff detail | `e2e/lab-03/staff-ticket-flow.spec.ts` | Planned |
+| E2E-01 | AC-01 | Sign in and land in the application | Identity and role shown in the shell | `e2e/lab-03/authentication.spec.ts` | Pass — signs in through the real screen and asserts the name and role badge in the shell. |
+| E2E-02 | AC-02 | Initial password login and change | Normal screens open only after a valid change | `e2e/lab-03/authentication.spec.ts` | Pass — an Administrator arms the mandatory-change flag with a new starting password; signing in with it opens only Change Password, a direct `/my-tickets` request bounces back to it, and a valid change is what reaches My Tickets. |
+| E2E-03 | AC-07 | Sign out blocks direct access | A protected URL after sign-out returns to login | `e2e/lab-03/authentication.spec.ts` | Pass — after Logout, a direct request for `/my-tickets` returns to `/login`. |
+| E2E-04 | AC-05, AC-06 | Invalid and inactive sign-in | Each shows its own message | `e2e/lab-03/authentication.spec.ts` | Pass — a wrong password and a deactivated account's correct one each assert their own message text, in the same run. |
+| E2E-05 | AC-15 to AC-22 | The staff journey | Find in the queue, open, claim, set IT Priority, advance status, comment, note | `e2e/lab-03/staff-ticket-flow.spec.ts` | Pass — a ticket is found by search in the queue, opened, claimed, given an IT Priority, advanced from New to Open, and given a Public Comment and an Internal Note. |
+| E2E-06 | AC-29 | Administrator creates a user who then signs in | The new user is forced to change the password on first sign-in | `e2e/lab-03/user-administration.spec.ts` | Pass — an Administrator creates a Requester, who signs in with the starting password, is redirected to Change Password, and reaches My Tickets only after changing it. |
+| E2E-07 | AC-31, AC-32 | Administrator safety rules in the interface | Self-deactivation and last-Administrator both refused with their own messages | `e2e/lab-03/user-administration.spec.ts` | Pass — asserted on the seed's own Administrator: deactivating her own account and demoting her own role (the sole active Administrator) are each refused with their own message, and each field springs back rather than leaving the form looking as though it saved. |
+| E2E-08 | AC-24 | Requester and staff converse | A staff Public Comment appears on the Requester's ticket, and the reverse | `e2e/lab-03/staff-ticket-flow.spec.ts` | Pass — a staff Public Comment appears on the Requester's own view of the ticket, and the Requester's reply appears back on staff's. |
+| E2E-09 | AC-12 | Cross-requester refusal in the browser | Requester B opening Requester A's ticket URL sees the not-found state | `e2e/lab-03/authentication.spec.ts` | Pass — Requester B opening Requester A's ticket URL directly sees *Ticket not found*, worded identically to a ticket that does not exist. |
+| E2E-10 | AC-22 | Requester indicates resolved, staff sees it | The indication appears on the staff detail | `e2e/lab-03/staff-ticket-flow.spec.ts` | Pass — the Requester's own "Problem appears resolved" indication, once recorded, is asserted on the staff detail worded as the requester's. |
 
 ---
 

@@ -145,6 +145,12 @@ The branch also needed `lab3-staging` merged in, because #62 had landed first. T
 
 He approved with `LGTM` at 01:35:36Z and merged at 03:16:04Z as `57076ae`. Issue #51 was closed by hand. Recorded on the next feature branch, #52's.
 
+### PR #65 — Internal Notes, visible only to staff (Issue #52)
+
+[PR #65](https://github.com/Kiatisakk/toktickit/pull/65) · reviewed 2026-09-18 · **0 line comments**, verdict **Approved**.
+
+He approved with `LGTM` at 12:25:10Z and merged at 14:36:56Z as `f562c96`. Issue #52 was closed by hand. Recorded on the next feature branch, #54's.
+
 ---
 
 ## Reviews I gave
@@ -243,6 +249,7 @@ Reviewed 2026-09-16, in order, in the terse caveman format at his request for th
 | [#62](https://github.com/Kiatisakk/toktickit/pull/62) | received | 3 | Changes requested → Approved | Merged |
 | [#63](https://github.com/Kiatisakk/toktickit/pull/63) | received | 2 | Changes requested → Approved | Merged |
 | [#64](https://github.com/Kiatisakk/toktickit/pull/64) | received | 0 | Approved | Merged |
+| [#65](https://github.com/Kiatisakk/toktickit/pull/65) | received | 0 | Approved | Merged |
 | [beambeambeam#59](https://github.com/beambeambeam/toktickit/pull/59) | given | 3 | Changes requested → Approved | Merged |
 | [beambeambeam#60](https://github.com/beambeambeam/toktickit/pull/60) | given | 6 | Changes requested → Approved | Merged |
 | [beambeambeam#61](https://github.com/beambeambeam/toktickit/pull/61) | given | 4 | Changes requested | Open |
