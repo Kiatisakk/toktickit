@@ -223,6 +223,8 @@ I said plainly that BR-07 is the better rule — composition requirements are wh
 
 **Two process notes in the body**, because neither has a line: the PR is not linked to #56 — the closing keyword does not link against a non-default base, and `addCloseIssueReferences`, the mutation he taught me on #57, fixes it — and `tests.md` is not in the diff while tests for the slice now exist.
 
+**Outcome.** He replied on all six threads the same day. Re-reviewed and approved at 19:25:55Z on 2026-09-14, merged by me at 19:26:19Z. Verdict: Changes requested → Approved, Merged.
+
 ### beambeambeam#62 — Shared Ticket queue and read-only detail (his Issue #51)
 
 [PR #62](https://github.com/beambeambeam/toktickit/pull/62) · reviewed 2026-09-16 · **4 line comments**, verdict **Changes requested** on one of them.
@@ -234,6 +236,8 @@ I said plainly that BR-07 is the better rule — composition requirements are wh
 **The one change requested was his own fix, not carried over.** On #61 he fixed a `403` rendering as a retryable failure (`0d0c9f6`). The new queue and detail pages repeat the original defect, and #51 names the forbidden state in its acceptance criteria. The same branch would also make a stale owner filter recoverable.
 
 **Three optional notes.** The `@default(Low)` needed to backfill IT Priority outlives the migration, so a future create that forgets the field gets a quietly wrong value; attachment write denial is tested for staff upload but not staff removal or Administrator upload, under a variable named `requesterUpload`; and the new queue-to-detail browser spec is not in `tests.md`. Plus the process note from #61 again: the PR is not linked to its Issue.
+
+**Outcome.** He replied on all seven threads the same day. Re-reviewed and approved at 11:35:17Z on 2026-09-16, merged by me at 11:39:09Z. Verdict: Changes requested → Approved, Merged.
 
 ### beambeambeam#63–#67 — ownership, status workflow, comments, notes, account lifecycle
 
@@ -255,6 +259,8 @@ Reviewed 2026-09-16, in order, in the terse caveman format at his request for th
 
 **Two verdicts were Comment rather than Approve on purpose.** An approval puts the merge with the approver, and merging five PRs that edit the same routes, OpenAPI document and generated client was not what was asked for. The review raised the merge order as a question instead.
 
+**Outcome.** He replied on every thread the same afternoon. Re-reviewed each: #63, #64 and #65 approved (14:36:09Z, 15:10:48Z, 15:31:57Z) and merged by me minutes later (14:36:35Z, 15:11:19Z, 15:32:35Z); #66 and #67 stayed at Comment — nothing in them was blocking — and were merged by me the same way (16:14:53Z, 16:47:32Z). All seven Merged.
+
 ---
 
 ## Coverage
@@ -273,13 +279,13 @@ Reviewed 2026-09-16, in order, in the terse caveman format at his request for th
 | [#66](https://github.com/Kiatisakk/toktickit/pull/66) | received | 6 | Comment → Approved | Merged |
 | [beambeambeam#59](https://github.com/beambeambeam/toktickit/pull/59) | given | 3 | Changes requested → Approved | Merged |
 | [beambeambeam#60](https://github.com/beambeambeam/toktickit/pull/60) | given | 6 | Changes requested → Approved | Merged |
-| [beambeambeam#61](https://github.com/beambeambeam/toktickit/pull/61) | given | 4 | Changes requested | Open |
-| [beambeambeam#62](https://github.com/beambeambeam/toktickit/pull/62) | given | 4 | Changes requested | Open |
-| [beambeambeam#63](https://github.com/beambeambeam/toktickit/pull/63) | given | 3 | Changes requested | Open |
-| [beambeambeam#64](https://github.com/beambeambeam/toktickit/pull/64) | given | 2 | Changes requested | Open |
-| [beambeambeam#65](https://github.com/beambeambeam/toktickit/pull/65) | given | 2 | Changes requested | Open |
-| [beambeambeam#66](https://github.com/beambeambeam/toktickit/pull/66) | given | 1 | Comment | Open |
-| [beambeambeam#67](https://github.com/beambeambeam/toktickit/pull/67) | given | 0 | Comment | Open |
+| [beambeambeam#61](https://github.com/beambeambeam/toktickit/pull/61) | given | 4 | Changes requested → Approved | Merged |
+| [beambeambeam#62](https://github.com/beambeambeam/toktickit/pull/62) | given | 4 | Changes requested → Approved | Merged |
+| [beambeambeam#63](https://github.com/beambeambeam/toktickit/pull/63) | given | 3 | Changes requested → Approved | Merged |
+| [beambeambeam#64](https://github.com/beambeambeam/toktickit/pull/64) | given | 2 | Changes requested → Approved | Merged |
+| [beambeambeam#65](https://github.com/beambeambeam/toktickit/pull/65) | given | 2 | Changes requested → Approved | Merged |
+| [beambeambeam#66](https://github.com/beambeambeam/toktickit/pull/66) | given | 1 | Comment | Merged |
+| [beambeambeam#67](https://github.com/beambeambeam/toktickit/pull/67) | given | 0 | Comment | Merged |
 
 Checked by listing the Pull Requests from GitHub and searching this file for each number, rather than by reading down the page — which is how two were found missing in Lab 2.
 
