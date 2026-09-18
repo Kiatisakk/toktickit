@@ -1,4 +1,5 @@
 import type { Role } from "./auth";
+import type { TicketStatus } from "./ticketStatus";
 
 const API_BASE_URL =
   import.meta.env["VITE_API_BASE_URL"] ?? "http://localhost:3000";
@@ -536,6 +537,43 @@ export const fetchTicket = async (
 
   return body;
 };
+
+/* --------------------------------------------- staff ticket operations -- */
+
+const patchTicket = async (
+  ticketId: number,
+  path: string,
+  body: unknown
+): Promise<TicketDetail> => {
+  const updated = await apiPatch(
+    `/api/staff/tickets/${ticketId}/${path}`,
+    body
+  );
+
+  if (!isTicketDetail(updated)) {
+    throw unexpected("the ticket");
+  }
+
+  return updated;
+};
+
+/**
+ * Claim, reassign or release a ticket. `null` releases it.
+ *
+ * All three of these answer with the whole ticket, so the screen refreshes from
+ * the response rather than fetching again (api-spec.md §7).
+ */
+export const setTicketOwner = (ticketId: number, ownerId: number | null) =>
+  patchTicket(ticketId, "owner", { ownerId });
+
+/** The three values IT Priority may take, or null to leave it unset. */
+export type Priority = "LOW" | "MEDIUM" | "HIGH";
+
+export const setItPriority = (ticketId: number, itPriority: Priority | null) =>
+  patchTicket(ticketId, "it-priority", { itPriority });
+
+export const setTicketStatus = (ticketId: number, status: TicketStatus) =>
+  patchTicket(ticketId, "status", { status });
 
 /* ------------------------------------------------------- public comments -- */
 

@@ -125,6 +125,8 @@ Extends the Requester Ticket Detail rather than replacing it. Ticket information
 
 **Status** presents only the transitions permitted from the current status (specification.md §5). A cancelled ticket shows the status as read-only with a note that it is terminal — not an empty dropdown, which reads as a loading failure.
 
+The three operational fields sit in the cells they occupy read-only for a Requester, rather than in a panel of their own: §6 describes one screen with three live fields. Each change is its own request, applied as it is made — there is no Save button, because a reassignment and a status change are separate acts and the API offers no transaction that would join them. Each redraws the screen from the ticket the server returns, and a refusal appears against the field that caused it, in the server's own words: a refused transition and an ineligible owner do not read alike.
+
 **Requester indication.** When the Requester has flagged that the problem appears resolved, the detail shows it prominently with its timestamp. It is a fact about the ticket, not a status, and must not be styled as a status badge.
 
 ### Public Comments and Internal Notes

@@ -148,20 +148,27 @@ enum Priority {
   HIGH
 }
 
-/// Where a Ticket is in its lifecycle.
+/// Where a Ticket is in its lifecycle (BR-24).
 ///
-/// Only NEW is reachable in Lab 2: §4.2 excludes every status change after
-/// creation. The rest are defined anyway, because they cost nothing now, they
-/// save an enum migration in Lab 4, and they give the My Tickets status filter
-/// something to return nothing for — which is how the required no-results state
-/// gets demonstrated (BR-35).
+/// The order is the lifecycle's own, not alphabetical, because the queue sorts
+/// on it: a list ordered by status should read New, Open, In Progress and so on
+/// (api-spec.md §7). `WAITING_FOR_REQUESTER` therefore keeps the position
+/// `PENDING` held — the migration renames the value in place rather than adding
+/// one and dropping the other, which would have moved it to the end and taken
+/// every existing row's value with it (D-11).
+///
+/// Lab 2 could only ever reach NEW. Lab 3 adds the two the workflow needs at
+/// its ends: a ticket can come back (REOPENED) and a ticket can be abandoned
+/// (CANCELLED), which is terminal (BR-26).
 enum TicketStatus {
   NEW
   OPEN
   IN_PROGRESS
-  PENDING
+  WAITING_FOR_REQUESTER
   RESOLVED
   CLOSED
+  REOPENED
+  CANCELLED
 }
 
 /// A single IT service request.
@@ -189,9 +196,13 @@ model Ticket {
 
   requestedPriority Priority
 
-  /// Unset in Lab 2. §4.2 excludes IT Staff changing priority, but the approved
-  /// Ticket Detail illustration shows the field, so it exists and renders as a
-  /// placeholder. Decision D-04.
+  /// IT's own view of urgency, independent of what the Requester asked for
+  /// (BR-22, BR-23). Set at creation to a copy of Requested Priority, and only
+  /// IT Staff or an Administrator may change it afterwards.
+  ///
+  /// Still nullable: the contract lets staff clear it back to unset
+  /// (api-spec.md §7), and Lab 2's rows had no value at all until the migration
+  /// that copied one in.
   itPriority Priority?
 
   currentStatus TicketStatus @default(NEW)

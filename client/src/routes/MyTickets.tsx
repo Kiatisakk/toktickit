@@ -21,20 +21,12 @@ import {
   type ReferenceItem,
   type TicketListMeta,
 } from "../lib/api";
+import { STATUS_OPTIONS } from "../lib/ticketStatus";
 
 const PRIORITIES = [
   { value: "LOW", label: "Low" },
   { value: "MEDIUM", label: "Medium" },
   { value: "HIGH", label: "High" },
-];
-
-const STATUSES = [
-  { value: "NEW", label: "New" },
-  { value: "OPEN", label: "Open" },
-  { value: "IN_PROGRESS", label: "In Progress" },
-  { value: "PENDING", label: "Pending" },
-  { value: "RESOLVED", label: "Resolved" },
-  { value: "CLOSED", label: "Closed" },
 ];
 
 interface Filters {
@@ -318,7 +310,7 @@ export const MyTickets = () => {
         <Select
           label="Current Status"
           onChange={(event) => setFilter("status")(event.target.value)}
-          options={[{ value: "", label: "All Statuses" }, ...STATUSES]}
+          options={[{ value: "", label: "All Statuses" }, ...STATUS_OPTIONS]}
           value={filters.status}
         />
       </div>

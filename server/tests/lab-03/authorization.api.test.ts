@@ -14,6 +14,7 @@ import {
 } from "../../prisma/accounts.js";
 import { app } from "../../src/app.js";
 import { pathFor } from "../../src/attachments/storage.js";
+import { hashPassword } from "../../src/auth/password.js";
 import { prisma } from "../../src/prisma.js";
 import type { SignedInUser } from "./support/signIn.js";
 import { signInAs } from "./support/signIn.js";
@@ -25,7 +26,8 @@ import { signInAs } from "./support/signIn.js";
  * and never through the interface: a control the interface hides is feedback,
  * not a boundary (BR-17), so the boundary is asserted where it lives.
  *
- * Covers SEC-01, SEC-03, SEC-04, SEC-05, SEC-06, SEC-08, SEC-10, SEC-14,
+ * Covers SEC-01, SEC-03, SEC-04, SEC-05, SEC-06, SEC-08, SEC-10, SEC-13,
+ * SEC-14,
  * SEC-15, API-14, API-41, API-46 and MIG-06. The Administrator and staff
  * status rows in the same table arrive with the endpoints they test.
  */
@@ -570,5 +572,63 @@ describe("a Requester and the ticket status", () => {
     });
 
     expect(stored.currentStatus).toBe("NEW");
+  });
+});
+
+describe("a role that changes while a session is open", () => {
+  const EMAIL = "authz.demoted@example.ac.th";
+  const PASSWORD = "Demoted-1-Staff!";
+
+  const removeAccount = async () => {
+    await prisma.user.deleteMany({ where: { email: EMAIL } });
+  };
+
+  beforeAll(async () => {
+    await removeAccount();
+    await prisma.user.create({
+      data: {
+        name: "Demoted Staff",
+        email: EMAIL,
+        role: "IT_STAFF",
+        passwordHash: await hashPassword(PASSWORD),
+      },
+    });
+  });
+
+  afterAll(removeAccount);
+
+  it("SEC-13 a demotion takes effect on the next request, not at the next sign-in", async () => {
+    // Its own account, not a seeded one: demoting a shared account would change
+    // what every other suite running beside this one is allowed to do.
+    const demoted = await signInAs({ email: EMAIL, password: PASSWORD });
+
+    const asStaff = await as(demoted)(request(app).get("/api/staff/tickets"));
+
+    expect(asStaff.status).toBe(200);
+
+    await prisma.user.update({
+      where: { id: demoted.id },
+      data: { role: "REQUESTER" },
+    });
+
+    // Same cookie, same session row. The role is read from the user record on
+    // every request, so nothing had to expire (BR-15, D-02).
+    const [queue, owners, operation, own] = await Promise.all([
+      as(demoted)(request(app).get("/api/staff/tickets")),
+      as(demoted)(request(app).get("/api/staff/owners")),
+      as(demoted)(
+        request(app).patch(`/api/staff/tickets/${ticketOfA}/status`)
+      ).send({ status: "OPEN" }),
+      as(demoted)(request(app).get("/api/tickets")),
+    ]);
+
+    for (const response of [queue, owners, operation]) {
+      expect(response.status).toBe(403);
+      expect(response.body.error.code).toBe("FORBIDDEN");
+    }
+
+    // Still signed in, and still able to do what a Requester may do: this is a
+    // demotion, not a sign-out.
+    expect(own.status).toBe(200);
   });
 });

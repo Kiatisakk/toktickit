@@ -15,6 +15,8 @@ interface BadgeProps {
 const LABELS: Record<string, string> = {
   IT_STAFF: "IT Staff",
   ADMIN: "Administrator",
+  // Title-casing would capitalise the "for" (ui-spec.md §5).
+  WAITING_FOR_REQUESTER: "Waiting for Requester",
 };
 
 /** `IN_PROGRESS` reads as "In Progress" on screen. */

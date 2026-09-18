@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { ACTIVE_REQUESTER } from "../../prisma/accounts.js";
+import { ACTIVE_REQUESTER, ACTIVE_STAFF } from "../../prisma/accounts.js";
 import { app } from "../../src/app.js";
 import { prisma } from "../../src/prisma.js";
 import type { SignedInUser } from "./support/signIn.js";
@@ -17,6 +17,7 @@ import { signInAs } from "./support/signIn.js";
  *
  * MIG-01 — users keep their identifiers, and a ticket's requester still resolves.
  * MIG-02 — attachment uploader and remover references stay valid.
+ * MIG-03 — the renamed status, and the IT Priority the same migration backfilled.
  * API-45 — the Lab 2 list envelope is preserved.
  *
  * Three kinds of evidence, because each alone is weak. The migrations are read,
@@ -35,6 +36,7 @@ const LAST_LAB_2_MIGRATION = "20260831021324_add_attachment";
 
 let requester: SignedInUser;
 let ticketId = 0;
+let waitingTicketId = 0;
 let attachmentId = 0;
 
 const cleanUp = async () => {
@@ -72,6 +74,24 @@ beforeAll(async () => {
   });
 
   ticketId = ticket.id;
+
+  // The status Lab 2 spelled `PENDING`. After the rename there is one spelling
+  // for it, and this row holds it.
+  const waiting = await prisma.ticket.create({
+    data: {
+      ticketNumber: "TKT-2996-600002",
+      requesterId: requester.id,
+      categoryId: category.id,
+      relatedSystemId: system.id,
+      summary: `${PREFIX} a ticket awaiting its requester`,
+      description: "Holds the status Lab 2 called Pending.",
+      requestedPriority: "LOW",
+      currentStatus: "WAITING_FOR_REQUESTER",
+    },
+    select: { id: true },
+  });
+
+  waitingTicketId = waiting.id;
 
   const attachment = await prisma.attachment.create({
     data: {
@@ -252,5 +272,97 @@ describe("API-45 the Lab 2 list envelope", () => {
       "totalPages",
     ]);
     expect(response.body.meta).toMatchObject({ page: 1, pageSize: 10 });
+  });
+});
+
+describe("MIG-03 the renamed status", () => {
+  it("MIG-03 renames the enum value in place rather than adding and dropping one", async () => {
+    const migrations = await lab3Migrations();
+    const renames = migrations.filter(({ sql }) =>
+      /RENAME VALUE 'PENDING' TO 'WAITING_FOR_REQUESTER'/iu.test(sql)
+    );
+
+    expect(renames).toHaveLength(1);
+
+    // A rename carries every existing row with it. Adding a value and updating
+    // rows over to it would work too, but it would move the value to the end of
+    // the enum and take the queue's status ordering with it (D-11).
+    for (const { name, sql } of await lab3Migrations()) {
+      expect({
+        name,
+        dropped: /DROP TYPE\s+"TicketStatus"/iu.test(sql),
+      }).toStrictEqual({ name, dropped: false });
+    }
+  });
+
+  it("MIG-03 the database holds the eight statuses of BR-24, in lifecycle order", async () => {
+    const values = await prisma.$queryRaw<{ value: string }[]>`
+      SELECT e.enumlabel AS value
+      FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+      WHERE t.typname = 'TicketStatus'
+      ORDER BY e.enumsortorder`;
+
+    expect(values.map((row) => row.value)).toStrictEqual([
+      "NEW",
+      "OPEN",
+      "IN_PROGRESS",
+      "WAITING_FOR_REQUESTER",
+      "RESOLVED",
+      "CLOSED",
+      "REOPENED",
+      "CANCELLED",
+    ]);
+  });
+
+  it("MIG-03 the old spelling is gone from the type, so no row can still hold it", async () => {
+    // A row that held `PENDING` holds `WAITING_FOR_REQUESTER` now, because the
+    // rename changed the value rather than the rows. The fixture cannot be
+    // written the old way to prove it — the old way no longer type-checks in
+    // the database, which is itself the evidence: the cast below fails.
+    const waiting = await prisma.ticket.findUniqueOrThrow({
+      where: { id: waitingTicketId },
+      select: { currentStatus: true },
+    });
+
+    expect(waiting.currentStatus).toBe("WAITING_FOR_REQUESTER");
+
+    await expect(
+      prisma.$queryRaw`SELECT 'PENDING'::"TicketStatus"`
+    ).rejects.toThrow();
+  });
+
+  it("MIG-03 the status filter returns it under the new name, and refuses the old one", async () => {
+    const staff = await signInAs(ACTIVE_STAFF);
+    const filtered = await request(app)
+      .get("/api/staff/tickets")
+      .query({ search: PREFIX, status: "WAITING_FOR_REQUESTER" })
+      .set("Cookie", staff.cookie);
+
+    expect(filtered.status).toBe(200);
+    expect(
+      (filtered.body.data as { id: number }[]).map((row) => row.id)
+    ).toContain(waitingTicketId);
+
+    const retired = await request(app)
+      .get("/api/staff/tickets")
+      .query({ search: PREFIX, status: "PENDING" })
+      .set("Cookie", staff.cookie);
+
+    expect(retired.status).toBe(400);
+    expect(retired.body.error.code).toBe("INVALID_QUERY_PARAMETER");
+  });
+
+  it("MIG-03 the same migration backfills IT Priority from Requested Priority", async () => {
+    // BR-23 asks every existing ticket to receive a copy. Asserted against the
+    // migration rather than against a count of null columns, because other
+    // suites create tickets directly and may deliberately leave it unset.
+    const migrations = await lab3Migrations();
+    const backfills = migrations.filter(({ sql }) =>
+      /UPDATE\s+"Ticket"\s+SET\s+"itPriority"\s*=\s*"requestedPriority"/iu.test(
+        sql
+      )
+    );
+
+    expect(backfills).toHaveLength(1);
   });
 });

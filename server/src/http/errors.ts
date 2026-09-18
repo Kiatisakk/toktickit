@@ -29,6 +29,8 @@ export const ErrorCode = {
   requestTooLarge: "REQUEST_TOO_LARGE",
   routeNotFound: "ROUTE_NOT_FOUND",
   ticketNotFound: "TICKET_NOT_FOUND",
+  ticketOwnerIneligible: "TICKET_OWNER_INELIGIBLE",
+  invalidStatusTransition: "INVALID_STATUS_TRANSITION",
   attachmentNotFound: "ATTACHMENT_NOT_FOUND",
   attachmentRemoved: "ATTACHMENT_REMOVED",
   attachmentLimitReached: "ATTACHMENT_LIMIT_REACHED",

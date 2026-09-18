@@ -88,7 +88,7 @@ const STATUS_CYCLE = [
   "OPEN",
   "IN_PROGRESS",
   "NEW",
-  "PENDING",
+  "WAITING_FOR_REQUESTER",
   "RESOLVED",
   "OPEN",
 ] as const;
