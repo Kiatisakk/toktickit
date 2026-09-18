@@ -26,6 +26,13 @@
 .tkt-header__inner {
   align-items: center;
   display: flex;
+  /* Wraps at every width, not only the mobile band below: with four
+     destinations (Administrator navigation, ui-spec.md §2) plus a long name
+     and the "Administrator" role badge, the tablet band (768–991px) has no
+     narrower table to fall back on and no toggle to collapse behind — a
+     single unbroken row there pushed the identity block 97px past the
+     viewport edge, which §8.7 forbids at every width without exception. */
+  flex-wrap: wrap;
   gap: var(--tkt-space-6);
   margin: 0 auto;
   max-width: var(--tkt-content-max);
@@ -380,7 +387,6 @@
   }
 
   .tkt-header__inner {
-    flex-wrap: wrap;
     gap: var(--tkt-space-2);
   }
 
