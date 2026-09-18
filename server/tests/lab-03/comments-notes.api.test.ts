@@ -96,6 +96,14 @@ const read = (who: SignedInUser, ticket: number) =>
 const indicate = (who: SignedInUser, ticket: number) =>
   as(who)(request(app).post(`/api/tickets/${ticket}/resolved-indication`));
 
+const postNote = (who: SignedInUser, ticket: number, body: unknown) =>
+  as(who)(request(app).post(`/api/tickets/${ticket}/notes`)).send(
+    body as object
+  );
+
+const readNotes = (who: SignedInUser, ticket: number) =>
+  as(who)(request(app).get(`/api/tickets/${ticket}/notes`));
+
 describe("posting and reading Public Comments", () => {
   it("API-28 the Requester and IT Staff both read a comment with its author and time", async () => {
     const posted = await post(requesterA, ticketOfA, {
@@ -296,6 +304,229 @@ describe("posting and reading Public Comments", () => {
     const listed = await read(requesterA, ticketOfA);
 
     expect(listed.body.data).toStrictEqual([posted.body]);
+  });
+});
+
+describe("posting and reading Internal Notes", () => {
+  it("IT Staff and an Administrator both read and create notes on any ticket", async () => {
+    const posted = await postNote(staff, ticketOfA, {
+      body: "  Escalating to the network team.  ",
+    });
+
+    expect(posted.status).toBe(201);
+    expect(posted.body).toStrictEqual({
+      id: expect.any(Number),
+      body: "Escalating to the network team.",
+      author: {
+        id: staff.id,
+        name: ACTIVE_STAFF.name,
+        role: "IT_STAFF",
+      },
+      createdAt: expect.any(String),
+    });
+
+    const reply = await postNote(admin, ticketOfA, {
+      body: "Agreed, looping in the vendor.",
+    });
+
+    expect(reply.status).toBe(201);
+    expect(reply.body.author).toStrictEqual({
+      id: admin.id,
+      name: ADMINISTRATOR.name,
+      role: "ADMIN",
+    });
+
+    const [asStaff, asAdmin] = await Promise.all([
+      readNotes(staff, ticketOfA),
+      readNotes(admin, ticketOfA),
+    ]);
+
+    for (const response of [asStaff, asAdmin]) {
+      expect(response.status).toBe(200);
+      expect(response.body).toStrictEqual({
+        data: [posted.body, reply.body],
+      });
+    }
+  });
+
+  it("notes are ordered oldest first", async () => {
+    const at = new Date("2026-09-17T09:00:00.000Z");
+    const created = [];
+
+    for (const body of ["one", "two", "three"]) {
+      // Sequential on purpose: the ids must be ascending in this order.
+      // oxlint-disable-next-line no-await-in-loop
+      const row = await prisma.internalNote.create({
+        data: {
+          ticketId: ticketOfA,
+          authorId: staff.id,
+          body,
+          createdAt: at,
+        },
+        select: { id: true },
+      });
+      created.push(row.id);
+    }
+
+    const listed = await readNotes(staff, ticketOfA);
+
+    expect(listed.body.data.map((n: { id: number }) => n.id)).toStrictEqual(
+      created
+    );
+  });
+
+  it("an empty, whitespace-only or missing body is refused 400 and stores nothing", async () => {
+    const answers = await Promise.all(
+      [{ body: "" }, { body: " \n\t " }, {}, { body: 7 }].map((body) =>
+        postNote(staff, ticketOfA, body)
+      )
+    );
+
+    for (const response of answers) {
+      expect(response.status).toBe(400);
+      expect(response.body.error.code).toBe("VALIDATION_FAILED");
+      expect(response.body.error.details).toStrictEqual({
+        body: expect.any(String),
+      });
+    }
+
+    expect(
+      await prisma.internalNote.count({ where: { ticketId: ticketOfA } })
+    ).toBe(0);
+  });
+
+  it("an author, time or id supplied in the body is ignored", async () => {
+    const before = Date.now();
+    const response = await postNote(staff, ticketOfA, {
+      body: "Please verify with the vendor.",
+      id: 1,
+      authorId: admin.id,
+      author: { id: admin.id, name: "Someone else", role: "ADMIN" },
+      createdAt: "2001-01-01T00:00:00.000Z",
+      ticketId: staffOwnTicket,
+    });
+
+    expect(response.status).toBe(201);
+    expect(response.body.author.id).toBe(staff.id);
+    expect(response.body.author.role).toBe("IT_STAFF");
+    expect(Date.parse(response.body.createdAt)).toBeGreaterThanOrEqual(
+      before - 5000
+    );
+
+    const stored = await prisma.internalNote.findUniqueOrThrow({
+      where: { id: response.body.id },
+      select: { ticketId: true, authorId: true },
+    });
+
+    expect(stored).toStrictEqual({
+      ticketId: ticketOfA,
+      authorId: staff.id,
+    });
+  });
+
+  it("notes are append-only: there is no route to edit or delete one", async () => {
+    const posted = await postNote(staff, ticketOfA, { body: "Original note." });
+    const path = `/api/tickets/${ticketOfA}/notes/${posted.body.id}`;
+
+    const [patched, put, deleted] = await Promise.all([
+      as(staff)(request(app).patch(path)).send({ body: "Changed." }),
+      as(admin)(request(app).put(path)).send({ body: "Changed." }),
+      as(admin)(request(app).delete(path)),
+    ]);
+
+    for (const response of [patched, put, deleted]) {
+      expect(response.status).toBe(404);
+      expect(response.body.error.code).toBe("ROUTE_NOT_FOUND");
+    }
+
+    const listed = await readNotes(staff, ticketOfA);
+
+    expect(listed.body.data).toStrictEqual([posted.body]);
+  });
+
+  it("a Requester requesting a Ticket that does not exist is refused 404 on comments but 403 on notes", async () => {
+    // Sanity check that the two resources really do answer differently: notes
+    // never fall through to a ticket lookup at all.
+    const response = await readNotes(requesterA, MISSING_ID);
+
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("SEC-09 a Requester requesting Internal Notes is refused 403 with byte-identical bodies, whether or not notes exist and whether or not the ticket is theirs (AC-04, AC-25, BR-32)", async () => {
+    // ticketOfA has notes from prior tests in this file's ticket lifecycle,
+    // but each test gets a fresh ticket via beforeEach, so create explicitly
+    // both a ticket of A with notes and one with none.
+    await postNote(staff, ticketOfA, { body: "A note the Requester must not see." });
+
+    const withoutNotesTicket = await createTicket(requesterA.id);
+
+    const [
+      getOwnWithNotes,
+      postOwnWithNotes,
+      getOwnWithoutNotes,
+      postOwnWithoutNotes,
+      getSomeoneElses,
+      postSomeoneElses,
+    ] = await Promise.all([
+      readNotes(requesterA, ticketOfA),
+      postNote(requesterA, ticketOfA, { body: "trying anyway" }),
+      readNotes(requesterA, withoutNotesTicket),
+      postNote(requesterA, withoutNotesTicket, { body: "trying anyway" }),
+      readNotes(requesterB, ticketOfA),
+      postNote(requesterB, ticketOfA, { body: "trying anyway" }),
+    ]);
+
+    const allResponses = [
+      getOwnWithNotes,
+      postOwnWithNotes,
+      getOwnWithoutNotes,
+      postOwnWithoutNotes,
+      getSomeoneElses,
+      postSomeoneElses,
+    ];
+
+    for (const response of allResponses) {
+      expect(response.status).toBe(403);
+    }
+
+    const expectedText = getOwnWithNotes.text;
+
+    for (const response of allResponses) {
+      // Byte-identical, not merely structurally equal: `.text` is the raw
+      // response body, so this compares what actually went over the wire.
+      expect(response.text).toBe(expectedText);
+    }
+
+    expect(expectedText).not.toContain("note");
+    expect(expectedText).not.toContain("A note the Requester must not see");
+
+    expect(JSON.parse(expectedText)).toStrictEqual({
+      error: {
+        code: "FORBIDDEN",
+        message: expect.any(String),
+      },
+    });
+
+    // Nothing was created by the attempted posts.
+    expect(
+      await prisma.internalNote.count({
+        where: { authorId: requesterA.id },
+      })
+    ).toBe(0);
+  });
+
+  it("without a session every notes endpoint answers 401", async () => {
+    const answers = await Promise.all([
+      request(app).get(`/api/tickets/${ticketOfA}/notes`),
+      request(app)
+        .post(`/api/tickets/${ticketOfA}/notes`)
+        .send({ body: "x" }),
+    ]);
+
+    for (const response of answers) {
+      expect(response.status).toBe(401);
+    }
   });
 });
 
