@@ -4,10 +4,14 @@ import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  RequesterContext,
-  type RequesterContextValue,
-} from "../../src/context/requesterContextValue";
+  AuthContext,
+  type AuthContextValue,
+} from "../../src/context/authContextValue";
 import { CreateTicket } from "../../src/routes/CreateTicket";
+import { authContext, SOMCHAI_USER } from "../support/auth";
+import { jsonResponse } from "../support/http";
+
+const AUTH = authContext();
 
 /**
  * UI-07 — reference data comes from the API rather than from a constant.
@@ -28,23 +32,6 @@ const SYSTEMS = [
   { id: 3, name: "VPN" },
 ];
 
-const REQUESTER = {
-  id: 1,
-  name: "Jennifer Anderson",
-  email: "jennifer.anderson@example.ac.th",
-};
-
-const CONTEXT: RequesterContextValue = {
-  status: "selected",
-  requester: REQUESTER,
-  generation: 0,
-  select: () => undefined,
-  clear: () => undefined,
-};
-
-const jsonResponse = (body: unknown, status = 200) =>
-  ({ ok: status < 400, status, json: async () => body }) as Response;
-
 /** Answers the two reference calls; POST is supplied per test. */
 const referenceFetch = (onPost?: () => Promise<Response>) =>
   vi.fn((url: string, init?: RequestInit) => {
@@ -62,9 +49,9 @@ const referenceFetch = (onPost?: () => Promise<Response>) =>
 const renderScreen = () =>
   render(
     <MemoryRouter>
-      <RequesterContext.Provider value={CONTEXT}>
+      <AuthContext.Provider value={AUTH}>
         <CreateTicket />
-      </RequesterContext.Provider>
+      </AuthContext.Provider>
     </MemoryRouter>
   );
 
@@ -590,19 +577,19 @@ describe("the field set", () => {
  * UI-06 / BR-09 — a draft written as one Requester is never submitted as
  * another.
  *
- * The rule already held through the routing: Change Requester navigates away
+ * The rule already held through the routing: signing out navigates away
  * and the component unmounts, taking the draft with it. That is the routing
  * doing it rather than the rule being enforced, and it stops being true the
  * moment anything switches identity without leaving the page. These assert the
  * guard, not the navigation.
  */
-describe("switching Requester mid-draft", () => {
-  const renderWith = (context: RequesterContextValue) =>
+describe("switching user mid-draft", () => {
+  const renderWith = (context: AuthContextValue) =>
     render(
       <MemoryRouter>
-        <RequesterContext.Provider value={context}>
+        <AuthContext.Provider value={context}>
           <CreateTicket />
-        </RequesterContext.Provider>
+        </AuthContext.Provider>
       </MemoryRouter>
     );
 
@@ -611,7 +598,7 @@ describe("switching Requester mid-draft", () => {
   });
 
   it("discards what was typed", async () => {
-    const { rerender } = renderWith(CONTEXT);
+    const { rerender } = renderWith(AUTH);
 
     await screen.findByLabelText(/^Summary/u);
     await userEvent.type(
@@ -621,19 +608,9 @@ describe("switching Requester mid-draft", () => {
 
     rerender(
       <MemoryRouter>
-        <RequesterContext.Provider
-          value={{
-            ...CONTEXT,
-            generation: CONTEXT.generation + 1,
-            requester: {
-              id: 2,
-              name: "Somchai Wattana",
-              email: "somchai.wattana@example.ac.th",
-            },
-          }}
-        >
+        <AuthContext.Provider value={authContext({ user: SOMCHAI_USER })}>
           <CreateTicket />
-        </RequesterContext.Provider>
+        </AuthContext.Provider>
       </MemoryRouter>
     );
 
@@ -642,21 +619,21 @@ describe("switching Requester mid-draft", () => {
     });
   });
 
-  // Re-selecting the same person is still a new context, which is why the
-  // guard watches `generation` rather than the requester's id.
-  it("discards it even when the same person is chosen again", async () => {
-    const { rerender } = renderWith(CONTEXT);
+  // Signing out on the page is also a change of identity: the draft must not
+  // survive into whoever signs in next.
+  it("discards it when the user signs out", async () => {
+    const { rerender } = renderWith(AUTH);
 
     await screen.findByLabelText(/^Summary/u);
     await userEvent.type(screen.getByLabelText(/^Summary/u), "Still a draft");
 
     rerender(
       <MemoryRouter>
-        <RequesterContext.Provider
-          value={{ ...CONTEXT, generation: CONTEXT.generation + 1 }}
+        <AuthContext.Provider
+          value={authContext({ status: "anonymous", user: null })}
         >
           <CreateTicket />
-        </RequesterContext.Provider>
+        </AuthContext.Provider>
       </MemoryRouter>
     );
 
@@ -666,7 +643,7 @@ describe("switching Requester mid-draft", () => {
   });
 
   it("leaves an untouched form alone on first render", async () => {
-    renderWith(CONTEXT);
+    renderWith(AUTH);
 
     const summary = await screen.findByLabelText(/^Summary/u);
 

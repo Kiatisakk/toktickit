@@ -16,16 +16,20 @@
     "db:seed:demo": "tsx prisma/seed-demo.ts",
     "db:generate": "prisma generate",
     "postinstall": "prisma generate",
-    "db:test:setup": "dotenv -e .env.test -- tsx prisma/wipe-journey.ts && dotenv -e .env.test -- prisma migrate deploy && dotenv -e .env.test -- prisma db seed"
+    "db:test:setup": "dotenv -e .env.test -- tsx prisma/wipe-journey.ts && dotenv -e .env.test -- prisma migrate deploy && dotenv -e .env.test -- prisma db seed",
+    "e2e:reset-tickets": "dotenv -e .env.test -- tsx prisma/reset-tickets-e2e.ts",
+    "e2e:reset-users": "dotenv -e .env.test -- tsx prisma/reset-e2e-users.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "multer": "^2.3.0"
   },
   "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/multer": "^2.2.0",

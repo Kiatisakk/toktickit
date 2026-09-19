@@ -12,15 +12,25 @@ import type { Response } from "express";
  */
 
 export const ErrorCode = {
-  requesterContextRequired: "REQUESTER_CONTEXT_REQUIRED",
-  requesterContextInvalid: "REQUESTER_CONTEXT_INVALID",
-  requesterContextUnknown: "REQUESTER_CONTEXT_UNKNOWN",
-  requesterContextInactive: "REQUESTER_CONTEXT_INACTIVE",
+  // Lab 3 authentication and authorization. Lab 2's four REQUESTER_CONTEXT_*
+  // codes were deleted with the selector rather than aliased: their situations
+  // are now UNAUTHENTICATED (api-spec.md §3).
+  unauthenticated: "UNAUTHENTICATED",
+  invalidCredentials: "INVALID_CREDENTIALS",
+  accountInactive: "ACCOUNT_INACTIVE",
+  passwordChangeRequired: "PASSWORD_CHANGE_REQUIRED",
+  forbidden: "FORBIDDEN",
+  emailAlreadyExists: "EMAIL_ALREADY_EXISTS",
+  lastActiveAdmin: "LAST_ACTIVE_ADMIN",
+  cannotDeactivateSelf: "CANNOT_DEACTIVATE_SELF",
+  userNotFound: "USER_NOT_FOUND",
   validationFailed: "VALIDATION_FAILED",
   invalidQueryParameter: "INVALID_QUERY_PARAMETER",
   requestTooLarge: "REQUEST_TOO_LARGE",
   routeNotFound: "ROUTE_NOT_FOUND",
   ticketNotFound: "TICKET_NOT_FOUND",
+  ticketOwnerIneligible: "TICKET_OWNER_INELIGIBLE",
+  invalidStatusTransition: "INVALID_STATUS_TRANSITION",
   attachmentNotFound: "ATTACHMENT_NOT_FOUND",
   attachmentRemoved: "ATTACHMENT_REMOVED",
   attachmentLimitReached: "ATTACHMENT_LIMIT_REACHED",

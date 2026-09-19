@@ -1,8 +1,8 @@
+import type { Role } from "./auth";
+import type { TicketStatus } from "./ticketStatus";
+
 const API_BASE_URL =
   import.meta.env["VITE_API_BASE_URL"] ?? "http://localhost:3000";
-
-/** The header that names the current Development Requester. See BR-03. */
-export const REQUESTER_HEADER = "X-Development-Requester-Id";
 
 /**
  * A failure the API reported in its documented envelope, or a failure to reach
@@ -33,9 +33,12 @@ export class ApiError extends Error {
 
 const UNREACHABLE = "Unable to connect to the TokTickIT API.";
 
+/**
+ * No identity option, deliberately. Who a request is from is the session
+ * cookie and nothing else (api-spec.md §1, BR-41): a client that could name a
+ * user per request is the mechanism Lab 3 deleted.
+ */
 interface RequestOptions {
-  /** Present on every requester-scoped call; omitted on reference data. */
-  requesterId?: number;
   signal?: AbortSignal;
 }
 
@@ -49,14 +52,10 @@ interface RequestOptions {
  */
 const send = async (
   path: string,
-  method: "GET" | "POST" | "DELETE",
+  method: "GET" | "POST" | "PATCH" | "DELETE",
   options: RequestOptions & { body?: unknown } = {}
 ): Promise<unknown> => {
   const headers: Record<string, string> = {};
-
-  if (options.requesterId !== undefined) {
-    headers[REQUESTER_HEADER] = String(options.requesterId);
-  }
 
   // FormData sets its own Content-Type, and it has to: the boundary is chosen
   // when the body is built, and a hand-written header would name a boundary the
@@ -70,7 +69,13 @@ const send = async (
   let response: Response;
 
   try {
-    const init: RequestInit = { method, headers };
+    // The session cookie only travels if both sides opt in: this, and
+    // `credentials: true` in the API's CORS configuration. The client and the
+    // API are different origins in development, so without it the browser
+    // sends the request, gets an answer, and silently drops the cookie — which
+    // presents as a broken sign-in rather than as a missing option
+    // (api-spec.md §1).
+    const init: RequestInit = { method, headers, credentials: "include" };
 
     if (options.signal) {
       init.signal = options.signal;
@@ -97,6 +102,16 @@ const send = async (
     throw await toApiError(response);
   }
 
+  // A 204 has no body, and `response.json()` on an empty body throws. Sign-out
+  // and password change both answer 204, so without this they reported failure
+  // to the user after the server had succeeded — the session gone, the password
+  // changed, and an error on screen saying neither happened. The earlier tests
+  // missed it because their fake Response returned `{}` from `json()` whatever
+  // the status; the regression test uses a real `Response`.
+  if (response.status === 204) {
+    return null;
+  }
+
   return await response.json();
 };
 
@@ -104,24 +119,18 @@ const send = async (
  * The same request, answered as bytes rather than as JSON.
  *
  * Downloads need the blob and the filename the server chose, and neither
- * survives `response.json()`. Kept beside `send` so the requester header and
+ * survives `response.json()`. Kept beside `send` so the credentials option and
  * the failure handling stay in one place — a second fetch wrapper is how one of
- * them ends up not sending the header.
+ * them ends up not sending the cookie.
  */
 const sendForBlob = async (
   path: string,
   options: RequestOptions = {}
 ): Promise<Blob> => {
-  const headers: Record<string, string> = {};
-
-  if (options.requesterId !== undefined) {
-    headers[REQUESTER_HEADER] = String(options.requesterId);
-  }
-
   let response: Response;
 
   try {
-    const init: RequestInit = { headers };
+    const init: RequestInit = { credentials: "include" };
 
     if (options.signal) {
       init.signal = options.signal;
@@ -151,6 +160,12 @@ export const apiPost = (
   body: unknown,
   options: RequestOptions = {}
 ) => send(path, "POST", { ...options, body });
+
+export const apiPatch = (
+  path: string,
+  body: unknown,
+  options: RequestOptions = {}
+) => send(path, "PATCH", { ...options, body });
 
 export const apiDelete = (
   path: string,
@@ -194,12 +209,6 @@ const toApiError = async (response: Response): Promise<ApiError> => {
   );
 };
 
-export interface Requester {
-  id: number;
-  name: string;
-  email: string;
-}
-
 export interface ReferenceItem {
   id: number;
   name: string;
@@ -212,12 +221,6 @@ const isReferenceItem = (value: unknown): value is ReferenceItem =>
   isRecord(value) &&
   typeof value["id"] === "number" &&
   typeof value["name"] === "string";
-
-const isRequester = (value: unknown): value is Requester =>
-  isRecord(value) &&
-  typeof value["id"] === "number" &&
-  typeof value["name"] === "string" &&
-  typeof value["email"] === "string";
 
 /**
  * Rejects a body that is not the documented shape.
@@ -243,13 +246,6 @@ const expectArrayOf = <T>(
 
   return value;
 };
-
-export const fetchRequesters = async (signal?: AbortSignal) =>
-  expectArrayOf(
-    await apiGet("/api/requesters", signal ? { signal } : {}),
-    isRequester,
-    "the Development Requesters"
-  );
 
 export const fetchCategories = async (signal?: AbortSignal) =>
   expectArrayOf(
@@ -298,17 +294,16 @@ export interface NewTicket {
 }
 
 /**
- * Creates one ticket for the current Development Requester.
+ * Creates one ticket for whoever is signed in.
  *
- * The requester is not part of the payload. Ownership comes from the header the
- * server validates, and sending it in the body as well would suggest a client
- * could choose (BR-11).
+ * The requester is not part of the payload. Ownership comes from the session,
+ * and sending an id in the body as well would suggest a client could choose
+ * (BR-03, AC-03).
  */
 export const createTicket = async (
-  ticket: NewTicket,
-  requesterId: number
+  ticket: NewTicket
 ): Promise<CreatedTicket> => {
-  const created = await apiPost("/api/tickets", ticket, { requesterId });
+  const created = await apiPost("/api/tickets", ticket);
 
   if (!isCreatedTicket(created)) {
     throw new ApiError(
@@ -383,7 +378,7 @@ const isTicketRow = (value: unknown): value is TicketListRow =>
   isNullableReference(value["ticketOwner"]);
 
 /**
- * Fetches one page of the current requester's tickets.
+ * Fetches one page of the signed-in user's tickets.
  *
  * `query` is passed through as-is rather than being filtered here: the server
  * rejects anything it does not recognise (BR-34), and silently dropping a
@@ -391,14 +386,13 @@ const isTicketRow = (value: unknown): value is TicketListRow =>
  */
 export const fetchTickets = async (
   query: URLSearchParams,
-  requesterId: number,
   signal?: AbortSignal
 ): Promise<TicketListResponse> => {
   const suffix = query.toString();
-  const body = await apiGet(`/api/tickets${suffix ? `?${suffix}` : ""}`, {
-    requesterId,
-    ...(signal ? { signal } : {}),
-  });
+  const body = await apiGet(
+    `/api/tickets${suffix ? `?${suffix}` : ""}`,
+    signal ? { signal } : {}
+  );
 
   if (
     !isRecord(body) ||
@@ -418,6 +412,58 @@ export const fetchTickets = async (
   return { data: body["data"], meta: body["meta"] };
 };
 
+/* ------------------------------------------------------------ the queue -- */
+
+/** A queue row also says whose ticket it is: the queue is everyone's. */
+export interface QueueRow extends TicketListRow {
+  requester: ReferenceItem;
+}
+
+export interface QueueResponse {
+  data: QueueRow[];
+  meta: TicketListMeta;
+}
+
+const isQueueRow = (value: unknown): value is QueueRow =>
+  isTicketRow(value) && isRecord(value) && isReferenceItem(value["requester"]);
+
+/** The staff Ticket Queue (api-spec.md §7). IT Staff and Administrators only. */
+export const fetchStaffTickets = async (
+  query: URLSearchParams,
+  signal?: AbortSignal
+): Promise<QueueResponse> => {
+  const suffix = query.toString();
+  const body = await apiGet(
+    `/api/staff/tickets${suffix ? `?${suffix}` : ""}`,
+    signal ? { signal } : {}
+  );
+
+  if (
+    !isRecord(body) ||
+    !Array.isArray(body["data"]) ||
+    !body["data"].every(isQueueRow) ||
+    !isMeta(body["meta"])
+  ) {
+    throw new ApiError(
+      "UNEXPECTED_RESPONSE",
+      "The TokTickIT API returned the ticket queue in an unexpected format.",
+      0
+    );
+  }
+
+  return { data: body["data"], meta: body["meta"] };
+};
+
+/** Who may own a ticket — the choices the queue's Owner filter offers. */
+export const fetchStaffOwners = async (
+  signal?: AbortSignal
+): Promise<ReferenceItem[]> =>
+  expectArrayOf(
+    await apiGet("/api/staff/owners", signal ? { signal } : {}),
+    isReferenceItem,
+    "ticket owners"
+  );
+
 /* ------------------------------------------------------------ attachments -- */
 
 export interface AttachmentMetadata {
@@ -436,6 +482,8 @@ export interface AttachmentMetadata {
 export interface TicketDetail extends TicketListRow {
   description: string;
   resolutionSummary: string | null;
+  /** When the Requester said the problem appears resolved, or null (FR-18). */
+  resolvedIndicatedAt: string | null;
   requester: ReferenceItem;
   attachments: AttachmentMetadata[];
 }
@@ -460,6 +508,8 @@ const isTicketDetail = (value: unknown): value is TicketDetail =>
   typeof value["description"] === "string" &&
   (value["resolutionSummary"] === null ||
     typeof value["resolutionSummary"] === "string") &&
+  (value["resolvedIndicatedAt"] === null ||
+    typeof value["resolvedIndicatedAt"] === "string") &&
   isReferenceItem(value["requester"]) &&
   Array.isArray(value["attachments"]) &&
   value["attachments"].every(isAttachment);
@@ -471,16 +521,15 @@ const unexpected = (what: string) =>
     0
   );
 
-/** One owned ticket. A ticket owned by anyone else fails as a missing one. */
+/** One readable ticket. A ticket outside the caller's scope fails as a missing one. */
 export const fetchTicket = async (
   ticketId: number,
-  requesterId: number,
   signal?: AbortSignal
 ): Promise<TicketDetail> => {
-  const body = await apiGet(`/api/tickets/${ticketId}`, {
-    requesterId,
-    ...(signal ? { signal } : {}),
-  });
+  const body = await apiGet(
+    `/api/tickets/${ticketId}`,
+    signal ? { signal } : {}
+  );
 
   if (!isTicketDetail(body)) {
     throw unexpected("the ticket");
@@ -489,16 +538,166 @@ export const fetchTicket = async (
   return body;
 };
 
+/* --------------------------------------------- staff ticket operations -- */
+
+const patchTicket = async (
+  ticketId: number,
+  path: string,
+  body: unknown
+): Promise<TicketDetail> => {
+  const updated = await apiPatch(
+    `/api/staff/tickets/${ticketId}/${path}`,
+    body
+  );
+
+  if (!isTicketDetail(updated)) {
+    throw unexpected("the ticket");
+  }
+
+  return updated;
+};
+
+/**
+ * Claim, reassign or release a ticket. `null` releases it.
+ *
+ * All three of these answer with the whole ticket, so the screen refreshes from
+ * the response rather than fetching again (api-spec.md §7).
+ */
+export const setTicketOwner = (ticketId: number, ownerId: number | null) =>
+  patchTicket(ticketId, "owner", { ownerId });
+
+/** The three values IT Priority may take, or null to leave it unset. */
+export type Priority = "LOW" | "MEDIUM" | "HIGH";
+
+export const setItPriority = (ticketId: number, itPriority: Priority | null) =>
+  patchTicket(ticketId, "it-priority", { itPriority });
+
+export const setTicketStatus = (ticketId: number, status: TicketStatus) =>
+  patchTicket(ticketId, "status", { status });
+
+/* ------------------------------------------------------- public comments -- */
+
+export interface PublicComment {
+  id: number;
+  body: string;
+  author: { id: number; name: string; role: Role };
+  createdAt: string;
+}
+
+const ROLES: readonly string[] = ["REQUESTER", "IT_STAFF", "ADMIN"];
+
+const isPublicComment = (value: unknown): value is PublicComment =>
+  isRecord(value) &&
+  typeof value["id"] === "number" &&
+  typeof value["body"] === "string" &&
+  typeof value["createdAt"] === "string" &&
+  isReferenceItem(value["author"]) &&
+  isRecord(value["author"]) &&
+  ROLES.includes(value["author"]["role"] as string);
+
+/** A ticket's Public Comments, oldest first (api-spec.md §8). */
+export const fetchComments = async (
+  ticketId: number,
+  signal?: AbortSignal
+): Promise<PublicComment[]> => {
+  const body = await apiGet(
+    `/api/tickets/${ticketId}/comments`,
+    signal ? { signal } : {}
+  );
+
+  if (
+    !isRecord(body) ||
+    !Array.isArray(body["data"]) ||
+    !body["data"].every(isPublicComment)
+  ) {
+    throw unexpected("the comments");
+  }
+
+  return body["data"];
+};
+
+/** Posts a Public Comment. Author and time are the server's to decide (BR-29). */
+export const postComment = async (
+  ticketId: number,
+  text: string
+): Promise<PublicComment> => {
+  const body = await apiPost(`/api/tickets/${ticketId}/comments`, {
+    body: text,
+  });
+
+  if (!isPublicComment(body)) {
+    throw unexpected("the comment");
+  }
+
+  return body;
+};
+
+/* --------------------------------------------------------- internal notes -- */
+
+/** The same shape as a Public Comment, on a separate endpoint (D-09). */
+export type InternalNote = PublicComment;
+
+const isInternalNote = isPublicComment;
+
+/**
+ * A ticket's Internal Notes, oldest first (api-spec.md §8).
+ *
+ * IT Staff and Administrator only — a Requester calling this is refused
+ * `403 FORBIDDEN` by the server before the ticket is even looked up (BR-32),
+ * which `apiGet` surfaces as an `ApiError` like any other failure.
+ */
+export const fetchNotes = async (
+  ticketId: number,
+  signal?: AbortSignal
+): Promise<InternalNote[]> => {
+  const body = await apiGet(
+    `/api/tickets/${ticketId}/notes`,
+    signal ? { signal } : {}
+  );
+
+  if (
+    !isRecord(body) ||
+    !Array.isArray(body["data"]) ||
+    !body["data"].every(isInternalNote)
+  ) {
+    throw unexpected("the notes");
+  }
+
+  return body["data"];
+};
+
+/** Posts an Internal Note. Author and time are the server's to decide (BR-29). */
+export const postNote = async (
+  ticketId: number,
+  text: string
+): Promise<InternalNote> => {
+  const body = await apiPost(`/api/tickets/${ticketId}/notes`, {
+    body: text,
+  });
+
+  if (!isInternalNote(body)) {
+    throw unexpected("the note");
+  }
+
+  return body;
+};
+
+/**
+ * Tells IT the problem appears resolved. `204`, no body — the time it records
+ * is read back with the ticket.
+ */
+export const indicateResolved = async (ticketId: number): Promise<void> => {
+  await apiPost(`/api/tickets/${ticketId}/resolved-indication`, {});
+};
+
 export const uploadAttachment = async (
   ticketId: number,
-  file: File,
-  requesterId: number
+  file: File
 ): Promise<AttachmentMetadata> => {
   const form = new FormData();
   form.append("file", file);
 
   const body = await send(`/api/tickets/${ticketId}/attachments`, "POST", {
-    requesterId,
     body: form,
   });
 
@@ -511,14 +710,11 @@ export const uploadAttachment = async (
 
 export const removeAttachment = async (
   attachmentId: number,
-  reason: string,
-  requesterId: number
+  reason: string
 ): Promise<AttachmentMetadata> => {
-  const body = await apiDelete(
-    `/api/attachments/${attachmentId}`,
-    { reason },
-    { requesterId }
-  );
+  const body = await apiDelete(`/api/attachments/${attachmentId}`, {
+    reason,
+  });
 
   if (!isAttachment(body)) {
     throw unexpected("the attachment");
@@ -530,19 +726,16 @@ export const removeAttachment = async (
 /**
  * Fetches the bytes rather than pointing the browser at the URL.
  *
- * A plain link would send the request without the requester header, and the
- * server would refuse it — the header is the whole identity mechanism in Lab 2.
- * So the file is fetched, turned into an object URL, saved, and the URL
+ * A plain link would navigate the page away to a raw file response, and a
+ * refusal would replace the application with a JSON error body. So the file is
+ * fetched, turned into an object URL, saved, and the URL
  * revoked; leaving it alive holds the whole file in memory for the life of the
  * page.
  */
 export const downloadAttachment = async (
-  attachment: AttachmentMetadata,
-  requesterId: number
+  attachment: AttachmentMetadata
 ): Promise<void> => {
-  const blob = await sendForBlob(`/api/attachments/${attachment.id}/download`, {
-    requesterId,
-  });
+  const blob = await sendForBlob(`/api/attachments/${attachment.id}/download`);
 
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

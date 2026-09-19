@@ -47,7 +47,29 @@ model User {
   /// tickets they own intact.
   isActive Boolean @default(true)
 
+  /// The scrypt hash of the account's password, never the password (BR-06).
+  ///
+  /// NOT NULL, because an account able to sign in with a null hash would be an
+  /// account with no password. It arrived nullable and was tightened one
+  /// migration later, with `prisma/bootstrap-passwords.ts` in between: the
+  /// constraint could not be added to populated rows in one step, and SQL
+  /// cannot derive a scrypt hash because the hashing lives in Node (§7).
+  ///
+  /// The sign-in path still refuses a row it cannot verify rather than trusting
+  /// the constraint, so a database restored from before this migration fails
+  /// closed.
+  passwordHash String
+
+  /// Set when an Administrator issues a starting password, cleared by the
+  /// user's own change (BR-02). While it is set, every endpoint except reading
+  /// the current user, changing the password and signing out is refused.
+  mustChangePassword Boolean @default(false)
+
   createdAt DateTime @default(now())
+
+  /// Every session this account currently holds. A user may hold several at
+  /// once (BR-12); changing a password deletes all but the current one (BR-14).
+  sessions Session[]
 
   /// Tickets this user raised.
   tickets Ticket[] @relation("TicketRequester")
@@ -60,6 +82,13 @@ model User {
   /// Tickets this user is responsible for. Empty throughout Lab 2 — nothing can
   /// set an owner until IT Staff exist.
   ownedTickets Ticket[] @relation("TicketOwner")
+
+  /// Public Comments this user wrote. Kept when the user is deactivated, so a
+  /// conversation never loses a speaker (BR-36).
+  publicComments PublicComment[]
+
+  /// Internal Notes this user wrote (D-09).
+  internalNotes InternalNote[]
 
   // The selector reads active users on every load.
   @@index([isActive])
@@ -122,20 +151,27 @@ enum Priority {
   HIGH
 }
 
-/// Where a Ticket is in its lifecycle.
+/// Where a Ticket is in its lifecycle (BR-24).
 ///
-/// Only NEW is reachable in Lab 2: §4.2 excludes every status change after
-/// creation. The rest are defined anyway, because they cost nothing now, they
-/// save an enum migration in Lab 4, and they give the My Tickets status filter
-/// something to return nothing for — which is how the required no-results state
-/// gets demonstrated (BR-35).
+/// The order is the lifecycle's own, not alphabetical, because the queue sorts
+/// on it: a list ordered by status should read New, Open, In Progress and so on
+/// (api-spec.md §7). `WAITING_FOR_REQUESTER` therefore keeps the position
+/// `PENDING` held — the migration renames the value in place rather than adding
+/// one and dropping the other, which would have moved it to the end and taken
+/// every existing row's value with it (D-11).
+///
+/// Lab 2 could only ever reach NEW. Lab 3 adds the two the workflow needs at
+/// its ends: a ticket can come back (REOPENED) and a ticket can be abandoned
+/// (CANCELLED), which is terminal (BR-26).
 enum TicketStatus {
   NEW
   OPEN
   IN_PROGRESS
-  PENDING
+  WAITING_FOR_REQUESTER
   RESOLVED
   CLOSED
+  REOPENED
+  CANCELLED
 }
 
 /// A single IT service request.
@@ -163,9 +199,13 @@ model Ticket {
 
   requestedPriority Priority
 
-  /// Unset in Lab 2. §4.2 excludes IT Staff changing priority, but the approved
-  /// Ticket Detail illustration shows the field, so it exists and renders as a
-  /// placeholder. Decision D-04.
+  /// IT's own view of urgency, independent of what the Requester asked for
+  /// (BR-22, BR-23). Set at creation to a copy of Requested Priority, and only
+  /// IT Staff or an Administrator may change it afterwards.
+  ///
+  /// Still nullable: the contract lets staff clear it back to unset
+  /// (api-spec.md §7), and Lab 2's rows had no value at all until the migration
+  /// that copied one in.
   itPriority Priority?
 
   currentStatus TicketStatus @default(NEW)
@@ -179,6 +219,11 @@ model Ticket {
   /// which is what an empty field looks like rather than an absent one.
   resolutionSummary String?
 
+  /// When the Requester said the problem appears resolved (FR-18). A timestamp
+  /// and not a status, because BR-05 forbids a Requester setting one (D-10).
+  /// Set once: indicating twice keeps the first time (BR-27).
+  resolvedIndicatedAt DateTime?
+
   /// `createdAt` is what the UI labels "Ticket Date". One timestamp, one
   /// meaning; a separate date column would only be able to disagree with it.
   createdAt DateTime @default(now())
@@ -186,9 +231,21 @@ model Ticket {
 
   attachments Attachment[]
 
+  publicComments PublicComment[]
+
+  internalNotes InternalNote[]
+
   // Every My Tickets query filters on owner and orders by creation time. This
   // is the one index the sprint cannot do without.
   @@index([requesterId, createdAt(sort: Desc)])
+
+  // The staff queue reads every ticket in its default order — newest first,
+  // id as the tie-break — so the index above, which leads with requesterId,
+  // cannot serve it (specification.md §7).
+  @@index([createdAt(sort: Desc), id(sort: Desc)])
+
+  // The Unassigned filter and the Owner filter (FR-21).
+  @@index([ticketOwnerId])
 }
 
 /// The per-year counter behind Ticket Number.
@@ -242,4 +299,92 @@ model Attachment {
   /// The active count in BR-23 is a filtered count per ticket, which is exactly
   /// what this index serves.
   @@index([ticketId, removedAt])
+}
+
+/// One signed-in session.
+///
+/// The token the browser holds is never stored. What is stored is its SHA-256
+/// hash, so a disclosed database is a list of expired-looking rows rather than
+/// a set of usable sessions (BR-10). Lookup is by that hash, which is why it
+/// carries the unique index.
+///
+/// Nothing about the user is cached here — not the role, not the activation
+/// flag. Both are read from the User row on every request, so a deactivation or
+/// a role change takes effect on the user's next request rather than at their
+/// next sign-in (BR-15, D-02). The cost is one join on a primary key; the
+/// benefit is that the Administrator safety rules mean something.
+model Session {
+  id String @id @default(uuid())
+
+  /// SHA-256 of the opaque token held in the cookie. Not the token.
+  tokenHash String @unique
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  /// Eight hours after creation, and never renewed by activity (BR-11, A-02).
+  expiresAt DateTime
+
+  /// Ending a user's other sessions is one statement, and this is what makes it
+  /// one statement rather than a scan (BR-14).
+  @@index([userId])
+}
+
+/// A message on a ticket that its Requester can read (BR-04).
+///
+/// A table of its own rather than a visibility flag shared with Internal Notes
+/// (D-09): no query on this model can reach note content, whatever it forgets
+/// to filter.
+///
+/// Append-only (BR-28) — no `updatedAt`, because nothing may change a row.
+model PublicComment {
+  id Int @id @default(autoincrement())
+
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  /// From the session, never from the request body (BR-29).
+  authorId Int
+  author   User @relation(fields: [authorId], references: [id])
+
+  /// Trimmed, 1 to 5000 characters (BR-30). Stored as text and rendered as
+  /// text (BR-31).
+  body String
+
+  /// From the server clock (BR-29).
+  createdAt DateTime @default(now())
+
+  // A ticket's conversation is read oldest first, with id breaking a tie.
+  @@index([ticketId, createdAt, id])
+}
+
+/// A message on a ticket that only IT Staff and an Administrator can read
+/// (BR-04).
+///
+/// The same shape as PublicComment, in a table of its own (D-09): the
+/// requester-facing endpoints never name this model, so a query that forgets a
+/// visibility filter has no note content to leak in the first place.
+///
+/// Append-only (BR-28) — no `updatedAt`, because nothing may change a row.
+model InternalNote {
+  id Int @id @default(autoincrement())
+
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  /// From the session, never from the request body (BR-29).
+  authorId Int
+  author   User @relation(fields: [authorId], references: [id])
+
+  /// Trimmed, 1 to 5000 characters (BR-30). Stored as text and rendered as
+  /// text (BR-31).
+  body String
+
+  /// From the server clock (BR-29).
+  createdAt DateTime @default(now())
+
+  // A ticket's notes are read oldest first, with id breaking a tie.
+  @@index([ticketId, createdAt, id])
 }

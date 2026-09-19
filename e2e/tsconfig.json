@@ -9,5 +9,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["lab-02/**/*.ts", "../playwright.config.ts"]
+  "include": ["lab-02/**/*.ts", "lab-03/**/*.ts", "../playwright.config.ts"]
 }

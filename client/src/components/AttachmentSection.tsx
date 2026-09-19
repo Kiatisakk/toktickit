@@ -42,16 +42,26 @@ const MAX_REASON = 500;
 
 interface AttachmentSectionProps {
   ticketId: number;
-  requesterId: number;
   attachments: AttachmentMetadata[];
   onChange: (attachments: AttachmentMetadata[]) => void;
+  /**
+   * Whether the signed-in user may add and remove files here — true only for the
+   * ticket's requester. IT Staff and Administrators can open anyone's ticket and
+   * download its files, but attachment writes are own-ticket only on the server
+   * (`ticketInScope(…, "own")`), so offering them Add and Remove would be
+   * offering controls that can only fail.
+   *
+   * Required rather than defaulted: a default would silently decide the answer
+   * for any new caller, in whichever direction it happened to lean.
+   */
+  canModify: boolean;
 }
 
 export const AttachmentSection = ({
   ticketId,
-  requesterId,
   attachments,
   onChange,
+  canModify,
 }: AttachmentSectionProps) => {
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -78,7 +88,7 @@ export const AttachmentSection = ({
     });
 
     try {
-      const created = await uploadAttachment(ticketId, file, requesterId);
+      const created = await uploadAttachment(ticketId, file);
 
       onChange([created, ...attachments]);
       setPending(null);
@@ -112,11 +122,7 @@ export const AttachmentSection = ({
     setRemovalFailure(null);
 
     try {
-      const removed = await removeAttachment(
-        removing.id,
-        reason.trim(),
-        requesterId
-      );
+      const removed = await removeAttachment(removing.id, reason.trim());
 
       onChange(
         attachments.map((one) => (one.id === removed.id ? removed : one))
@@ -138,7 +144,7 @@ export const AttachmentSection = ({
     setDownloadFailure(null);
 
     try {
-      await downloadAttachment(attachment, requesterId);
+      await downloadAttachment(attachment);
     } catch (error) {
       setDownloadFailure({
         id: attachment.id,
@@ -160,43 +166,49 @@ export const AttachmentSection = ({
           <h2 className="tkt-section-title" id="tkt-attachments">
             Attachments
           </h2>
-          <p className="tkt-field-hint">
-            JPG, PNG, WEBP or PDF · up to 5 MB · up to {ACTIVE_LIMIT} files.{" "}
-            {full
-              ? "Remove one before adding another."
-              : `${active.length} of ${ACTIVE_LIMIT} used.`}
-          </p>
+          {/* The upload rules are guidance for someone who can upload. For a
+              reader they describe a door that is not theirs. */}
+          {canModify ? (
+            <p className="tkt-field-hint">
+              JPG, PNG, WEBP or PDF · up to 5 MB · up to {ACTIVE_LIMIT} files.{" "}
+              {full
+                ? "Remove one before adding another."
+                : `${active.length} of ${ACTIVE_LIMIT} used.`}
+            </p>
+          ) : null}
         </div>
 
-        <div className="tkt-actions">
-          {/* The input holds the disabled state and the label sits next to it,
+        {canModify ? (
+          <div className="tkt-actions">
+            {/* The input holds the disabled state and the label sits next to it,
               so the styling follows the real state rather than a second copy of
               it. A label rather than a button firing a click at a hidden input:
               the label already is the control, and it stays keyboard reachable
               without any script. */}
-          <input
-            accept={ACCEPT}
-            className="tkt-file-input"
-            disabled={full || uploading}
-            id="tkt-attachment-file"
-            onChange={(event) => {
-              const [file] = event.target.files ?? [];
+            <input
+              accept={ACCEPT}
+              className="tkt-file-input"
+              disabled={full || uploading}
+              id="tkt-attachment-file"
+              onChange={(event) => {
+                const [file] = event.target.files ?? [];
 
-              if (file) {
-                void onFile(file);
-              }
-            }}
-            ref={fileInput}
-            type="file"
-          />
-          <label
-            className="tkt-btn tkt-btn--primary"
-            htmlFor="tkt-attachment-file"
-          >
-            <Icon name="create" />
-            {uploading ? "Uploading…" : "Add Attachment"}
-          </label>
-        </div>
+                if (file) {
+                  void onFile(file);
+                }
+              }}
+              ref={fileInput}
+              type="file"
+            />
+            <label
+              className="tkt-btn tkt-btn--primary"
+              htmlFor="tkt-attachment-file"
+            >
+              <Icon name="create" />
+              {uploading ? "Uploading…" : "Add Attachment"}
+            </label>
+          </div>
+        ) : null}
       </div>
 
       {attachments.length === 0 && pending === null ? (
@@ -309,16 +321,18 @@ export const AttachmentSection = ({
                       >
                         {failed ? "Retry download" : "Download"}
                       </Button>
-                      <Button
-                        onClick={() => {
-                          setRemoving(attachment);
-                          setReason("");
-                          setRemovalFailure(null);
-                        }}
-                        variant="secondary"
-                      >
-                        Remove
-                      </Button>
+                      {canModify ? (
+                        <Button
+                          onClick={() => {
+                            setRemoving(attachment);
+                            setReason("");
+                            setRemovalFailure(null);
+                          }}
+                          variant="secondary"
+                        >
+                          Remove
+                        </Button>
+                      ) : null}
                     </>
                   )}
                 </div>
@@ -328,7 +342,7 @@ export const AttachmentSection = ({
         </ul>
       )}
 
-      {removing ? (
+      {canModify && removing ? (
         <div aria-label="Confirm removal" className="tkt-confirm" role="group">
           <p className="tkt-confirm__title">
             Remove <strong>{removing.originalFilename}</strong>?

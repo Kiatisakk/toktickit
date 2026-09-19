@@ -26,6 +26,13 @@
 .tkt-header__inner {
   align-items: center;
   display: flex;
+  /* Wraps at every width, not only the mobile band below: with four
+     destinations (Administrator navigation, ui-spec.md §2) plus a long name
+     and the "Administrator" role badge, the tablet band (768–991px) has no
+     narrower table to fall back on and no toggle to collapse behind — a
+     single unbroken row there pushed the identity block 97px past the
+     viewport edge, which §8.7 forbids at every width without exception. */
+  flex-wrap: wrap;
   gap: var(--tkt-space-6);
   margin: 0 auto;
   max-width: var(--tkt-content-max);
@@ -380,11 +387,10 @@
   }
 
   .tkt-header__inner {
-    flex-wrap: wrap;
     gap: var(--tkt-space-2);
   }
 
-  /* The current requester stays visible even when navigation is collapsed:
+  /* The signed-in user stays visible even when navigation is collapsed:
      knowing whose data is on screen is what this shell exists to say. */
   .tkt-identity {
     order: 3;
@@ -399,26 +405,7 @@
   }
 }
 
-/* ----------------------------------------------- requester selection -- */
-
-.tkt-select-card {
-  margin: var(--tkt-space-8) auto;
-  max-width: 34rem;
-}
-
-/*
- * The Lab 3 notice. Amber rather than green: §7 reserves warning colour for
- * genuine warnings, and "the identity you just chose is not protected" is one.
- */
-.tkt-notice {
-  background-color: var(--tkt-warning-pale);
-  border: 1px solid var(--tkt-warning);
-  border-radius: var(--tkt-radius-sm);
-  color: var(--tkt-text);
-  font-size: var(--tkt-font-small);
-  margin: var(--tkt-space-4) 0;
-  padding: var(--tkt-space-3);
-}
+/* ----------------------------------------------------------- actions -- */
 
 .tkt-actions {
   display: flex;
@@ -1024,8 +1011,23 @@
   padding: var(--tkt-space-4);
 }
 
+/* The staff queue has six controls to My Tickets' five: Owner is the extra
+   one. On the five-column grid above it wrapped alone onto a second row at
+   desktop width. Declared before the tablet and mobile rules below, which take
+   over at their widths exactly as they do for My Tickets. */
+.tkt-filters--queue {
+  grid-template-columns: 2fr repeat(5, 1fr);
+}
+
 /* An em dash for a value the workflow has not set yet. Lab 2 never assigns an
    IT owner or an IT priority, so on this screen it is every row. */
+/* The queue's owner cell when nobody has the ticket (ui-spec.md §5). The word
+   is the signal; the muted, italic treatment only separates it from a name. */
+.tkt-unassigned {
+  color: var(--tkt-text-muted);
+  font-style: italic;
+}
+
 .tkt-unset {
   color: var(--tkt-text-muted);
 }
@@ -1091,7 +1093,7 @@
     min-height: var(--tkt-touch-target);
   }
 
-  /* Four controls that are not sized from --tkt-control-height anywhere, so
+  /* Controls that are not sized from --tkt-control-height anywhere, so
      raising the token at the top of this block never reached them: the nav
      toggle and nav links (~30px/38px tall with no min-height at all), the
      breadcrumb link (no padding, so an icon-only crumb's hit area was the
@@ -1104,7 +1106,11 @@
   .tkt-nav-toggle,
   .tkt-nav-link,
   .tkt-breadcrumb__item a,
-  .tkt-ticket-card__head a {
+  .tkt-ticket-card__head a,
+  /* The brand is a link home, and was 30px tall here — found once RESP-06
+     measured the header as well as <main> (review of PR #66). It is already
+     an inline-flex row, so the extra height centres its text. */
+  .tkt-brand {
     min-height: var(--tkt-control-height);
     min-width: var(--tkt-control-height);
   }
@@ -1301,6 +1307,86 @@
   margin: 0 0 var(--tkt-space-1);
 }
 
+/* A confirmation that destroys nothing. The red of attachment removal would
+   tell a Requester that telling IT the problem has stopped is dangerous. */
+.tkt-confirm--neutral {
+  background-color: var(--tkt-green-pale);
+  border-color: var(--tkt-green-accent);
+}
+
+/* ----------------------------------------------- Lab 3: public comments -- */
+
+/* Not a status badge (ui-spec.md §6): plain prose on the card, set off by the
+   accent rule so it is prominent without borrowing the lifecycle's colours. */
+.tkt-resolved-indication[data-state="recorded"] {
+  border-left: 4px solid var(--tkt-green-accent);
+}
+
+.tkt-resolved-indication__statement {
+  margin: 0;
+}
+
+.tkt-comments {
+  list-style: none;
+  margin: var(--tkt-space-3) 0 0;
+  padding: 0;
+}
+
+.tkt-comment {
+  border-bottom: 1px solid var(--tkt-border);
+  padding: var(--tkt-space-3) 0;
+}
+
+.tkt-comment__meta {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tkt-space-2);
+  margin: 0;
+}
+
+.tkt-comment__meta time {
+  color: var(--tkt-text-muted);
+  font-size: var(--tkt-font-small);
+}
+
+/* Line breaks as typed, and a long unbroken string wraps rather than pushing
+   the page sideways at mobile width. */
+.tkt-comment__body {
+  margin: var(--tkt-space-2) 0 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.tkt-comment__failure {
+  margin: 0 0 var(--tkt-space-2);
+}
+
+.tkt-comment-composer {
+  margin-top: var(--tkt-space-4);
+}
+
+/* ------------------------------------------------- Lab 3: internal notes -- */
+
+/* A surface of its own, not the page background and not the plain white
+   card Public Comments sits on — the tint is one of three independent
+   signals that this is Internal Notes, alongside the heading text and the
+   lock icon (ui-spec.md §6). */
+.tkt-card--notes {
+  background-color: var(--tkt-info-pale);
+  border-color: var(--tkt-info);
+}
+
+.tkt-card--notes .tkt-section-title {
+  align-items: center;
+  display: flex;
+  gap: var(--tkt-space-2);
+}
+
+.tkt-card--notes .tkt-section-title .tkt-icon {
+  color: var(--tkt-info);
+}
+
 @media (width <= 767px) {
   .tkt-attachment__actions {
     width: 100%;
@@ -1337,4 +1423,187 @@
   color: var(--tkt-error);
   font-size: var(--tkt-font-small);
   margin: var(--tkt-space-1) 0 0;
+}
+
+/* --------------------------------------------------------------------------
+   Authentication screens (ui-spec.md §3, §4)
+
+   Both render inside the shell — the signed-out and gated variants — so the
+   page frame is the shell's. The panel only centres itself horizontally; the
+   header above it already gives the page its top.
+   -------------------------------------------------------------------------- */
+
+.tkt-auth {
+  display: flex;
+  justify-content: center;
+  padding-block: var(--tkt-space-8);
+}
+
+.tkt-auth__panel {
+  background-color: var(--tkt-surface);
+  border: 1px solid var(--tkt-border);
+  border-radius: var(--tkt-radius);
+  box-shadow: var(--tkt-shadow);
+  max-width: 26rem;
+  padding: var(--tkt-space-8);
+  width: 100%;
+}
+
+.tkt-auth__title {
+  color: var(--tkt-green);
+  font-size: var(--tkt-font-page-title);
+  margin-bottom: var(--tkt-space-2);
+}
+
+.tkt-auth__intro {
+  color: var(--tkt-text-muted);
+  margin-bottom: var(--tkt-space-6);
+}
+
+.tkt-auth__submit {
+  margin-top: var(--tkt-space-4);
+  width: 100%;
+}
+
+.tkt-auth__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tkt-space-3);
+  margin-top: var(--tkt-space-6);
+}
+
+/* A refused sign-in names neither field (BR-08), so its message sits above the
+   form rather than beneath a control — the one place in the product where a
+   form-level message is correct rather than the mistake §8.3 warns about. */
+.tkt-form-error {
+  background-color: var(--tkt-error-pale);
+  border: 1px solid var(--tkt-error);
+  border-radius: var(--tkt-radius-sm);
+  color: var(--tkt-error);
+  margin-bottom: var(--tkt-space-4);
+  padding: var(--tkt-space-3);
+}
+
+.tkt-password-rules {
+  list-style: none;
+  margin: calc(-1 * var(--tkt-space-2)) 0 var(--tkt-space-4);
+  padding: 0;
+}
+
+.tkt-password-rule {
+  align-items: center;
+  color: var(--tkt-text-muted);
+  display: flex;
+  font-size: var(--tkt-font-small);
+  gap: var(--tkt-space-2);
+}
+
+/* Colour is not the only signal: the icon changes shape, and the list item
+   carries its state in text for anyone who cannot see either. */
+.tkt-password-rule--met {
+  color: var(--tkt-success);
+}
+
+/* Role badges (ui-spec.md: role renders through the one badge component).
+   They sit on the green header, so they use the inverse surface rather than the
+   pale fills the status badges use on white. The word carries the meaning; the
+   colour only separates the three. */
+.tkt-badge[data-kind="role"] {
+  background-color: var(--tkt-surface);
+  color: var(--tkt-green);
+}
+
+.tkt-badge--it-staff {
+  color: var(--tkt-info);
+}
+
+.tkt-badge--admin {
+  color: var(--tkt-warning);
+}
+
+.tkt-password-control {
+  align-items: stretch;
+  display: flex;
+  gap: var(--tkt-space-2);
+}
+
+.tkt-password-control > .tkt-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* A text button rather than an eye icon: §8.3 requires visible text on
+   buttons, and "Show password" says what it does where an eye only hints. */
+.tkt-password-toggle {
+  background: none;
+  border: 1px solid var(--tkt-border);
+  border-radius: var(--tkt-radius-sm);
+  color: var(--tkt-green-accent);
+  flex: 0 0 auto;
+  font-size: var(--tkt-font-small);
+  min-height: var(--tkt-touch-target);
+  padding: 0 var(--tkt-space-3);
+  white-space: nowrap;
+}
+
+.tkt-password-toggle:disabled {
+  color: var(--tkt-text-muted);
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------ user management -- */
+
+/* The create and edit form sits in a panel above the list (ui-spec.md §8), and
+   stays single-column at every width, narrowing rather than reflowing. */
+.tkt-user-panel {
+  margin-bottom: var(--tkt-space-6);
+  max-width: 40rem;
+}
+
+.tkt-user-panel__password {
+  border-top: 1px solid var(--tkt-border);
+  margin-top: var(--tkt-space-6);
+  padding-top: var(--tkt-space-4);
+}
+
+/* The Active toggle. A native checkbox with role="switch", so it is announced
+   as on or off and toggles with Space; the label beside it carries the name.
+   Sized to the touch-target token so it meets 44px in the mobile band. */
+.tkt-switch-field {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tkt-space-3);
+  margin-bottom: var(--tkt-space-4);
+  min-height: var(--tkt-touch-target);
+}
+
+.tkt-switch {
+  accent-color: var(--tkt-green);
+  height: 1.5rem;
+  margin: 0;
+  width: 1.5rem;
+}
+
+.tkt-switch-field .tkt-field-error {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+/* The one success message on the screen: a new starting password was set.
+   Text carries the meaning; the tint only separates it from a refusal. */
+.tkt-form-success {
+  background-color: var(--tkt-green-pale);
+  border: 1px solid var(--tkt-green);
+  border-radius: var(--tkt-radius-sm);
+  color: var(--tkt-text);
+  margin-bottom: var(--tkt-space-4);
+  padding: var(--tkt-space-3);
+}
+
+/* Account status. Active reuses the green `.tkt-badge--active` above; an
+   inactive account is shown, not hidden — deactivation is a state (BR-36). */
+.tkt-badge--inactive {
+  background-color: var(--tkt-readonly);
+  color: var(--tkt-text-muted);
 }

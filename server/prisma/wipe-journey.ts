@@ -10,22 +10,24 @@ import { prisma } from "../src/prisma.js";
  * server suite's ownership test, which reads every ticket its requester owns,
  * failed on summaries it never created.
  *
- * The prefixes are the whole contract, and there are two writers of them:
- * `summaryFor` in `e2e/lab-02/requester-ticket-flow.spec.ts`, and the rows
+ * The prefixes are the whole contract, and there are three writers of them:
+ * `summaryFor` in `e2e/lab-02/requester-ticket-flow.spec.ts`, the rows
  * `e2e/lab-02/evidence.spec.ts` creates so that a second page of tickets
- * exists to photograph. This script is the only deleter. A writer that
- * invents a third prefix without adding it here will not fail — it will
- * quietly accumulate, which is how the second one was found: 108 rows and
- * two red assertions in the server suite. Attachments go with their ticket through
- * the schema's cascading delete — a finished journey leaves a soft-removed
- * row behind its removed file, an interrupted one leaves an active file, and
- * neither may survive into the next run.
+ * exists to photograph, and `e2e/lab-03/support.ts`'s `lab3Summary`, which
+ * every Lab 3 spec that creates a ticket goes through for the same reason.
+ * This script is the only deleter. A writer that invents a third prefix
+ * without adding it here will not fail — it will quietly accumulate, which is
+ * how the second one was found: 108 rows and two red assertions in the server
+ * suite. Attachments go with their ticket through the schema's cascading
+ * delete — a finished journey leaves a soft-removed row behind its removed
+ * file, an interrupted one leaves an active file, and neither may survive
+ * into the next run.
  *
  * Runs inside `db:test:setup`, before migrate and seed, so rebuilding the test
  * database means rebuilding it from nothing — which is what D-11 already
  * claims.
  */
-const LEFTOVER_PREFIXES = ["E2E journey ", "Evidence row "];
+const LEFTOVER_PREFIXES = ["E2E journey ", "Evidence row ", "Lab3 E2E "];
 
 try {
   const { count } = await prisma.ticket.deleteMany({

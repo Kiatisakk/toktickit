@@ -14,27 +14,19 @@ import {
   TicketTable,
 } from "../components/TicketTable";
 import { TicketTableSkeleton } from "../components/TicketTableSkeleton";
-import { useRequester } from "../context/useRequester";
+import { useAuth } from "../context/useAuth";
 import {
   fetchCategories,
   fetchTickets,
   type ReferenceItem,
   type TicketListMeta,
 } from "../lib/api";
+import { STATUS_OPTIONS } from "../lib/ticketStatus";
 
 const PRIORITIES = [
   { value: "LOW", label: "Low" },
   { value: "MEDIUM", label: "Medium" },
   { value: "HIGH", label: "High" },
-];
-
-const STATUSES = [
-  { value: "NEW", label: "New" },
-  { value: "OPEN", label: "Open" },
-  { value: "IN_PROGRESS", label: "In Progress" },
-  { value: "PENDING", label: "Pending" },
-  { value: "RESOLVED", label: "Resolved" },
-  { value: "CLOSED", label: "Closed" },
 ];
 
 interface Filters {
@@ -70,7 +62,8 @@ const anyFilterActive = (filters: Filters) =>
  * whether any filter is active, and says something different in each case.
  */
 export const MyTickets = () => {
-  const { requester, generation } = useRequester();
+  const { user } = useAuth();
+  const signedInAs = user?.id ?? null;
   const navigate = useNavigate();
 
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
@@ -117,7 +110,7 @@ export const MyTickets = () => {
 
   const load = useCallback(
     (signal: AbortSignal) => {
-      if (!requester) {
+      if (!user) {
         return;
       }
 
@@ -144,7 +137,7 @@ export const MyTickets = () => {
 
       setListing({ kind: "loading" });
 
-      fetchTickets(query, requester.id, signal)
+      fetchTickets(query, signal)
         .then((response) => {
           setListing({
             kind: "loaded",
@@ -166,37 +159,37 @@ export const MyTickets = () => {
           });
         });
     },
-    [requester, filters, sort, order, page]
+    [user, filters, sort, order, page]
   );
 
   /*
    * A filter, a page and a sort order chosen for Requester A do not describe
    * Requester B. Left alone, sitting on page 4 with a filter applied and
-   * switching requester immediately re-requests page 4 of the new person's
+   * switching user immediately re-requests page 4 of the new person's
    * much shorter list — which is empty, and looks like a bug rather than a
    * stale selection.
    *
    * This cannot live inside the effect below: that effect also runs on every
    * filter change, and resetting there would wipe the filter the user just
    * set. The BR-09 guard in `CreateTicket.tsx` is the same shape for the same
-   * reason — a ref remembers the `generation` already seen, and the reset
-   * only fires the first time it changes, never on mount.
+   * reason — a ref remembers the user already seen, and the reset only fires
+   * the first time it changes, never on mount.
    */
-  const seenGeneration = useRef(generation);
+  const seenUser = useRef(signedInAs);
 
   useEffect(() => {
-    if (seenGeneration.current === generation) {
+    if (seenUser.current === signedInAs) {
       return;
     }
 
-    seenGeneration.current = generation;
+    seenUser.current = signedInAs;
     setFilters(NO_FILTERS);
     setSort("createdAt");
     setOrder("desc");
     setPage(1);
-  }, [generation]);
+  }, [signedInAs]);
 
-  // `generation` is in the dependency list so that changing requester discards
+  // `signedInAs` is in the dependency list so that a change of user discards
   // what is on screen and refetches, rather than leaving one person's tickets
   // visible under another person's name (BR-08).
   useEffect(() => {
@@ -214,7 +207,7 @@ export const MyTickets = () => {
     return () => {
       controller.abort();
     };
-  }, [load, generation, reloadToken]);
+  }, [load, signedInAs, reloadToken]);
 
   const setFilter = (key: keyof Filters) => (value: string) => {
     setFilters((current) => ({ ...current, [key]: value }));
@@ -317,7 +310,7 @@ export const MyTickets = () => {
         <Select
           label="Current Status"
           onChange={(event) => setFilter("status")(event.target.value)}
-          options={[{ value: "", label: "All Statuses" }, ...STATUSES]}
+          options={[{ value: "", label: "All Statuses" }, ...STATUS_OPTIONS]}
           value={filters.status}
         />
       </div>

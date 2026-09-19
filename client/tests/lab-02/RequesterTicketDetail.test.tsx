@@ -2,10 +2,11 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { RequesterContext } from "../../src/context/requesterContextValue";
+import { AuthContext } from "../../src/context/authContextValue";
 import { TicketDetail } from "../../src/routes/TicketDetail";
+import { authContext, SOMCHAI_USER } from "../support/auth";
 import {
-  CONTEXT,
+  AUTH,
   jsonResponse,
   renderAt,
   respond,
@@ -93,7 +94,7 @@ describe("a ticket you own", () => {
     ).toBeInTheDocument();
   });
 
-  it("scopes the request to the current requester", async () => {
+  it("scopes the request to the signed-in user by the session alone", async () => {
     vi.stubGlobal("fetch", respond(TICKET));
 
     renderAt();
@@ -101,13 +102,15 @@ describe("a ticket you own", () => {
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining("/api/tickets/42"),
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            "X-Development-Requester-Id": "1",
-          }),
-        })
+        expect.objectContaining({ credentials: "include" })
       );
     });
+
+    for (const [, init] of vi.mocked(fetch).mock.calls) {
+      expect(Object.keys(init?.headers ?? {})).not.toContain(
+        "X-Development-Requester-Id"
+      );
+    }
   });
 
   // §8.5: read-only, with no control that could change a system-managed value.
@@ -177,20 +180,19 @@ describe("a ticket you own", () => {
 
   // Figure 1 draws four tabs and §4.2 excludes the features behind three of
   // them. Drawing them disabled would advertise a screen this lab must not
-  // build.
-  it.each([
-    "Public Comments",
-    "Internal Notes",
-    "Service Actions",
-    "Event Log",
-  ])("does not offer %s", async (excluded) => {
-    vi.stubGlobal("fetch", respond(TICKET));
+  // build. Public Comments left this list in Lab 3, which builds them (#49);
+  // Internal Notes stays, because a Requester must never see them (AC-25).
+  it.each(["Internal Notes", "Service Actions", "Event Log"])(
+    "does not offer %s",
+    async (excluded) => {
+      vi.stubGlobal("fetch", respond(TICKET));
 
-    renderAt();
+      renderAt();
 
-    await screen.findByLabelText("Ticket No.");
-    expect(screen.queryByText(excluded)).toBeNull();
-  });
+      await screen.findByLabelText("Ticket No.");
+      expect(screen.queryByText(excluded)).toBeNull();
+    }
+  );
 });
 
 /**
@@ -232,7 +234,14 @@ describe("the badge fields", () => {
     const { container } = renderAt();
 
     await screen.findByLabelText("Ticket No.");
-    expect(container.querySelectorAll(".tkt-card")).toHaveLength(2);
+
+    // Lab 3 adds two more cards beside it (ui-spec.md §7), so this asks the
+    // question directly rather than by counting.
+    const attachments = screen.getByRole("region", { name: "Attachments" });
+
+    expect(attachments).toHaveClass("tkt-card");
+    expect(attachments.parentElement?.closest(".tkt-card")).toBeNull();
+    expect(container.querySelectorAll(".tkt-card")).toHaveLength(4);
   });
 });
 
@@ -251,22 +260,23 @@ describe("loading", () => {
 });
 
 /**
- * `generation` is in the fetch effect's dependency list so that switching
- * requester re-asks (see the comment above `load` in TicketDetail.tsx), but
- * nothing had ever exercised the case that makes that matter: the URL
- * survives a requester switch, and a ticket that belonged to the old
- * requester must stop being shown the moment the new one cannot see it.
+ * The signed-in user is in the fetch effect's dependency list so that a change
+ * of user re-asks (see the comment above `load` in TicketDetail.tsx). The URL
+ * survives the switch, and a ticket that belonged to the old user must stop
+ * being shown the moment the new one cannot see it.
  */
-describe("switching requester", () => {
+describe("switching user", () => {
   it("turns a ticket that was visible into not-found once it belongs to someone else", async () => {
-    const fetchMock = vi.fn((_url: string, init?: RequestInit) => {
-      const headers = init?.headers as Record<string, string> | undefined;
+    // The first read is the owner's session; every later one is the new
+    // user's, which the API answers exactly as a missing ticket.
+    let calls = 0;
+    const fetchMock = vi.fn(() => {
+      calls += 1;
 
-      if (headers?.["X-Development-Requester-Id"] === "1") {
+      if (calls === 1) {
         return Promise.resolve(jsonResponse(TICKET));
       }
 
-      // The API answers a stranger's ticket exactly as a missing one.
       return Promise.resolve(
         jsonResponse(
           { error: { code: "TICKET_NOT_FOUND", message: "Not found." } },
@@ -279,11 +289,11 @@ describe("switching requester", () => {
 
     const { rerender } = render(
       <MemoryRouter initialEntries={["/tickets/42"]}>
-        <RequesterContext.Provider value={CONTEXT}>
+        <AuthContext.Provider value={AUTH}>
           <Routes>
             <Route element={<TicketDetail />} path="/tickets/:ticketId" />
           </Routes>
-        </RequesterContext.Provider>
+        </AuthContext.Provider>
       </MemoryRouter>
     );
 
@@ -293,21 +303,11 @@ describe("switching requester", () => {
 
     rerender(
       <MemoryRouter initialEntries={["/tickets/42"]}>
-        <RequesterContext.Provider
-          value={{
-            ...CONTEXT,
-            generation: CONTEXT.generation + 1,
-            requester: {
-              id: 2,
-              name: "Somchai Wattana",
-              email: "somchai.wattana@example.ac.th",
-            },
-          }}
-        >
+        <AuthContext.Provider value={authContext({ user: SOMCHAI_USER })}>
           <Routes>
             <Route element={<TicketDetail />} path="/tickets/:ticketId" />
           </Routes>
-        </RequesterContext.Provider>
+        </AuthContext.Provider>
       </MemoryRouter>
     );
 

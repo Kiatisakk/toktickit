@@ -1,10 +1,11 @@
 import request from "supertest";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
+import { ACTIVE_REQUESTER, SECOND_REQUESTER } from "../../prisma/accounts.js";
 import { app } from "../../src/app.js";
-import { REQUESTER_HEADER } from "../../src/middleware/requesterContext.js";
 import { prisma } from "../../src/prisma.js";
 import { TICKET_NUMBER_PATTERN } from "../../src/tickets/ticketNumber.js";
+import { sessionJar, signInAs } from "../lab-03/support/signIn.js";
 
 /**
  * API-04 — creation stores one ticket owned by the context.
@@ -13,18 +14,19 @@ import { TICKET_NUMBER_PATTERN } from "../../src/tickets/ticketNumber.js";
  * API-07 — concurrent creation never produces a duplicate number.
  */
 
+const sessions = sessionJar();
+
 let requesterA: number;
 let requesterB: number;
 let categoryId: number;
 let relatedSystemId: number;
 
 beforeAll(async () => {
-  const [a, b] = await prisma.user.findMany({
-    where: { role: "REQUESTER", isActive: true },
-    orderBy: { id: "asc" },
-    take: 2,
-    select: { id: true },
-  });
+  // Signed in, not looked up: identity comes from the session now (D-15).
+  const [a, b] = await Promise.all([
+    signInAs(ACTIVE_REQUESTER),
+    signInAs(SECOND_REQUESTER),
+  ]);
   const category = await prisma.category.findFirstOrThrow({
     where: { isActive: true },
     select: { id: true },
@@ -34,8 +36,8 @@ beforeAll(async () => {
     select: { id: true },
   });
 
-  requesterA = a?.id ?? 0;
-  requesterB = b?.id ?? 0;
+  requesterA = sessions.add(a);
+  requesterB = sessions.add(b);
   categoryId = category.id;
   relatedSystemId = system.id;
 });
@@ -63,7 +65,7 @@ const pad = (length: number) => `FIXTURE ${"x".repeat(length - 8)}`;
 const create = (payload: Record<string, unknown>, requesterId = requesterA) =>
   request(app)
     .post("/api/tickets")
-    .set(REQUESTER_HEADER, String(requesterId))
+    .set("Cookie", sessions.cookieOf(requesterId))
     .send(payload);
 
 describe("creating a valid ticket", () => {
@@ -102,7 +104,7 @@ describe("creating a valid ticket", () => {
     expect(response.body.currentStatus).toBe("NEW");
   });
 
-  it("owns the ticket to the requester in the header", async () => {
+  it("owns the ticket to the signed-in requester", async () => {
     const response = await create(body());
 
     expect(response.body.requester.id).toBe(requesterA);
@@ -110,10 +112,15 @@ describe("creating a valid ticket", () => {
 
   // BR-06 and decision D-04: the columns exist so the detail screen can render
   // the fields the illustration shows, and nothing in Lab 2 can populate them.
-  it("leaves IT priority, ticket owner and resolution summary unset", async () => {
-    const response = await create(body());
+  it("copies Requested Priority into IT Priority, and leaves the staff fields unset", async () => {
+    const response = await create(body({ requestedPriority: "HIGH" }));
 
-    expect(response.body.itPriority).toBeNull();
+    // IT Priority arrived as a copy in Lab 3 (BR-23): a ticket nobody has
+    // triaged still carries IT's view of urgency, which is the Requester's
+    // until staff change it. Owner and resolution summary stay unset, because
+    // nothing at creation can set them.
+    expect(response.body.itPriority).toBe("HIGH");
+    expect(response.body.requestedPriority).toBe("HIGH");
     expect(response.body.ticketOwner).toBeNull();
     expect(response.body.resolutionSummary).toBeNull();
   });
@@ -302,8 +309,10 @@ describe("ownership", () => {
   it("requires a requester context at all", async () => {
     const response = await request(app).post("/api/tickets").send(body());
 
-    expect(response.status).toBe(400);
-    expect(response.body.error.code).toBe("REQUESTER_CONTEXT_REQUIRED");
+    // Lab 2 answered 400 REQUESTER_CONTEXT_REQUIRED; that code is retired and
+    // its situation is now 401 UNAUTHENTICATED (api-spec.md §3).
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("UNAUTHENTICATED");
   });
 
   it("creates nothing when the context is missing", async () => {

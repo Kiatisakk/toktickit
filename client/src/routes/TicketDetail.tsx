@@ -6,9 +6,17 @@ import { AttachmentSection } from "../components/AttachmentSection";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
 import { Icon } from "../components/Icon";
+import { InternalNotes } from "../components/InternalNotes";
+import { PublicComments } from "../components/PublicComments";
+import { ResolvedIndication } from "../components/ResolvedIndication";
+import {
+  ItPriorityControl,
+  OwnerControl,
+  StatusControl,
+} from "../components/StaffTicketControls";
 import { StateBlock } from "../components/StateBlock";
 import { TextInput } from "../components/TextInput";
-import { useRequester } from "../context/useRequester";
+import { useAuth } from "../context/useAuth";
 import {
   ApiError,
   type AttachmentMetadata,
@@ -33,6 +41,15 @@ import { formatWhen } from "../lib/formatWhen";
  * There is no tab strip. Figure 1 shows four — Public Comments, Attachments,
  * Service Actions, Event Log — and §4.2 excludes the features behind three of
  * them. Drawing them disabled would advertise a screen this lab must not build.
+ *
+ * Lab 3 adds two sections rather than tabs: the "problem appears resolved"
+ * indication under the ticket, and Public Comments under the attachments
+ * (ui-spec.md §7). For a Requester there is no Internal Notes section on this
+ * screen at all — not an empty one, not a disabled one (AC-25).
+ *
+ * IT Staff and an Administrator open the same route (ui-spec.md §6): the
+ * three operational fields above go live, and Internal Notes appears beneath
+ * Public Comments, gated on the same `staffControls` check as those fields.
  */
 
 type Load =
@@ -43,7 +60,8 @@ type Load =
 
 export const TicketDetail = () => {
   const { ticketId } = useParams();
-  const { requester, generation } = useRequester();
+  const { user } = useAuth();
+  const signedInAs = user?.id ?? null;
   const navigate = useNavigate();
 
   const [state, setState] = useState<Load>({ kind: "loading" });
@@ -62,7 +80,7 @@ export const TicketDetail = () => {
     (signal: AbortSignal, current: { active: boolean }) => {
       const id = Number(ticketId);
 
-      if (!requester) {
+      if (!user) {
         return;
       }
 
@@ -75,7 +93,7 @@ export const TicketDetail = () => {
 
       setState({ kind: "loading" });
 
-      fetchTicket(id, requester.id, signal)
+      fetchTicket(id, signal)
         .then((ticket) => {
           if (current.active) {
             setState({ kind: "loaded", ticket });
@@ -105,10 +123,10 @@ export const TicketDetail = () => {
           });
         });
     },
-    [ticketId, requester]
+    [ticketId, user]
   );
 
-  // `generation` is here so that changing requester re-asks. Without it, one
+  // `signedInAs` is here so that a change of user re-asks. Without it, one
   // person's ticket stays on screen under another person's name — and this is
   // the screen where that matters most, because the URL survives the switch.
   useEffect(() => {
@@ -122,12 +140,29 @@ export const TicketDetail = () => {
       current.active = false;
       controller.abort();
     };
-  }, [load, generation, reloadToken]);
+  }, [load, signedInAs, reloadToken]);
 
   const onAttachmentsChange = (attachments: AttachmentMetadata[]) => {
     setState((current) =>
       current.kind === "loaded"
         ? { kind: "loaded", ticket: { ...current.ticket, attachments } }
+        : current
+    );
+  };
+
+  // IT Staff and Administrators act on the ticket here; everyone else reads it
+  // (ui-spec.md §6). The API refuses the same three operations to a Requester
+  // whatever this decides, so this is which controls to draw, not who may act.
+  const staffControls = user?.role === "IT_STAFF" || user?.role === "ADMIN";
+
+  const onTicketChanged = (updated: Detail) => {
+    setState({ kind: "loaded", ticket: updated });
+  };
+
+  const onResolvedIndicated = (resolvedIndicatedAt: string) => {
+    setState((current) =>
+      current.kind === "loaded"
+        ? { kind: "loaded", ticket: { ...current.ticket, resolvedIndicatedAt } }
         : current
     );
   };
@@ -236,28 +271,40 @@ export const TicketDetail = () => {
               <Badge kind="priority" value={ticket.requestedPriority} />
             </div>
           </div>
-          <div className="tkt-field-group">
-            <span className="tkt-field-label">IT Priority</span>
-            <div className="tkt-readonly-badge">
-              <Badge
-                emptyLabel="Not set until IT triages this ticket"
-                kind="priority"
-                value={ticket.itPriority}
-              />
+          {staffControls ? (
+            <ItPriorityControl onUpdated={onTicketChanged} ticket={ticket} />
+          ) : (
+            <div className="tkt-field-group">
+              <span className="tkt-field-label">IT Priority</span>
+              <div className="tkt-readonly-badge">
+                <Badge
+                  emptyLabel="Not set until IT triages this ticket"
+                  kind="priority"
+                  value={ticket.itPriority}
+                />
+              </div>
             </div>
-          </div>
-          <div className="tkt-field-group">
-            <span className="tkt-field-label">Current Status</span>
-            <div className="tkt-readonly-badge">
-              <Badge kind="status" value={ticket.currentStatus} />
+          )}
+          {staffControls ? (
+            <StatusControl onUpdated={onTicketChanged} ticket={ticket} />
+          ) : (
+            <div className="tkt-field-group">
+              <span className="tkt-field-label">Current Status</span>
+              <div className="tkt-readonly-badge">
+                <Badge kind="status" value={ticket.currentStatus} />
+              </div>
             </div>
-          </div>
+          )}
 
-          <TextInput
-            label="Ticket Owner"
-            readOnly
-            value={ticket.ticketOwner?.name ?? "Not yet assigned"}
-          />
+          {staffControls ? (
+            <OwnerControl onUpdated={onTicketChanged} ticket={ticket} />
+          ) : (
+            <TextInput
+              label="Ticket Owner"
+              readOnly
+              value={ticket.ticketOwner?.name ?? "Not yet assigned"}
+            />
+          )}
           <div className="tkt-span-3">
             <TextInput label="Summary" readOnly value={ticket.summary} />
           </div>
@@ -305,13 +352,36 @@ export const TicketDetail = () => {
         </div>
       </div>
 
-      {requester ? (
-        <AttachmentSection
-          attachments={ticket.attachments}
-          onChange={onAttachmentsChange}
-          requesterId={requester.id}
-          ticketId={ticket.id}
-        />
+      <ResolvedIndication
+        canIndicate={
+          user?.role === "REQUESTER" && ticket.requester.id === user.id
+        }
+        indicatedAt={ticket.resolvedIndicatedAt}
+        onRecorded={onResolvedIndicated}
+        ticketId={ticket.id}
+      />
+
+      <AttachmentSection
+        attachments={ticket.attachments}
+        canModify={user !== null && ticket.requester.id === user.id}
+        onChange={onAttachmentsChange}
+        ticketId={ticket.id}
+      />
+
+      {/* Keyed by ticket so that moving between tickets starts a fresh
+          conversation, composer included, rather than carrying one ticket's
+          half-written comment onto another. Distinct key prefixes: the two
+          sections are siblings, and an identical key on both would be a
+          duplicate-key warning at best and a misattributed remount at
+          worst. */}
+      <PublicComments key={`comments-${ticket.id}`} ticketId={ticket.id} />
+
+      {/* Staff and Administrators only — a Requester never renders this,
+          not even disabled or empty (AC-25). The endpoint enforces the same
+          boundary independently (BR-32), so this is a display decision, not
+          the security boundary. */}
+      {staffControls ? (
+        <InternalNotes key={`notes-${ticket.id}`} ticketId={ticket.id} />
       ) : null}
     </AppShell>
   );

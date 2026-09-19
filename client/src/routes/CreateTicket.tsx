@@ -12,7 +12,7 @@ import { Select } from "../components/Select";
 import { StateBlock } from "../components/StateBlock";
 import { TextArea } from "../components/TextArea";
 import { TextInput } from "../components/TextInput";
-import { useRequester } from "../context/useRequester";
+import { useAuth } from "../context/useAuth";
 import {
   ApiError,
   type CreatedTicket,
@@ -117,7 +117,8 @@ const validate = (draft: Draft): Record<string, string> => {
  * happens when the ticket is created but one of its attachments then fails.
  */
 export const CreateTicket = () => {
-  const { requester, generation } = useRequester();
+  const { user } = useAuth();
+  const signedInAs = user?.id ?? null;
   const navigate = useNavigate();
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -138,30 +139,27 @@ export const CreateTicket = () => {
   >([]);
 
   /*
-   * BR-09: a draft written as one Requester is never submitted as another.
+   * BR-09: a draft written as one person is never submitted as another.
    *
-   * Today the rule also holds by accident — Change Requester navigates away and
-   * the component unmounts, taking the draft with it. That is the routing doing
+   * Today the rule also holds by accident — signing out navigates away and the
+   * component unmounts, taking the draft with it. That is the routing doing
    * it, not the rule being enforced, and it stops being true the moment
    * anything switches identity without leaving the page. The guard puts the
    * rule where the rule lives.
-   *
-   * `generation` rather than `requester.id`, because it also bumps when the
-   * same person is re-selected, which is still a new context.
    */
-  const seen = useRef(generation);
+  const seen = useRef(signedInAs);
 
   useEffect(() => {
-    if (seen.current === generation) {
+    if (seen.current === signedInAs) {
       return;
     }
 
-    seen.current = generation;
+    seen.current = signedInAs;
     setDraft(EMPTY);
     setErrors({});
     setAttachments([]);
     void navigate("/my-tickets");
-  }, [generation, navigate]);
+  }, [signedInAs, navigate]);
 
   /** Bumped on every rejected submit so repeated failures re-focus. */
   const [attempt, setAttempt] = useState(0);
@@ -260,7 +258,7 @@ export const CreateTicket = () => {
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
 
-    if (!requester || !usable) {
+    if (!user || !usable) {
       return;
     }
 
@@ -276,16 +274,13 @@ export const CreateTicket = () => {
     setSubmitting(true);
 
     try {
-      const ticket = await createTicket(
-        {
-          categoryId: Number(draft.categoryId),
-          relatedSystemId: Number(draft.relatedSystemId),
-          summary: draft.summary.trim(),
-          description: draft.description.trim(),
-          requestedPriority: draft.requestedPriority,
-        },
-        requester.id
-      );
+      const ticket = await createTicket({
+        categoryId: Number(draft.categoryId),
+        relatedSystemId: Number(draft.relatedSystemId),
+        summary: draft.summary.trim(),
+        description: draft.description.trim(),
+        requestedPriority: draft.requestedPriority,
+      });
 
       /*
        * The ticket exists now, so the queued files can finally be sent —
@@ -328,7 +323,7 @@ export const CreateTicket = () => {
         );
 
         try {
-          await uploadAttachment(ticket.id, row.file, requester.id);
+          await uploadAttachment(ticket.id, row.file);
         } catch (error) {
           failed.push({
             filename: row.file.name,
@@ -554,7 +549,7 @@ export const CreateTicket = () => {
             value={draft.relatedSystemId}
           />
 
-          <TextInput label="Requester" readOnly value={requester?.name ?? ""} />
+          <TextInput label="Requester" readOnly value={user?.name ?? ""} />
           <Select
             disabled={!usable}
             error={errors["requestedPriority"]}

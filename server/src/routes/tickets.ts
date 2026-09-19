@@ -4,57 +4,22 @@ import {
   ATTACHMENT_SHAPE,
   toAttachmentResponse,
 } from "../attachments/shape.js";
+import { ownTicketsOf, readableTicketsOf } from "../auth/scope.js";
 import { ErrorCode, sendError, sendInternalError } from "../http/errors.js";
 import { identifier } from "../http/identifier.js";
-import {
-  requesterOf,
-  requireRequesterContext,
-} from "../middleware/requesterContext.js";
+import { currentUser, requireSignedIn } from "../middleware/session.js";
 import { prisma } from "../prisma.js";
+import {
+  LIST_SHAPE,
+  readTicketPage,
+  TICKET_SHAPE,
+  ticketListWhere,
+} from "../tickets/ticketList.js";
 import { claimTicketNumber } from "../tickets/ticketNumber.js";
 import { parseTicketQuery } from "../tickets/ticketQuery.js";
 import { validateTicketInput } from "../tickets/validation.js";
 
 export const ticketsRouter = Router();
-
-/**
- * What a row in the list carries.
- *
- * Deliberately without `description`: the list shows a summary, and sending a
- * five-thousand-character body for every row of every page to render one line
- * of it is a cost with no reader.
- */
-const LIST_SHAPE = {
-  id: true,
-  ticketNumber: true,
-  summary: true,
-  requestedPriority: true,
-  itPriority: true,
-  currentStatus: true,
-  createdAt: true,
-  updatedAt: true,
-  category: { select: { id: true, name: true } },
-  relatedSystem: { select: { id: true, name: true } },
-  ticketOwner: { select: { id: true, name: true } },
-} as const;
-
-/** Everything a client is given about one ticket. */
-const TICKET_SHAPE = {
-  id: true,
-  ticketNumber: true,
-  summary: true,
-  description: true,
-  requestedPriority: true,
-  itPriority: true,
-  currentStatus: true,
-  resolutionSummary: true,
-  createdAt: true,
-  updatedAt: true,
-  category: { select: { id: true, name: true } },
-  relatedSystem: { select: { id: true, name: true } },
-  requester: { select: { id: true, name: true } },
-  ticketOwner: { select: { id: true, name: true } },
-} as const;
 
 /**
  * Raised inside the creation transaction when a referenced row is missing or
@@ -79,8 +44,8 @@ class UnavailableReferenceError extends Error {
 // statements outside it are synchronous. Express 5 also forwards rejections
 // from async handlers, but this holds without relying on that.
 // oxlint-disable-next-line oxc/no-async-endpoint-handlers
-ticketsRouter.post("/tickets", requireRequesterContext, async (req, res) => {
-  const requester = requesterOf(res);
+ticketsRouter.post("/tickets", ...requireSignedIn, async (req, res) => {
+  const user = currentUser(res);
   const input = validateTicketInput(req.body);
 
   if (!input.ok) {
@@ -141,16 +106,21 @@ ticketsRouter.post("/tickets", requireRequesterContext, async (req, res) => {
       return await tx.ticket.create({
         data: {
           ticketNumber,
-          // Ownership comes from the validated context. Anything the body said
-          // about who this belongs to was never read (BR-11).
-          requesterId: requester.id,
+          // Ownership comes from the session. Anything the body said about who
+          // this belongs to — a `requesterId` included — was never read (BR-03,
+          // AC-03).
+          requesterId: user.id,
           categoryId: input.value.categoryId,
           relatedSystemId: input.value.relatedSystemId,
           summary: input.value.summary,
           description: input.value.description,
           requestedPriority: input.value.requestedPriority,
-          // currentStatus defaults to NEW, itPriority, ticketOwner and
-          // resolutionSummary stay null. Lab 2 has nothing that can set them.
+          // IT Priority starts as a copy of what the Requester asked for
+          // (BR-23). From here the two are independent: only staff change this
+          // one, and changing it never touches the Requester's (BR-22).
+          itPriority: input.value.requestedPriority,
+          // currentStatus defaults to NEW; ticketOwner and resolutionSummary
+          // stay null until staff act on the ticket.
         },
         select: TICKET_SHAPE,
       });
@@ -174,8 +144,8 @@ ticketsRouter.post("/tickets", requireRequesterContext, async (req, res) => {
 });
 
 // oxlint-disable-next-line oxc/no-async-endpoint-handlers
-ticketsRouter.get("/tickets", requireRequesterContext, async (req, res) => {
-  const requester = requesterOf(res);
+ticketsRouter.get("/tickets", ...requireSignedIn, async (req, res) => {
+  const user = currentUser(res);
   const parsed = parseTicketQuery(req.query as Record<string, unknown>);
 
   if (!parsed.ok) {
@@ -194,91 +164,31 @@ ticketsRouter.get("/tickets", requireRequesterContext, async (req, res) => {
   try {
     // Ownership is a `where` clause, not a filter applied afterwards. Fetching
     // and then discarding would page over other people's rows and report their
-    // count.
-    const where = {
-      requesterId: requester.id,
-      ...(query.categoryId === undefined
-        ? {}
-        : { categoryId: query.categoryId }),
-      ...(query.requestedPriority === undefined
-        ? {}
-        : { requestedPriority: query.requestedPriority }),
-      ...(query.itPriority === undefined
-        ? {}
-        : { itPriority: query.itPriority }),
-      ...(query.status === undefined ? {} : { currentStatus: query.status }),
-      ...(query.search === undefined
-        ? {}
-        : {
-            OR: [
-              {
-                ticketNumber: {
-                  contains: query.search,
-                  mode: "insensitive" as const,
-                },
-              },
-              {
-                summary: {
-                  contains: query.search,
-                  mode: "insensitive" as const,
-                },
-              },
-            ],
-          }),
-    };
+    // count. "My tickets" for every role, staff included (FR-30, D-07).
+    const where = { ...ticketListWhere(query), ...ownTicketsOf(user) };
 
-    // One snapshot for both reads. Run separately they see different states,
-    // so a ticket created between them makes totalItems disagree with the rows
-    // actually returned — the metadata would claim a page that is not there.
-    // Repeatable read rather than the default: under read committed each
-    // statement takes its own snapshot even inside one transaction, which is
-    // the very thing being avoided.
-    const [totalItems, data] = await prisma.$transaction(
-      [
-        prisma.ticket.count({ where }),
-        prisma.ticket.findMany({
-          where,
-          // The immutable id is always the last key. Without it two tickets
-          // sharing a createdAt have no defined order between them, so the
-          // same row can appear on two pages or on none (BR-32).
-          orderBy: [{ [query.sort]: query.order }, { id: "desc" }],
-          skip: (query.page - 1) * query.pageSize,
-          take: query.pageSize,
-          select: LIST_SHAPE,
-        }),
-      ],
-      { isolationLevel: "RepeatableRead" }
-    );
-
-    res.status(200).json({
-      data,
-      meta: {
-        page: query.page,
-        pageSize: query.pageSize,
-        totalItems,
-        totalPages: Math.ceil(totalItems / query.pageSize),
-      },
-    });
+    res.status(200).json(await readTicketPage(where, query, LIST_SHAPE));
   } catch (error) {
     sendInternalError(res, "Failed to list tickets", error);
   }
 });
 
 /**
- * One owned ticket, with its attachment metadata.
+ * One readable ticket, with its attachment metadata.
  *
- * Ownership is part of the query, not a check on the result. Fetching first and
+ * A Requester reads their own; IT Staff and Administrators read any (D-08).
+ * The scope is part of the query, not a check on the result. Fetching first and
  * comparing afterwards means the row is in memory before the decision is made,
  * and every later edit to this handler has to remember not to leak it.
  *
  * A ticket belonging to someone else answers exactly as a ticket that does not
  * exist: same status, same code, same body. `403` would confirm the ticket is
  * real, which is precisely what someone walking the identifiers wants to learn
- * (BR-12, D-07). This is the property Part 8 asks to see demonstrated.
+ * (BR-18, AC-12). This is the property Part 8 asks to see demonstrated.
  */
 // oxlint-disable-next-line oxc/no-async-endpoint-handlers
-ticketsRouter.get("/tickets/:id", requireRequesterContext, async (req, res) => {
-  const requester = requesterOf(res);
+ticketsRouter.get("/tickets/:id", ...requireSignedIn, async (req, res) => {
+  const user = currentUser(res);
   const id = identifier(String(req.params.id));
 
   if (id === null) {
@@ -293,7 +203,7 @@ ticketsRouter.get("/tickets/:id", requireRequesterContext, async (req, res) => {
 
   try {
     const ticket = await prisma.ticket.findFirst({
-      where: { id, requesterId: requester.id },
+      where: { id, ...readableTicketsOf(user) },
       select: {
         ...TICKET_SHAPE,
         attachments: {

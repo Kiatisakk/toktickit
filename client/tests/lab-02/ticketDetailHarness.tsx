@@ -2,12 +2,11 @@ import { render } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { vi } from "vitest";
 
-import {
-  RequesterContext,
-  type RequesterContextValue,
-} from "../../src/context/requesterContextValue";
+import { AuthContext } from "../../src/context/authContextValue";
 import type { AttachmentMetadata } from "../../src/lib/api";
 import { TicketDetail } from "../../src/routes/TicketDetail";
+import { authContext } from "../support/auth";
+import { jsonResponse } from "../support/http";
 
 /**
  * Fixtures and a renderer shared by the two suites that exercise this screen.
@@ -20,17 +19,12 @@ import { TicketDetail } from "../../src/routes/TicketDetail";
  * copied into each and drifting apart.
  */
 
-export const CONTEXT: RequesterContextValue = {
-  status: "selected",
-  requester: {
-    id: 1,
-    name: "Jennifer Anderson",
-    email: "jennifer.anderson@example.ac.th",
-  },
-  generation: 0,
-  select: () => undefined,
-  clear: () => undefined,
-};
+// Re-exported so the two suites that already import these from here keep
+// working unchanged; the definitions now live with the other fixtures.
+export { jsonResponse };
+
+/** Jennifer, signed in. The ticket below is hers. */
+export const AUTH = authContext();
 
 export const ATTACHMENT: AttachmentMetadata = {
   id: 11,
@@ -54,6 +48,7 @@ export const TICKET = {
   itPriority: null,
   currentStatus: "NEW",
   resolutionSummary: null,
+  resolvedIndicatedAt: null as string | null,
   createdAt: "2026-08-01T09:14:00.000Z",
   updatedAt: "2026-08-03T11:02:00.000Z",
   category: { id: 2, name: "Hardware" },
@@ -63,19 +58,31 @@ export const TICKET = {
   attachments: [] as AttachmentMetadata[],
 };
 
-export const jsonResponse = (body: unknown, status = 200) =>
-  ({ ok: status < 400, status, json: () => Promise.resolve(body) }) as Response;
+/** An empty conversation, for suites that are not about comments. */
+export const NO_COMMENTS = { data: [] };
 
+/**
+ * Answers every request with `body`, except the comments read Lab 3 added to
+ * this screen (ui-spec.md §7), which gets an empty conversation. Without that,
+ * the ticket is handed to the comments section, which rightly calls it a
+ * malformed response and puts an alert on a screen these suites expect clean.
+ */
 export const respond = (body: unknown, status = 200) =>
-  vi.fn(() => Promise.resolve(jsonResponse(body, status)));
+  vi.fn((url: string) =>
+    Promise.resolve(
+      String(url).endsWith("/comments")
+        ? jsonResponse(NO_COMMENTS)
+        : jsonResponse(body, status)
+    )
+  );
 
-export const renderAt = (path = "/tickets/42") =>
+export const renderAt = (path = "/tickets/42", auth = AUTH) =>
   render(
     <MemoryRouter initialEntries={[path]}>
-      <RequesterContext.Provider value={CONTEXT}>
+      <AuthContext.Provider value={auth}>
         <Routes>
           <Route element={<TicketDetail />} path="/tickets/:ticketId" />
         </Routes>
-      </RequesterContext.Provider>
+      </AuthContext.Provider>
     </MemoryRouter>
   );

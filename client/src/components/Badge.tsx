@@ -1,4 +1,4 @@
-export type BadgeKind = "priority" | "status" | "attachment";
+export type BadgeKind = "priority" | "status" | "attachment" | "role";
 
 interface BadgeProps {
   kind: BadgeKind;
@@ -7,6 +7,17 @@ interface BadgeProps {
   /** Shown when the value is null — an unset IT priority, for instance. */
   emptyLabel?: string;
 }
+
+/**
+ * Words that mechanical title-casing gets wrong. `IT_STAFF` would read "It
+ * Staff", and `ADMIN` is called Administrator everywhere the handout names it.
+ */
+const LABELS: Record<string, string> = {
+  IT_STAFF: "IT Staff",
+  ADMIN: "Administrator",
+  // Title-casing would capitalise the "for" (ui-spec.md §5).
+  WAITING_FOR_REQUESTER: "Waiting for Requester",
+};
 
 /** `IN_PROGRESS` reads as "In Progress" on screen. */
 const humanise = (value: string) =>
@@ -42,7 +53,7 @@ export const Badge = ({ kind, value, emptyLabel = "Not set" }: BadgeProps) => {
 
   return (
     <span className={`tkt-badge tkt-badge--${modifier}`} data-kind={kind}>
-      {humanise(value)}
+      {LABELS[value] ?? humanise(value)}
     </span>
   );
 };
