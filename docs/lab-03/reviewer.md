@@ -179,7 +179,7 @@ He approved with `LGTM` at 19:52:19Z on 2026-09-18 and merged twelve seconds lat
 
 ### PR #67 — Close the Planned rows and bring the registers current (Issue #55)
 
-[PR #67](https://github.com/Kiatisakk/toktickit/pull/67) · reviewed 2026-09-19 · **4 findings** in the review body, verdict **Changes requested**. Labelled `DO NOT MERGE` by me, so it is not merged whatever the verdict, until I remove the label.
+[PR #67](https://github.com/Kiatisakk/toktickit/pull/67) · reviewed 2026-09-19 · **10 findings** across three review rounds, verdict **Changes requested → Approved**. Merged into `lab3-staging` by @beambeambeam as `01ceb97`.
 
 He reviewed on two axes — against the specification and against the documented standards — and ran what he could: the client tests and both TypeScript builds passed; the server suite did not run, because his database was down.
 
@@ -191,7 +191,9 @@ He reviewed on two axes — against the specification and against the documented
 
 *"reviewer.md records PR #67 as merged, linked to Issue #57."* **Disputed, then found to be right about the page.** The row was about beambeambeam#67, his merged account-lifecycle PR, and was correct. But the table wrote his Issue as a bare `#57`, and GitHub autolinks a bare `#57` to this repository — so on the rendered page, that row read as our PR #67 pointing at our Issue #57, which is exactly what he reported. Every reference to his PRs and Issues now names his repository. The lesson is the one this file keeps relearning: check the page as it is rendered, not only the source.
 
-I replied on each finding and ran the server suite he could not: 577 of 577. His re-review was requested on 2026-09-19.
+I replied on each initial finding and ran the server suite he could not: 577 of 577. The next review found three more documentation corrections: public login and staff/Administrator ticket reads in the README, and the server count in `tests.md`. All three were fixed in `1cb4ad0` and answered on their threads.
+
+The final review raised three standards points. I replied that the reflection in `ai-use.md` is my own writing for Part 4 and kept it. Beam approved with `LGTM` at 07:55:48Z on 2026-09-19 and merged ten seconds later. The two remaining test-file corrections — narrowing the field groups without casts and formatting the API-40 request — were made after the merge in `5ac75f4` on the next Issue #55 branch, `docs/lab3-report`; I answered both threads with that commit and its checks. Issue #55 remains open for the PDF and release.
 
 ---
 
@@ -300,7 +302,7 @@ Reviewed 2026-09-16, in order, in the terse caveman format at his request for th
 | [#64](https://github.com/Kiatisakk/toktickit/pull/64) | received | 0 | Approved | Merged |
 | [#65](https://github.com/Kiatisakk/toktickit/pull/65) | received | 0 | Approved | Merged |
 | [#66](https://github.com/Kiatisakk/toktickit/pull/66) | received | 6 | Comment → Approved | Merged |
-| [#67](https://github.com/Kiatisakk/toktickit/pull/67) | received | 4 | Changes requested | Open — fixes pushed, re-review requested; `DO NOT MERGE` |
+| [#67](https://github.com/Kiatisakk/toktickit/pull/67) | received | 10 | Changes requested → Approved | Merged; two test-file fixes carried on `docs/lab3-report` |
 | [beambeambeam#59](https://github.com/beambeambeam/toktickit/pull/59) | given | 3 | Changes requested → Approved | Merged |
 | [beambeambeam#60](https://github.com/beambeambeam/toktickit/pull/60) | given | 6 | Changes requested → Approved | Merged |
 | [beambeambeam#61](https://github.com/beambeambeam/toktickit/pull/61) | given | 4 | Changes requested → Approved | Merged |
