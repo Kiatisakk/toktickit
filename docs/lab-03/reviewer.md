@@ -175,7 +175,7 @@ He approved with `LGTM` at 19:52:19Z on 2026-09-18 and merged twelve seconds lat
 
 ## Reviews I gave
 
-### beambeambeam#59 — Sprint 3 engineering contract (his Issue #49)
+### beambeambeam#59 — Sprint 3 engineering contract (his Issue beambeambeam/toktickit#49)
 
 [PR #59](https://github.com/beambeambeam/toktickit/pull/59) · reviewed 2026-09-09 · **3 line comments**, verdict **Changes requested**, then **Approved**; I merged it, since the workflow puts the merge with the approver.
 
@@ -189,7 +189,7 @@ I said plainly that BR-07 is the better rule — composition requirements are wh
 
 **His response.** All three fixed, and fixed at the source rather than only downstream: BR-01 itself gained the ordered check, so the rule and the API agreed instead of the API silently overriding a rule that still said the opposite. Consistent across all five documents. He adopted the ordered-verification approach I suggested — verify the password first, reveal `ACCOUNT_INACTIVE` only after it matches — and added "neither response creates a session", which I had not asked for. E2E-01 now provisions its own account **and** gets a disposable database per run, where either alone would have closed it, and BR-24 stayed intact.
 
-### beambeambeam#60 — Authenticated Requester workflow (his Issue #50)
+### beambeambeam#60 — Authenticated Requester workflow (his Issue beambeambeam/toktickit#50)
 
 [PR #60](https://github.com/beambeambeam/toktickit/pull/60) · reviewed 2026-09-10 · **5 line comments plus one general comment**, verdict **Changes requested**, then **Approved**; I merged it.
 
@@ -207,7 +207,7 @@ I said plainly that BR-07 is the better rule — composition requirements are wh
 
 **His response.** All six fixed, and two fixed better than asked. `cookieSecure` no longer reads the request at all — it derives from configuration, so `trust proxy` became a second line of defence rather than the only one. And the reservation release went into a `finally` rather than onto the single path I named, which closed the paths I had not named. The evidence now reproduces: the Lab 3 spec takes its own screenshots and writes its own manifest. `tests.md` was renamed from a plan to a register, implemented rows carry real coverage, and the rows still reading `Planned` are the slices that genuinely are.
 
-### beambeambeam#61 — User list and account creation (his Issue #56)
+### beambeambeam#61 — User list and account creation (his Issue beambeambeam/toktickit#56)
 
 [PR #61](https://github.com/beambeambeam/toktickit/pull/61) · reviewed 2026-09-14 · **4 line comments**, verdict **Changes requested**.
 
@@ -225,7 +225,7 @@ I said plainly that BR-07 is the better rule — composition requirements are wh
 
 **Outcome.** He replied on all six threads the same day. Re-reviewed and approved at 19:25:55Z on 2026-09-14, merged by me at 19:26:19Z. Verdict: Changes requested → Approved, Merged.
 
-### beambeambeam#62 — Shared Ticket queue and read-only detail (his Issue #51)
+### beambeambeam#62 — Shared Ticket queue and read-only detail (his Issue beambeambeam/toktickit#51)
 
 [PR #62](https://github.com/beambeambeam/toktickit/pull/62) · reviewed 2026-09-16 · **4 line comments**, verdict **Changes requested** on one of them.
 
@@ -245,11 +245,11 @@ Reviewed 2026-09-16, in order, in the terse caveman format at his request for th
 
 | PR | Issue | Verdict | Findings |
 | --- | --- | --- | --- |
-| [#63](https://github.com/beambeambeam/toktickit/pull/63) | #52 ownership, IT Priority | Changes requested | 🔴 1 · 🟡 2 |
-| [#64](https://github.com/beambeambeam/toktickit/pull/64) | #53 status workflow | Changes requested | 🟡 2 |
-| [#65](https://github.com/beambeambeam/toktickit/pull/65) | #54 public comments | Changes requested | 🟡 2 |
-| [#66](https://github.com/beambeambeam/toktickit/pull/66) | #55 internal notes | Comment | 🔵 1 |
-| [#67](https://github.com/beambeambeam/toktickit/pull/67) | #57 account lifecycle | Comment | none blocking |
+| [beambeambeam#63](https://github.com/beambeambeam/toktickit/pull/63) | beambeambeam/toktickit#52 ownership, IT Priority | Changes requested | 🔴 1 · 🟡 2 |
+| [beambeambeam#64](https://github.com/beambeambeam/toktickit/pull/64) | beambeambeam/toktickit#53 status workflow | Changes requested | 🟡 2 |
+| [beambeambeam#65](https://github.com/beambeambeam/toktickit/pull/65) | beambeambeam/toktickit#54 public comments | Changes requested | 🟡 2 |
+| [beambeambeam#66](https://github.com/beambeambeam/toktickit/pull/66) | beambeambeam/toktickit#55 internal notes | Comment | 🔵 1 |
+| [beambeambeam#67](https://github.com/beambeambeam/toktickit/pull/67) | beambeambeam/toktickit#57 account lifecycle | Comment | none blocking |
 
 **The one bug.** On #63, *Save Owner* submitted `selectedOwnerId ?? ""`, so pressing it without touching the dropdown sent `ownerId: null` and unassigned the ticket — while the dropdown displayed the current owner. His test always selected an owner first, which is why it never ran the untouched path.
 
