@@ -129,7 +129,10 @@ describe("STYLE-10 validation placement", () => {
     const group = screen.getByLabelText("Summary").closest(".tkt-field-group");
 
     expect(group).not.toBeNull();
-    expect(within(group as HTMLElement).getByRole("alert")).toHaveTextContent(
+    if (!(group instanceof HTMLElement)) {
+      throw new Error("Expected the summary field group to be an HTMLElement.");
+    }
+    expect(within(group).getByRole("alert")).toHaveTextContent(
       "Enter a summary."
     );
   });
@@ -149,8 +152,9 @@ describe("STYLE-10 validation placement", () => {
       .closest(".tkt-field-group");
 
     expect(group).not.toBeNull();
-    expect(within(group as HTMLElement).getByRole("alert")).toHaveTextContent(
-      "Enter a note."
-    );
+    if (!(group instanceof HTMLElement)) {
+      throw new Error("Expected the note field group to be an HTMLElement.");
+    }
+    expect(within(group).getByRole("alert")).toHaveTextContent("Enter a note.");
   });
 });

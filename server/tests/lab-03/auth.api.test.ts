@@ -788,16 +788,13 @@ describe("BR-20 error bodies", () => {
 
     // 409: the address is taken. 413: past the 100 KB JSON limit.
     const [conflict, tooLarge] = await Promise.all([
-      request(app)
-        .post("/api/admin/users")
-        .set("Cookie", admin.cookie)
-        .send({
-          name: "Taken",
-          email: ACTIVE_REQUESTER.email,
-          role: "REQUESTER",
-          isActive: true,
-          initialPassword: "Starting9!",
-        }),
+      request(app).post("/api/admin/users").set("Cookie", admin.cookie).send({
+        name: "Taken",
+        email: ACTIVE_REQUESTER.email,
+        role: "REQUESTER",
+        isActive: true,
+        initialPassword: "Starting9!",
+      }),
       request(app)
         .post("/api/tickets")
         .set("Cookie", cookie)
