@@ -7,10 +7,17 @@ and once by discovering that the section had stopped being updated eight prompts
 ## 1. Which AI I used
 
 **Claude Code** in the terminal, with access to the repository and to the `gh` command line
-tool. **Claude Opus 5** throughout the sprint so far — every commit on `lab3-staging` and on
-`feature/lab3-test-fixtures` carries its co-author trailer, and no sub-agent has authored a
-commit in this lab. Lab 2 mixed Sonnet 5 sub-agents and Muse Spark 1.3 into the history; Lab 3
-has not needed to yet, and this line is the record of that rather than an omission.
+tool. **Claude Opus 5** for the contract and for Issues #46–#51 and #53, and as the session
+that directed and checked everything else.
+
+**Claude Sonnet 5 sub-agents** implemented two Issues end to end, each launched by the Opus 5
+session with a written brief and working alone in the repository: **#52** Internal Notes
+(PR #65) and **#54** the end-to-end journeys and screenshots (PR #66). Opus 5 then checked
+each one's work before calling it done, and found something both times — a type error of
+its own from #51 that broke `tsc -b`, and a reset script that could have emptied the
+development database. **Those sub-agents' commits carry the `Co-Authored-By: Claude Opus 5`
+trailer**, because the brief told them to use that line. The trailer is therefore wrong
+about who wrote them, and this paragraph is the correction.
 
 The closing issue (#55) was planned and implemented with **Muse Spark** instead —
 same terminal, same repository, same `gh` workflow. The prompts that mattered are
@@ -45,6 +52,13 @@ same numbers.
 
 ## 3. My reflection
 
-> _Left for me to write in my own words before submission, as §14 Part 4 requires. It is the
-> one section of this document that cannot be delegated, so it is deliberately empty rather
-> than drafted._
+ในครั้งนี้ ทุกครั้งที่ Implement จะมีหลายครั้งที่ต้องเทสใหม่และแก้โค้ดใหม่หลาย ๆ รอบ ตรงนี้เองเป็นจุดที่เสียเวลาและทรัพยากร Token เป็นอย่างมาก
+ผมเริ่มจาก Best Practice คือ `/grill-with-docs` ไป `/to-spec` ไป `/to-tickets` ก่อนจะเริ่ม Implement อะไรก็ตาม แต่ก็ยังพบว่ามี bug อยู่ในหลาย ๆ จุด
+ทำให้ผมคิดว่าการที่เราต้องกำหนด Scope งานและวิธีการทำงานให้ชัดเจน น่าจะเป็นจุดที่ทำให้เราประหยัดเวลาและ Token มากที่สุด ในระบบที่ codebase ใหญ่ขึ้นแบบนี้
+
+*In English:* This time, every implementation needed several rounds of re-testing and
+re-fixing code, and that is where the most time and tokens were spent. I began with the best
+practice — `/grill-with-docs`, then `/to-spec`, then `/to-tickets` — before implementing
+anything, and still found bugs in many places. That makes me think that defining the scope of
+the work, and how the work is to be done, clearly is what would save the most time and tokens
+once a codebase grows as large as this one.
