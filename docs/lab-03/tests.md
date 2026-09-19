@@ -278,7 +278,7 @@ npm exec -- ultracite check
 ## 5. Final Results
 
 Run on 2026-09-18/19, after the closing PR's tests landed: server `npx vitest run`
-(26 files, 576 tests), client `npx vitest run` (30 files, 436 tests) — both green.
+(26 files, 577 tests), client `npx vitest run` (30 files, 436 tests) — both green.
 The browser levels ran green as PR #66 and are untouched by this PR, which
 changes no application code; their counts below are the specs' own tests times
 the three viewport projects.

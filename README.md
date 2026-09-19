@@ -171,8 +171,8 @@ The test plans and results are in [docs/lab-01/tests.md](./docs/lab-01/tests.md)
 
 ## API
 
-Every endpoint except `GET /api/health` and `POST /api/auth/logout` requires a
-signed-in session, held in an `HttpOnly`, `SameSite=Lax`, `Secure` cookie. There
+Every endpoint except `GET /api/health`, `POST /api/auth/login` and
+`POST /api/auth/logout` requires a signed-in session, held in an `HttpOnly`, `SameSite=Lax`, `Secure` cookie. There
 is no test-only bypass and no client-supplied identity: the retired
 `X-Development-Requester-Id` header changes nothing. The full contract is in
 [docs/lab-03/api-spec.md](./docs/lab-03/api-spec.md); what follows is the map.
@@ -227,7 +227,8 @@ Active related systems in display order — `{ "id": 1, "name": "Email" }` and s
 
 ### `GET /api/tickets`
 
-The current requester's tickets, one page at a time. Supports `search`,
+The caller's own tickets, whatever their role — staff raise tickets too; the
+all-tickets view is the staff queue below. One page at a time. Supports `search`,
 `categoryId`, `requestedPriority`, `sort`, `order`, `page` and `pageSize`.
 An unrecognised or out-of-range value is an error rather than a silent default.
 The queue-only parameters and filters (`itPriority`, `status`, owner …) are
@@ -235,36 +236,42 @@ refused here — they belong to the staff queue below.
 
 ### `POST /api/tickets`
 
-Creates one ticket for the current requester and issues its official number.
+Creates one ticket for the caller and issues its official number.
 JSON only — attachments are added afterwards, one request per file, so that a
 ticket is never half-created because a file failed.
 
 ### `GET /api/tickets/:id`
 
-One ticket the current requester owns, with its attachment metadata. A ticket
-belonging to someone else answers exactly as a ticket that does not exist does,
-down to the response body: a `403` would confirm it is real.
+One ticket with its attachment metadata. A Requester may read only their own;
+IT Staff and Administrators may read any ticket. A Requester asking for someone
+else's ticket gets exactly the answer a ticket that does not exist gets, down to
+the response body: a `403` would confirm it is real.
 
 ### `POST /api/tickets/:id/attachments`
 
-Adds one file to an owned ticket. JPG, PNG, WEBP or PDF, up to 5 MB, up to five
+Adds one file to a ticket the caller raised — own only for every role, staff
+included. JPG, PNG, WEBP or PDF, up to 5 MB, up to five
 active files per ticket — the count is taken under a row lock, so two uploads
 racing cannot both see four.
 
 ### `GET /api/tickets/:id/attachments`
 
-Attachment metadata for an owned ticket, removed ones included. Removal keeps
+Attachment metadata, removed ones included, with the same scope as ticket
+detail: a Requester's own tickets, or any ticket for IT Staff and Administrators. Removal keeps
 the record and the reason; it is not a delete.
 
 ### `GET /api/attachments/:id/download`
 
-The stored file, for an active attachment on an owned ticket. Always sent as a
+The stored file, for an active attachment — on the Requester's own ticket, or on
+any ticket for IT Staff and Administrators. Always sent as a
 download and never rendered inline, which is what keeps an uploaded file from
 executing in the browser as page content.
 
 ### `DELETE /api/attachments/:id`
 
-Removes an attachment with a reason of 3 to 500 characters. The metadata and the
+Removes an attachment from a ticket the caller raised — own only for every role;
+staff can read and download others' files but never remove them. A reason of 3
+to 500 characters is required. The metadata and the
 reason stay visible afterwards; the file itself stops being downloadable.
 
 ### Staff — queue and ticket operations (IT Staff and Administrator)
