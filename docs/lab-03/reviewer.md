@@ -1,15 +1,17 @@
 # Lab 3 Peer Review Record
 
-Every Pull Request of Sprint 3, in both directions: the reviews received on this repository, and the reviews given on the peer's. Written as each review happens rather than reconstructed afterwards — Lab 1 was reconstructed at the end, which was slow and silently missed two Pull Requests.
+A living document. Each Pull Request adds its own entry as part of that Pull Request,
+while the conversation is still open — reconstructing this from GitHub afterwards was what
+Lab 1 cost, and expanded-then-collapsed review threads are easy to miss.
 
-## Identities
+| Role | Name | Student ID | GitHub |
+| --- | --- | --- | --- |
+| Author, repository owner | Kiatisak Markmeeshap | 67070501005 | [@Kiatisakk](https://github.com/Kiatisakk) |
+| Peer reviewer | Supawit Marayat | 67070501045 | [@beambeambeam](https://github.com/beambeambeam) |
 
-| | |
-| --- | --- |
-| Author | Kiatisak Markmeeshap · 67070501005 · [@Kiatisakk](https://github.com/Kiatisakk) |
-| Peer reviewer | Supawit Marayat · [@beambeambeam](https://github.com/beambeambeam) |
-| This repository | [Kiatisakk/toktickit](https://github.com/Kiatisakk/toktickit) |
-| Reviewed repository | [beambeambeam/toktickit](https://github.com/beambeambeam/toktickit) |
+Review runs in both directions with the same partner: he reviews the Pull Requests in
+[Kiatisakk/toktickit](https://github.com/Kiatisakk/toktickit), and I review his in
+[beambeambeam/toktickit](https://github.com/beambeambeam/toktickit).
 
 ---
 
