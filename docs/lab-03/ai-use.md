@@ -52,11 +52,7 @@ same numbers.
 
 ## 3. My reflection
 
-ในครั้งนี้ ทุกครั้งที่ Implement จะมีหลายครั้งที่ต้องเทสใหม่และแก้โค้ดใหม่หลาย ๆ รอบ ตรงนี้เองเป็นจุดที่เสียเวลาและทรัพยากร Token เป็นอย่างมาก
-ผมเริ่มจาก Best Practice คือ `/grill-with-docs` ไป `/to-spec` ไป `/to-tickets` ก่อนจะเริ่ม Implement อะไรก็ตาม แต่ก็ยังพบว่ามี bug อยู่ในหลาย ๆ จุด
-ทำให้ผมคิดว่าการที่เราต้องกำหนด Scope งานและวิธีการทำงานให้ชัดเจน น่าจะเป็นจุดที่ทำให้เราประหยัดเวลาและ Token มากที่สุด ในระบบที่ codebase ใหญ่ขึ้นแบบนี้
-
-*In English:* This time, every implementation needed several rounds of re-testing and
+This time, every implementation needed several rounds of re-testing and
 re-fixing code, and that is where the most time and tokens were spent. I began with the best
 practice — `/grill-with-docs`, then `/to-spec`, then `/to-tickets` — before implementing
 anything, and still found bugs in many places. That makes me think that defining the scope of
