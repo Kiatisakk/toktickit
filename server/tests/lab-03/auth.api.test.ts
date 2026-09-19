@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   ACTIVE_REQUESTER,
+  ADMINISTRATOR,
   INACTIVE_REQUESTER,
   MUST_CHANGE_REQUESTER,
   SECOND_REQUESTER,
@@ -738,6 +739,17 @@ describe("POST /api/auth/password", () => {
 });
 
 describe("BR-20 error bodies", () => {
+  // What a leak looks like: a V8 stack frame, an ORM or database complaint,
+  // a filesystem path, or a module filename with a line number.
+  const leak =
+    /stack|prisma|postgres|constraint|violates|ENOENT|node_modules|\.ts:|\.js:|at\s+\S+\s*\(/iu;
+
+  const expectEnvelopeOnly = (response: request.Response) => {
+    expect(response.status).toBeGreaterThanOrEqual(400);
+    expect(Object.keys(response.body)).toStrictEqual(["error"]);
+    expect(JSON.stringify(response.body)).not.toMatch(leak);
+  };
+
   it("API-40 no failure path leaks a stack trace, path or database message", async () => {
     const { cookie } = await signIn(
       ACTIVE_REQUESTER.email,
@@ -762,15 +774,102 @@ describe("BR-20 error bodies", () => {
         }),
     ]);
 
-    // What a leak looks like: a V8 stack frame, an ORM or database complaint,
-    // a filesystem path, or a module filename with a line number.
-    const leak =
-      /stack|prisma|postgres|constraint|violates|ENOENT|node_modules|\.ts:|\.js:|at\s+\S+\s*\(/iu;
-
     for (const response of answers) {
-      expect(response.status).toBeGreaterThanOrEqual(400);
-      expect(Object.keys(response.body)).toStrictEqual(["error"]);
-      expect(JSON.stringify(response.body)).not.toMatch(leak);
+      expectEnvelopeOnly(response);
+    }
+  });
+
+  it("API-40 conflict, oversize, wrong-type and internal failures keep the same envelope", async () => {
+    const { cookie } = await signIn(
+      ACTIVE_REQUESTER.email,
+      ACTIVE_REQUESTER.password
+    );
+    const admin = await signIn(ADMINISTRATOR.email, ADMINISTRATOR.password);
+
+    // 409: the address is taken. 413: past the 100 KB JSON limit.
+    const [conflict, tooLarge] = await Promise.all([
+      request(app)
+        .post("/api/admin/users")
+        .set("Cookie", admin.cookie)
+        .send({
+          name: "Taken",
+          email: ACTIVE_REQUESTER.email,
+          role: "REQUESTER",
+          isActive: true,
+          initialPassword: "Starting9!",
+        }),
+      request(app)
+        .post("/api/tickets")
+        .set("Cookie", cookie)
+        .send({ summary: "x".repeat(200 * 1024) }),
+    ]);
+
+    expect(conflict.status).toBe(409);
+    expect(conflict.body.error.code).toBe("EMAIL_ALREADY_EXISTS");
+    expect(tooLarge.status).toBe(413);
+    expect(tooLarge.body.error.code).toBe("REQUEST_TOO_LARGE");
+
+    // 415 and 500 need the caller's own ticket: one uploaded file of the
+    // wrong type, and one row whose bytes are gone from storage.
+    const [category, system] = await Promise.all([
+      prisma.category.findFirstOrThrow({ where: { isActive: true } }),
+      prisma.relatedSystem.findFirstOrThrow({ where: { isActive: true } }),
+    ]);
+    const me = await prisma.user.findUniqueOrThrow({
+      where: { email: ACTIVE_REQUESTER.email },
+      select: { id: true },
+    });
+    const ticket = await prisma.ticket.create({
+      data: {
+        ticketNumber: `TKT-2990-${Date.now()}`,
+        requesterId: me.id,
+        categoryId: category.id,
+        relatedSystemId: system.id,
+        summary: "API-40 owns this ticket",
+        description: "Created by the error-body suite.",
+        requestedPriority: "LOW",
+      },
+      select: { id: true },
+    });
+
+    try {
+      const wrongType = await request(app)
+        .post(`/api/tickets/${ticket.id}/attachments`)
+        .set("Cookie", cookie)
+        .attach("file", Buffer.from("not a file type we take"), {
+          filename: "notes.txt",
+          contentType: "text/plain",
+        });
+
+      expect(wrongType.status).toBe(415);
+      expect(wrongType.body.error.code).toBe("UNSUPPORTED_FILE_TYPE");
+
+      const missing = await prisma.attachment.create({
+        data: {
+          ticketId: ticket.id,
+          originalFilename: "gone.pdf",
+          storedFilename: `api40-${Date.now()}.pdf`,
+          mimeType: "application/pdf",
+          sizeBytes: 8,
+          uploadedById: me.id,
+        },
+        select: { id: true },
+      });
+
+      // The row promises bytes the disk does not have: our fault, so 500 —
+      // still the envelope, never the missing-file error itself.
+      const internal = await request(app)
+        .get(`/api/attachments/${missing.id}/download`)
+        .set("Cookie", cookie);
+
+      expect(internal.status).toBe(500);
+      expect(internal.body.error.code).toBe("INTERNAL_ERROR");
+
+      for (const response of [conflict, tooLarge, wrongType, internal]) {
+        expectEnvelopeOnly(response);
+      }
+    } finally {
+      await prisma.ticket.deleteMany({ where: { id: ticket.id } });
     }
   });
 });

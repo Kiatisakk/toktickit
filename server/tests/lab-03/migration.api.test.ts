@@ -1,4 +1,4 @@
-import { readdir, readFile, unlink } from "node:fs/promises";
+import { readdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -390,19 +390,25 @@ describe("MIG-04 an attachment from before survives the move", () => {
   const PDF = Buffer.from("%PDF-1.4\nmigration suite\n%%EOF\n");
 
   it("MIG-04 still reachable by its owner, and now by staff", async () => {
-    // Uploaded through the requester endpoint, exactly as Lab 2 wrote it —
-    // the staff endpoints did not exist when this row was written.
-    const uploaded = await request(app)
-      .post(`/api/tickets/${ticketId}/attachments`)
-      .set("Cookie", requester.cookie)
-      .attach("file", PDF, {
-        filename: "before-sign-in-live.pdf",
-        contentType: "application/pdf",
-      });
+    // Written straight to the table with no session anywhere, exactly as a
+    // Lab 2 row was — not uploaded through the endpoint. (The suite's own
+    // fixture cannot serve here: it is removed by design, for MIG-02, and a
+    // removed file answers 404 by contract.) Bytes are storage, not the
+    // migration, so they are placed on disk beside the row.
+    const legacy = await prisma.attachment.create({
+      data: {
+        ticketId,
+        originalFilename: "raised-before-sign-in.pdf",
+        storedFilename: `migration-test-${Date.now()}.pdf`,
+        mimeType: "application/pdf",
+        sizeBytes: PDF.length,
+        uploadedById: requester.id,
+      },
+      select: { id: true, storedFilename: true },
+    });
 
-    expect(uploaded.status).toBe(201);
+    await writeFile(pathFor(legacy.storedFilename), PDF);
 
-    const uploadedId = uploaded.body.id as number;
     const staff = await signInAs(ACTIVE_STAFF);
 
     const [ownerList, staffList, ownerDownload, staffDownload] =
@@ -414,10 +420,10 @@ describe("MIG-04 an attachment from before survives the move", () => {
           .get(`/api/tickets/${ticketId}/attachments`)
           .set("Cookie", staff.cookie),
         request(app)
-          .get(`/api/attachments/${uploadedId}/download`)
+          .get(`/api/attachments/${legacy.id}/download`)
           .set("Cookie", requester.cookie),
         request(app)
-          .get(`/api/attachments/${uploadedId}/download`)
+          .get(`/api/attachments/${legacy.id}/download`)
           .set("Cookie", staff.cookie),
       ]);
 
@@ -432,7 +438,7 @@ describe("MIG-04 an attachment from before survives the move", () => {
 
     const ids = (staffList.body.data as { id: number }[]).map((row) => row.id);
 
-    expect(ids).toContain(uploadedId);
+    expect(ids).toContain(legacy.id);
     expect(
       Buffer.from(staffDownload.body as Uint8Array).toString("utf-8")
     ).toContain("%PDF-1.4");

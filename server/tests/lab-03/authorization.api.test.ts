@@ -646,7 +646,12 @@ describe("a role that changes while a session is open", () => {
  */
 describe("every role-restricted endpoint with each wrong role", () => {
   it("SEC-02 staff and Administrator endpoints refuse a Requester with 403 FORBIDDEN", async () => {
-    const staffOnly: { method: "get" | "post" | "patch"; route: string }[] = [
+    // Named for what the rows share — every endpoint a Requester may not
+    // call — not for one role: the last four rows are Administrator-only.
+    const notForRequesters: {
+      method: "get" | "post" | "patch";
+      route: string;
+    }[] = [
       { method: "get", route: "/api/staff/tickets" },
       { method: "get", route: "/api/staff/owners" },
       {
@@ -667,7 +672,7 @@ describe("every role-restricted endpoint with each wrong role", () => {
     ];
 
     const answers = await Promise.all(
-      staffOnly.map(async ({ method, route }) => {
+      notForRequesters.map(async ({ method, route }) => {
         const response = await as(requesterA)(request(app)[method](route)).send(
           {}
         );
@@ -677,7 +682,7 @@ describe("every role-restricted endpoint with each wrong role", () => {
     );
 
     expect(answers).toStrictEqual(
-      staffOnly.map(({ method, route }) => ({
+      notForRequesters.map(({ method, route }) => ({
         method,
         route,
         status: 403,
