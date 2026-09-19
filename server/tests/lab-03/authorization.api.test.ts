@@ -26,7 +26,7 @@ import { signInAs } from "./support/signIn.js";
  * and never through the interface: a control the interface hides is feedback,
  * not a boundary (BR-17), so the boundary is asserted where it lives.
  *
- * Covers SEC-01, SEC-03, SEC-04, SEC-05, SEC-06, SEC-08, SEC-10, SEC-13,
+ * Covers SEC-01, SEC-02, SEC-03, SEC-04, SEC-05, SEC-06, SEC-08, SEC-10, SEC-13,
  * SEC-14,
  * SEC-15, API-14, API-41, API-46 and MIG-06. The Administrator and staff
  * status rows in the same table arrive with the endpoints they test.
@@ -632,5 +632,135 @@ describe("a role that changes while a session is open", () => {
     // Still signed in, and still able to do what a Requester may do: this is a
     // demotion, not a sign-out.
     expect(own.status).toBe(200);
+  });
+});
+
+/**
+ * SEC-02 — every role-restricted endpoint with each wrong role (FR-10).
+ *
+ * The single-case tests (SEC-05, SEC-07, SEC-09, SEC-11) each pin one slice.
+ * This one enumerates the whole table in one place, so an endpoint added later
+ * without a guard — or a guard added without being added here — fails loudly.
+ * One allowed-role probe per group shows the refusal is the guard, not the
+ * route: the same endpoint with a bad body answers 400, never 403.
+ */
+describe("every role-restricted endpoint with each wrong role", () => {
+  it("SEC-02 staff and Administrator endpoints refuse a Requester with 403 FORBIDDEN", async () => {
+    // Named for what the rows share — every endpoint a Requester may not
+    // call — not for one role: the last four rows are Administrator-only.
+    const notForRequesters: {
+      method: "get" | "post" | "patch";
+      route: string;
+    }[] = [
+      { method: "get", route: "/api/staff/tickets" },
+      { method: "get", route: "/api/staff/owners" },
+      {
+        method: "patch",
+        route: `/api/staff/tickets/${ticketOfA}/owner`,
+      },
+      {
+        method: "patch",
+        route: `/api/staff/tickets/${ticketOfA}/it-priority`,
+      },
+      { method: "patch", route: `/api/staff/tickets/${ticketOfA}/status` },
+      { method: "get", route: `/api/tickets/${ticketOfA}/notes` },
+      { method: "post", route: `/api/tickets/${ticketOfA}/notes` },
+      { method: "get", route: "/api/admin/users" },
+      { method: "post", route: "/api/admin/users" },
+      { method: "patch", route: `/api/admin/users/${admin.id}` },
+      { method: "post", route: `/api/admin/users/${admin.id}/password` },
+    ];
+
+    const answers = await Promise.all(
+      notForRequesters.map(async ({ method, route }) => {
+        const response = await as(requesterA)(request(app)[method](route)).send(
+          {}
+        );
+
+        return { method, route, status: response.status, body: response.body };
+      })
+    );
+
+    expect(answers).toStrictEqual(
+      notForRequesters.map(({ method, route }) => ({
+        method,
+        route,
+        status: 403,
+        body: { error: expect.objectContaining({ code: "FORBIDDEN" }) },
+      }))
+    );
+
+    // Refused, and nothing happened: the ticket the PATCH calls named is
+    // exactly as the fixture left it.
+    const unchanged = await prisma.ticket.findUniqueOrThrow({
+      where: { id: ticketOfA },
+      select: { currentStatus: true, itPriority: true, ticketOwnerId: true },
+    });
+
+    expect(unchanged.ticketOwnerId).toBeNull();
+  });
+
+  it("SEC-02 Administrator endpoints refuse IT Staff with 403 FORBIDDEN", async () => {
+    const adminOnly: { method: "get" | "post" | "patch"; route: string }[] = [
+      { method: "get", route: "/api/admin/users" },
+      { method: "post", route: "/api/admin/users" },
+      { method: "patch", route: `/api/admin/users/${admin.id}` },
+      { method: "post", route: `/api/admin/users/${admin.id}/password` },
+    ];
+
+    const answers = await Promise.all(
+      adminOnly.map(async ({ method, route }) => {
+        const response = await as(staff)(request(app)[method](route)).send({});
+
+        return { method, route, status: response.status, body: response.body };
+      })
+    );
+
+    expect(answers).toStrictEqual(
+      adminOnly.map(({ method, route }) => ({
+        method,
+        route,
+        status: 403,
+        body: { error: expect.objectContaining({ code: "FORBIDDEN" }) },
+      }))
+    );
+  });
+
+  it("SEC-02 the Requester's resolved indication refuses staff and Administrator", async () => {
+    const indication = `/api/tickets/${ticketOfA}/resolved-indication`;
+
+    const [byStaff, byAdmin] = await Promise.all([
+      as(staff)(request(app).post(indication)).send({}),
+      as(admin)(request(app).post(indication)).send({}),
+    ]);
+
+    for (const response of [byStaff, byAdmin]) {
+      expect(response.status).toBe(403);
+      expect(response.body.error.code).toBe("FORBIDDEN");
+    }
+  });
+
+  it("SEC-02 the same endpoints let the allowed roles past the guard", async () => {
+    // A bad body, so nothing changes: 400 proves the guard passed, and 403
+    // would prove it did not.
+    const [queue, owners, notes, users, owner, status] = await Promise.all([
+      as(staff)(request(app).get("/api/staff/tickets")),
+      as(staff)(request(app).get("/api/staff/owners")),
+      as(staff)(request(app).get(`/api/tickets/${ticketOfA}/notes`)),
+      as(admin)(request(app).get("/api/admin/users")),
+      as(staff)(
+        request(app).patch(`/api/staff/tickets/${ticketOfA}/owner`)
+      ).send({ ownerId: MISSING_ID }),
+      as(staff)(
+        request(app).patch(`/api/staff/tickets/${ticketOfA}/status`)
+      ).send({ status: "DONE" }),
+    ]);
+
+    for (const response of [queue, owners, notes, users]) {
+      expect(response.status).toBe(200);
+    }
+
+    expect(owner.status).toBe(400);
+    expect(status.status).toBe(400);
   });
 });

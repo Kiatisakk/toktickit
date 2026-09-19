@@ -1,4 +1,4 @@
-import { readdir, readFile } from "node:fs/promises";
+import { readdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { ACTIVE_REQUESTER, ACTIVE_STAFF } from "../../prisma/accounts.js";
 import { app } from "../../src/app.js";
+import { pathFor } from "../../src/attachments/storage.js";
 import { prisma } from "../../src/prisma.js";
 import type { SignedInUser } from "./support/signIn.js";
 import { signInAs } from "./support/signIn.js";
@@ -18,6 +19,10 @@ import { signInAs } from "./support/signIn.js";
  * MIG-01 — users keep their identifiers, and a ticket's requester still resolves.
  * MIG-02 — attachment uploader and remover references stay valid.
  * MIG-03 — the renamed status, and the IT Priority the same migration backfilled.
+ * MIG-04 — an attachment uploaded before the staff endpoints existed is still
+ *   reachable by its owner, and now by staff.
+ * MIG-08 — the password backfill: no null hash, and an account the seed does
+ *   not know stays locked until an Administrator issues it a password.
  * API-45 — the Lab 2 list envelope is preserved.
  *
  * Three kinds of evidence, because each alone is weak. The migrations are read,
@@ -40,6 +45,21 @@ let waitingTicketId = 0;
 let attachmentId = 0;
 
 const cleanUp = async () => {
+  const stored = await prisma.attachment.findMany({
+    where: { ticket: { summary: { startsWith: PREFIX } } },
+    select: { storedFilename: true },
+  });
+
+  await Promise.all(
+    stored.map(async (row) => {
+      try {
+        await unlink(pathFor(row.storedFilename));
+      } catch {
+        // Rows created directly have no bytes on disk.
+      }
+    })
+  );
+
   await prisma.attachment.deleteMany({
     where: { ticket: { summary: { startsWith: PREFIX } } },
   });
@@ -351,7 +371,6 @@ describe("MIG-03 the renamed status", () => {
     expect(retired.status).toBe(400);
     expect(retired.body.error.code).toBe("INVALID_QUERY_PARAMETER");
   });
-
   it("MIG-03 the same migration backfills IT Priority from Requested Priority", async () => {
     // BR-23 asks every existing ticket to receive a copy. Asserted against the
     // migration rather than against a count of null columns, because other
@@ -364,5 +383,116 @@ describe("MIG-03 the renamed status", () => {
     );
 
     expect(backfills).toHaveLength(1);
+  });
+});
+
+describe("MIG-04 an attachment from before survives the move", () => {
+  const PDF = Buffer.from("%PDF-1.4\nmigration suite\n%%EOF\n");
+
+  it("MIG-04 still reachable by its owner, and now by staff", async () => {
+    // Written straight to the table with no session anywhere, exactly as a
+    // Lab 2 row was — not uploaded through the endpoint. (The suite's own
+    // fixture cannot serve here: it is removed by design, for MIG-02, and a
+    // removed file answers 404 by contract.) Bytes are storage, not the
+    // migration, so they are placed on disk beside the row.
+    const legacy = await prisma.attachment.create({
+      data: {
+        ticketId,
+        originalFilename: "raised-before-sign-in.pdf",
+        storedFilename: `migration-test-${Date.now()}.pdf`,
+        mimeType: "application/pdf",
+        sizeBytes: PDF.length,
+        uploadedById: requester.id,
+      },
+      select: { id: true, storedFilename: true },
+    });
+
+    await writeFile(pathFor(legacy.storedFilename), PDF);
+
+    const staff = await signInAs(ACTIVE_STAFF);
+
+    const [ownerList, staffList, ownerDownload, staffDownload] =
+      await Promise.all([
+        request(app)
+          .get(`/api/tickets/${ticketId}/attachments`)
+          .set("Cookie", requester.cookie),
+        request(app)
+          .get(`/api/tickets/${ticketId}/attachments`)
+          .set("Cookie", staff.cookie),
+        request(app)
+          .get(`/api/attachments/${legacy.id}/download`)
+          .set("Cookie", requester.cookie),
+        request(app)
+          .get(`/api/attachments/${legacy.id}/download`)
+          .set("Cookie", staff.cookie),
+      ]);
+
+    for (const response of [
+      ownerList,
+      staffList,
+      ownerDownload,
+      staffDownload,
+    ]) {
+      expect(response.status).toBe(200);
+    }
+
+    const ids = (staffList.body.data as { id: number }[]).map((row) => row.id);
+
+    expect(ids).toContain(legacy.id);
+    expect(
+      Buffer.from(staffDownload.body as Uint8Array).toString("utf-8")
+    ).toContain("%PDF-1.4");
+  });
+});
+
+describe("MIG-08 the password hash backfill", () => {
+  const EMAIL = "migration.locked@example.ac.th";
+
+  it("MIG-08 the migration replaces null hashes with a value that is not a hash of anything, then forbids null", async () => {
+    const migrations = await lab3Migrations();
+    const backfill = migrations.filter(({ sql }) =>
+      /UPDATE\s+"User"\s+SET\s+"passwordHash"\s*=\s*'!'\s+WHERE\s+"passwordHash"\s+IS NULL/iu.test(
+        sql
+      )
+    );
+
+    expect(backfill).toHaveLength(1);
+    expect(backfill[0]?.sql).toMatch(/SET NOT NULL/iu);
+
+    const [{ nulls }] = await prisma.$queryRaw<{ nulls: number }[]>`
+      SELECT COUNT(*)::int AS nulls FROM "User" WHERE "passwordHash" IS NULL`;
+
+    expect(nulls).toBe(0);
+  });
+
+  it("MIG-08 an account the seed does not know cannot be signed in to — the upgrade fails closed", async () => {
+    // A row exactly as the migration leaves it: the placeholder, no flag, no
+    // seeded credential. Removed afterwards: the seed must never see it.
+    await prisma.user.deleteMany({ where: { email: EMAIL } });
+    await prisma.user.create({
+      data: {
+        name: "Migrated Stranger",
+        email: EMAIL,
+        role: "REQUESTER",
+        isActive: true,
+        passwordHash: "!",
+      },
+    });
+
+    try {
+      const response = await request(app).post("/api/auth/login").send({
+        email: EMAIL,
+        password: "Anything1!",
+      });
+
+      // Not must-change, not a 500 with a scrypt complaint: one ordinary 401,
+      // byte for byte what an unknown address gets (BR-08).
+      expect(response.status).toBe(401);
+      expect(response.body).toStrictEqual({
+        error: expect.objectContaining({ code: "INVALID_CREDENTIALS" }),
+      });
+    } finally {
+      await prisma.user.deleteMany({ where: { email: EMAIL } });
+    }
   });
 });

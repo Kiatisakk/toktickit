@@ -3,14 +3,18 @@
 An IT service desk application for Account and Access, Hardware, Software, and
 Network requests.
 
-This repository holds **Lab 2**: the Requester side of the service desk, end to
-end. A Requester is chosen on a development selection screen — there is no
-authentication until Lab 3 — and can then raise a ticket with attachments,
-receive a backend-issued ticket number, find that ticket again through search,
-filters, sorting and pagination, open it, and add or remove attachments. Each
-Requester sees only their own tickets: a ticket belonging to someone else is
-indistinguishable from one that does not exist, whether it is missing from a
-list or requested by its own URL.
+This repository holds **Lab 3**: the service desk with real authentication and all
+three roles end to end. A user signs in with an email address and a password;
+the server derives everything from that identity and its role, never from
+anything the browser claims. Requesters keep every Lab 2 function and gain
+public comments plus a resolved indication. IT Staff get a ticket queue with
+search, filters, sorting and pagination, and per-ticket ownership, IT Priority,
+status transitions, replies and internal notes. Administrators get a minimal
+user-management screen with two safety rules: no self-deactivation, and never
+zero active Administrators. The Lab 2 development requester selector is gone.
+
+**Lab 2** — the Requester side under a development identity header — is on
+`main` and documented in [docs/lab-02/](./docs/lab-02/).
 
 **Lab 1** — the vertical slice that proved the stack connects, with the
 **Check System** button and the category list — is on `main` and documented in
@@ -21,11 +25,11 @@ React + Vite + Bootstrap  →  Express REST API  →  Prisma ORM  →  PostgreSQ
         (client)                  (server)
 ```
 
-See [CONTEXT.md](./CONTEXT.md) for the domain vocabulary. The Lab 2 sprint
-documents are in [docs/lab-02/](./docs/lab-02/): the specification with its
+See [CONTEXT.md](./CONTEXT.md) for the domain vocabulary. The Lab 3 sprint
+documents are in [docs/lab-03/](./docs/lab-03/): the specification with its
 numbered requirements, rules, acceptance criteria and recorded decisions, the
 API and UI contracts, the test plan and results, the peer review record, and
-the AI-use log.
+the AI-use log. Lab 2's documents are in [docs/lab-02/](./docs/lab-02/).
 
 ## Prerequisites
 
@@ -156,14 +160,45 @@ npm run test:e2e
 
 That rebuilds `toktickit_test` first, then drives a real browser at three
 viewport widths, and writes the report screenshots into
-`artifacts/lab-02/screenshots/`. It starts its own server against the test
+`artifacts/lab-03/screenshots/` (Lab 2's live under
+`artifacts/lab-02/screenshots/`). It starts its own server against the test
 database rather than reusing one already running, because a suite that silently
 tests the development database looks exactly like a suite that passes.
 
-The test plans and results are in [docs/lab-01/tests.md](./docs/lab-01/tests.md)
-and [docs/lab-02/tests.md](./docs/lab-02/tests.md).
+The test plans and results are in [docs/lab-01/tests.md](./docs/lab-01/tests.md),
+[docs/lab-02/tests.md](./docs/lab-02/tests.md) and
+[docs/lab-03/tests.md](./docs/lab-03/tests.md).
 
 ## API
+
+Every endpoint except `GET /api/health`, `POST /api/auth/login` and
+`POST /api/auth/logout` requires a signed-in session, held in an `HttpOnly`, `SameSite=Lax`, `Secure` cookie. There
+is no test-only bypass and no client-supplied identity: the retired
+`X-Development-Requester-Id` header changes nothing. The full contract is in
+[docs/lab-03/api-spec.md](./docs/lab-03/api-spec.md); what follows is the map.
+
+### `POST /api/auth/login`
+
+Email and password in, identity plus role and a session cookie out. An unknown
+address and a wrong password answer identically (`401 INVALID_CREDENTIALS`), so
+the form cannot be used to discover who holds an account. A correct password on
+a deactivated account answers `403 ACCOUNT_INACTIVE` — only after the password
+is proven.
+
+### `GET /api/auth/me`
+
+The current identity, role and must-change flag.
+
+### `POST /api/auth/password`
+
+Change the password; clears the must-change flag, ends every other session and
+keeps the caller signed in. An account issued a starting password can reach
+only this, `me` and `logout` until it changes it (`403
+PASSWORD_CHANGE_REQUIRED` everywhere else).
+
+### `POST /api/auth/logout`
+
+Ends the session. Idempotent — answering 204 with no session, always.
 
 ### `GET /api/health`
 
@@ -172,6 +207,10 @@ and [docs/lab-02/tests.md](./docs/lab-02/tests.md).
 ```
 
 ### `GET /api/categories`
+
+Active categories in display order. Requires a session since Lab 3 — the only
+reason it was public was the deleted selector, which needed it before any
+identity existed.
 
 ```json
 [
@@ -188,59 +227,75 @@ Active related systems in display order — `{ "id": 1, "name": "Email" }` and s
 
 ### `GET /api/tickets`
 
-The current requester's tickets, one page at a time. Supports `search`, `categoryId`,
-`requestedPriority`, `itPriority`, `status`, `sort`, `order`, `page` and `pageSize`.
+The caller's own tickets, whatever their role — staff raise tickets too; the
+all-tickets view is the staff queue below. One page at a time. Supports `search`,
+`categoryId`, `requestedPriority`, `sort`, `order`, `page` and `pageSize`.
 An unrecognised or out-of-range value is an error rather than a silent default.
+The queue-only parameters and filters (`itPriority`, `status`, owner …) are
+refused here — they belong to the staff queue below.
 
 ### `POST /api/tickets`
 
-Creates one ticket for the current requester and issues its official number.
+Creates one ticket for the caller and issues its official number.
 JSON only — attachments are added afterwards, one request per file, so that a
 ticket is never half-created because a file failed.
 
 ### `GET /api/tickets/:id`
 
-One ticket the current requester owns, with its attachment metadata. A ticket
-belonging to someone else answers exactly as a ticket that does not exist does,
-down to the response body: a `403` would confirm it is real.
+One ticket with its attachment metadata. A Requester may read only their own;
+IT Staff and Administrators may read any ticket. A Requester asking for someone
+else's ticket gets exactly the answer a ticket that does not exist gets, down to
+the response body: a `403` would confirm it is real.
 
 ### `POST /api/tickets/:id/attachments`
 
-Adds one file to an owned ticket. JPG, PNG, WEBP or PDF, up to 5 MB, up to five
+Adds one file to a ticket the caller raised — own only for every role, staff
+included. JPG, PNG, WEBP or PDF, up to 5 MB, up to five
 active files per ticket — the count is taken under a row lock, so two uploads
 racing cannot both see four.
 
 ### `GET /api/tickets/:id/attachments`
 
-Attachment metadata for an owned ticket, removed ones included. Removal keeps
+Attachment metadata, removed ones included, with the same scope as ticket
+detail: a Requester's own tickets, or any ticket for IT Staff and Administrators. Removal keeps
 the record and the reason; it is not a delete.
 
 ### `GET /api/attachments/:id/download`
 
-The stored file, for an active attachment on an owned ticket. Always sent as a
+The stored file, for an active attachment — on the Requester's own ticket, or on
+any ticket for IT Staff and Administrators. Always sent as a
 download and never rendered inline, which is what keeps an uploaded file from
 executing in the browser as page content.
 
 ### `DELETE /api/attachments/:id`
 
-Removes an attachment with a reason of 3 to 500 characters. The metadata and the
+Removes an attachment from a ticket the caller raised — own only for every role;
+staff can read and download others' files but never remove them. A reason of 3
+to 500 characters is required. The metadata and the
 reason stay visible afterwards; the file itself stops being downloadable.
 
-### `GET /api/requesters`
+### Staff — queue and ticket operations (IT Staff and Administrator)
 
-Active Development Requesters for the selection screen. Inactive ones never
-appear here and can never become the current context.
+`GET /api/staff/tickets` (search, filters, sorting with severity/lifecycle
+ordering, stable pagination), `GET /api/staff/owners`,
+`PATCH /api/staff/tickets/:id/owner` (claim, reassign, release with `null`),
+`PATCH /api/staff/tickets/:id/it-priority` (never touches Requested Priority),
+`PATCH /api/staff/tickets/:id/status` (matrix-checked, `CANCELLED` terminal).
+Public comments both directions; internal notes staff-only — a Requester gets
+an identical `403` whether notes exist or not.
 
-```json
-[{ "id": 1, "name": "Jennifer Anderson", "email": "jennifer.anderson@example.ac.th" }]
-```
+### Requester resolved indication
 
-### Requester context
+`POST /api/tickets/:id/resolved-indication` — Requester only, on their own
+ticket, status unchanged, timestamp recorded once. Staff and Administrators are
+refused, even on tickets they raised.
 
-Every requester-scoped endpoint requires the `X-Development-Requester-Id` header.
-It is a testing mechanism, **not authentication** — anyone can set it to
-anything, and Lab 3 replaces it with a real authenticated identity. The full
-contract is in [docs/lab-02/api-spec.md](./docs/lab-02/api-spec.md).
+### Administrator user management (Administrator only)
+
+`GET`/`POST /api/admin/users`, `PATCH /api/admin/users/:id`,
+`POST /api/admin/users/:id/password` (issue a starting password; ends the
+user's sessions). Self-deactivation is refused, as is removing the last active
+Administrator. A Requester or IT Staff caller gets `403` on all four.
 
 ## Repository layout
 
@@ -248,12 +303,14 @@ contract is in [docs/lab-02/api-spec.md](./docs/lab-02/api-spec.md).
 toktickit/
 ├── client/                  React + TypeScript + Vite + Bootstrap
 │   ├── src/
-│   └── tests/lab-01/        Vitest UI tests
+│   └── tests/lab-01/        Vitest UI tests (lab-02, lab-03 alongside)
 ├── server/                  Node.js + Express + TypeScript
 │   ├── prisma/              schema, migrations, seed
 │   ├── src/
-│   └── tests/lab-01/        Supertest API tests
-├── docs/lab-01/             tests.md, reviewer.md, ai_use.md
+│   └── tests/lab-01/        Supertest API tests (lab-02, lab-03 alongside)
+├── docs/lab-01/             specification, api-spec, ui-spec, tests.md, reviewer.md, ai-use.md
+├── docs/lab-02/             as above, for the Requester MVP
+├── docs/lab-03/             as above, for users, roles and staff ticketing
 ├── material/                course handouts
 ├── CONTEXT.md               domain glossary
 ├── docker-compose.yml
@@ -263,29 +320,30 @@ toktickit/
 ## Git workflow
 
 `main` is the stable release branch; each lab integrates on its own staging
-branch — `lab1-staging`, then `lab2-staging` — and reaches `main` through a
-single release Pull Request at the end of the lab. No work happens directly on
-any of the three. Every Issue is developed on its own feature branch and merged
-through a Pull Request the peer reviewer approves and merges; the author never
-clicks Merge on their own work.
+branch — `lab1-staging`, `lab2-staging`, `lab3-staging` — and reaches `main`
+through a single release Pull Request at the end of the lab. No work happens
+directly on any of them. Every Issue is developed on its own feature branch and
+merged through a Pull Request the peer reviewer approves and merges; the author
+never clicks Merge on their own work.
 
-Lab 2's Issues, in dependency order:
+Lab 3's Issues, in dependency order:
 
 | Issue | Feature branch | Pull Request target |
 | --- | --- | --- |
-| 14. Sprint specification and test plan | `docs/lab2-specification` | `lab2-staging` |
-| 15. Zen Green UI foundation and shell | `feature/zen-green-foundation` | `lab2-staging` |
-| 16. Development Requester context | `feature/requester-context` | `lab2-staging` |
-| 17. Ticket creation | `feature/ticket-creation` | `lab2-staging` |
-| 18. My Tickets discovery and ownership | `feature/my-tickets` | `lab2-staging` |
-| 19. Ticket Detail and attachment lifecycle | `feature/ticket-detail-attachments` | `lab2-staging` |
-| 20. End-to-end and visual evidence | `feature/e2e-visual-evidence` | `lab2-staging` |
-| 40. Attachments during ticket creation | `feature/create-ticket-attachments` | `lab2-staging` |
-| 21. Report and submission evidence | `docs/lab2-report` | `lab2-staging` |
+| 45. Sprint 3 engineering contract | `docs/lab3-specification` | `lab3-staging` |
+| 46. Client test fixtures | `feature/lab3-test-fixtures` | `lab3-staging` |
+| 47. Sign in, sign out, forced password change | `feature/authentication` | `lab3-staging` |
+| 48. Authenticated requester, selector deleted | `feature/authenticated-requester` | `lab3-staging` |
+| 53. Administrator user management | `feature/admin-user-management` | `lab3-staging` |
+| 50. Staff ticket queue | `feature/staff-ticket-queue` | `lab3-staging` |
+| 49. Requester comments, resolved indication | `feature/requester-comments` | `lab3-staging` |
+| 51. Staff take a ticket and advance it | `feature/staff-ticket-operations` | `lab3-staging` |
+| 52. Internal notes, staff only | `feature/internal-notes` | `lab3-staging` |
+| 54. End-to-end journeys and visual evidence | `feature/e2e-visual-evidence-lab3` | `lab3-staging` |
+| 55. Report, submission and release | `feature/lab3-closing-tests` | `lab3-staging` |
 
-Issues 35 and 37 were opened mid-sprint from an audit that compared the six
-sprint documents against the code, and their branches follow the same rule.
-Lab 1's four Issues are listed in [docs/lab-01/](./docs/lab-01/).
+Lab 2's Issues are listed in [docs/lab-02/](./docs/lab-02/); Lab 1's four in
+[docs/lab-01/](./docs/lab-01/).
 
 ## Troubleshooting
 

@@ -78,7 +78,7 @@ Eight levels, each answering a question the level above it cannot.
 | API-28 | AC-24 | Public Comment visibility | Requester and staff both read it with author and time | `server/tests/lab-03/comments-notes.api.test.ts` | Pass — the Requester, IT Staff and an Administrator read the same entry with author name, role and time; a staff reply lists beneath the Requester's comment, oldest first, with id settling a shared timestamp. |
 | API-29 | BR-29 | Author and timestamp are server-side | Values supplied in the body are ignored | `server/tests/lab-03/comments-notes.api.test.ts` | Pass — an `id`, `authorId`, `author`, `createdAt` and `ticketId` in the body are all ignored; the stored row is the caller's, on the path's ticket. Checked by reading the author from the body: the test failed. |
 | API-30 | AC-26 | Empty and whitespace-only body | 400 `VALIDATION_FAILED` | `server/tests/lab-03/comments-notes.api.test.ts` | Pass — empty, whitespace-only, missing and non-text bodies answer 400 `VALIDATION_FAILED` with `details.body` and store nothing; 5001 characters refused, 5000 accepted. |
-| API-31 | AC-27 | Staff read a requester's attachments | Metadata listed and content downloadable | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
+| API-31 | AC-27 | Staff read a requester's attachments | Metadata listed and content downloadable | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Pass — staff list the metadata (filename, type, size, uploader, status, no `storedFilename`) and download the bytes with content type, length and disposition; the staff detail carries the same row. |
 | API-32 | AC-28 | Administrator user list | Name, email, role and state returned; search and role filter narrow it | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
 | API-33 | AC-29 | User creation | 201; the user can sign in and is required to change the password | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
 | API-34 | AC-30 | Duplicate email on create and on edit | 409 `EMAIL_ALREADY_EXISTS` | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
@@ -87,9 +87,9 @@ Eight levels, each answering a question the level above it cannot.
 | API-37 | AC-32 | Last active Administrator | The sole Administrator demoting themselves 409 `LAST_ACTIVE_ADMIN` — reachable precisely because self-demotion is not caught by the self-check | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
 | API-38 | AC-33 | Two Administrators deactivating each other at once | At least one refused; an active Administrator remains | `server/tests/lab-03/users-admin.api.test.ts` | Pass — five rounds of two real concurrent requests. Removing `FOR UPDATE` from the handler makes the first round fail with both deactivations succeeding, which is how the test is known to exercise the lock. |
 | API-39 | BR-37 | Setting a new initial password | 204; flag set; the user's sessions ended; sign-in with the new password requires a change | `server/tests/lab-03/users-admin.api.test.ts` | Pass — the old session answers 401, the old password is refused, and the new one signs in with the must-change flag set. |
-| API-40 | BR-20 | Error bodies leak nothing | No stack trace, path or database message on any failure path | `server/tests/lab-03/auth.api.test.ts` | Planned |
+| API-40 | BR-20 | Error bodies leak nothing | No stack trace, path or database message on any failure path | `server/tests/lab-03/auth.api.test.ts` | Pass — 401/404/400/403/unknown-route plus 409 duplicate email, 413 over the JSON limit, 415 wrong file type, and a 500 from bytes missing on disk: every body carries only the `error` envelope and matches no leak pattern. |
 | API-41 | §5 | Reference data now requires a session | Categories and related systems 401 without one; health stays public | `server/tests/lab-03/authorization.api.test.ts` | Pass |
-| API-42 | BR-23 | IT Priority at creation | A new ticket's IT Priority equals its Requested Priority; changing one afterwards never moves the other | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Planned |
+| API-42 | BR-23 | IT Priority at creation | A new ticket's IT Priority equals its Requested Priority; changing one afterwards never moves the other | `server/tests/lab-03/staff-ticket-detail.api.test.ts` | Pass — created HIGH reads HIGH/HIGH; setting IT Priority to LOW leaves Requested HIGH in the response and in the row. Checked by writing both columns: the test failed. |
 | API-43 | FR-35 | User edit validation | Empty name, malformed email, invalid role and non-boolean active each 400 with the field named in `details` | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
 | API-44 | BR-37 | Reset password validation | A starting password failing the rules 400 with `details.initialPassword`; the user's existing credential unchanged | `server/tests/lab-03/users-admin.api.test.ts` | Pass |
 | API-45 | §8 | Lab 2 list envelope preserved | The ticket list answers `data` and `meta` with `totalItems`, exactly as Lab 2 documents | `server/tests/lab-03/migration.api.test.ts` | Pass |
@@ -102,7 +102,7 @@ Every test here calls the API directly with a session of the wrong kind. None dr
 | ID | AC | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
 | SEC-01 | FR-09 | Every protected endpoint without a session | 401 `UNAUTHENTICATED`, enumerated across the whole route table, excepting `POST /api/auth/logout` which is idempotent and answers 204 | `server/tests/lab-03/authorization.api.test.ts` | Pass — over the route table as it stands. Each later endpoint is added to the same list in the Pull Request that adds it. |
-| SEC-02 | FR-10 | Every role-restricted endpoint with each wrong role | 403 `FORBIDDEN`, enumerated | `server/tests/lab-03/authorization.api.test.ts` | Planned |
+| SEC-02 | FR-10 | Every role-restricted endpoint with each wrong role | 403 `FORBIDDEN`, enumerated | `server/tests/lab-03/authorization.api.test.ts` | Pass — eleven staff/Admin endpoints refuse a Requester, four Admin endpoints refuse IT Staff, the resolved indication refuses staff and Admin; one allowed-role probe per group answers 200/400, never 403. |
 | SEC-03 | AC-03 | Requester supplying another `requesterId` | Authenticated identity applied; no other requester's data returned | `server/tests/lab-03/authorization.api.test.ts` | Pass — an undocumented `requesterId` query parameter is refused with 400 `INVALID_QUERY_PARAMETER` (BR-34) and returns no rows. |
 | SEC-04 | AC-12 | Requester reading another's ticket | 404, byte-identical to a ticket that does not exist | `server/tests/lab-03/authorization.api.test.ts` | Pass — for ticket detail and for its attachment list. |
 | SEC-05 | AC-13 | Requester calling the staff queue | 403 `FORBIDDEN` | `server/tests/lab-03/authorization.api.test.ts` | Pass — a Requester is refused 403 on the queue and the owner list, before the query is read. |
@@ -152,16 +152,16 @@ Every test here calls the API directly with a session of the wrong kind. None dr
 
 | ID | AC | What it tests | Expected result | Test file | Result |
 | --- | --- | --- | --- | --- | --- |
-| STYLE-01 | §1 | Role badge | Renders through the shared badge component with a role modifier | `client/tests/lab-03/style/badges.test.tsx` | Planned |
-| STYLE-02 | §1 | New status badges | `Reopened` and `Cancelled` carry their modifiers; `Waiting for Requester` is labelled, not `Pending` | `client/tests/lab-03/style/badges.test.tsx` | Planned |
-| STYLE-03 | AC-34 | Active navigation marking | Marked by class and `aria-current`, not colour alone | `client/tests/lab-03/style/shell.test.tsx` | Planned |
-| STYLE-04 | §10 | Password toggle accessibility | A button whose accessible name changes between Show and Hide | `client/tests/lab-03/style/fields.test.tsx` | Planned |
-| STYLE-05 | §10 | Rules panel semantics | A list; each rule's state conveyed by text or accessible name | `client/tests/lab-03/style/fields.test.tsx` | Planned |
-| STYLE-06 | §10 | Queue header sorting | `aria-sort` present on every column the API can sort by, `none` when inactive, and absent on Category which it cannot | `client/tests/lab-03/style/queue.test.tsx` | Planned |
-| STYLE-07 | BR-04 | Note section restriction is textual | The restriction is stated in text, not conveyed by tint alone | `client/tests/lab-03/style/messages.test.tsx` | Planned |
-| STYLE-08 | §10 | Labels bind to controls | Every new field has a real label bound to a real control; read-only values carry none | `client/tests/lab-03/style/fields.test.tsx` | Planned |
-| STYLE-09 | §1 | Editable versus read-only | Staff detail marks operational fields editable and the rest read-only | `client/tests/lab-03/style/fields.test.tsx` | Planned |
-| STYLE-10 | §1 | Validation placement | Every new message renders inside its own field group | `client/tests/lab-03/style/fields.test.tsx` | Planned |
+| STYLE-01 | §1 | Role badge | Renders through the shared badge component with a role modifier | `client/tests/lab-03/style/badges.test.tsx` | Pass — Requester, IT Staff and Administrator each render the word with `tkt-badge--<role>` and `data-kind="role"`; no raw enum text. |
+| STYLE-02 | §1 | New status badges | `Reopened` and `Cancelled` carry their modifiers; `Waiting for Requester` is labelled, not `Pending` | `client/tests/lab-03/style/badges.test.tsx` | Pass — `tkt-badge--reopened` and `tkt-badge--cancelled` asserted; `Waiting for Requester` present, `Pending` absent. |
+| STYLE-03 | AC-34 | Active navigation marking | Marked by class and `aria-current`, not colour alone | `client/tests/lab-03/style/shell.test.tsx` | Pass — the current link carries `tkt-nav-link--active` and `aria-current="page"` (added by the router's `NavLink`); every other link carries neither. |
+| STYLE-04 | §10 | Password toggle accessibility | A button whose accessible name changes between Show and Hide | `client/tests/lab-03/style/fields.test.tsx` | Pass — `type="button"`, name flips Show/Hide password on click, input type flips password/text. |
+| STYLE-05 | §10 | Rules panel semantics | A list; each rule's state conveyed by text or accessible name | `client/tests/lab-03/style/fields.test.tsx` | Pass — a list named Password requirements; every item reads "not yet met" empty and "met" (never "not yet met") with a compliant password. |
+| STYLE-06 | §10 | Queue header sorting | `aria-sort` present on every column the API can sort by, `none` when inactive, and absent on Category which it cannot | `client/tests/lab-03/style/queue.test.tsx` | Pass — IT Priority, Current Status and Ticket Owner read `none`, then `descending`/`ascending` when active; Category carries no `aria-sort`; the header sorts through a button. |
+| STYLE-07 | BR-04 | Note section restriction is textual | The restriction is stated in text, not conveyed by tint alone | `client/tests/lab-03/style/messages.test.tsx` | Pass — "Not visible to the Requester" appears twice (standing note and composer hint); the section is labelled for assistive technology. |
+| STYLE-08 | §10 | Labels bind to controls | Every new field has a real label bound to a real control; read-only values carry none | `client/tests/lab-03/style/fields.test.tsx` | Pass — input, select and textarea each resolve through their label; a read-only owner input keeps its label (it is a control), while badge and block spans are spans, not labels. |
+| STYLE-09 | §1 | Editable versus read-only | Staff detail marks operational fields editable and the rest read-only | `client/tests/lab-03/style/detail.test.tsx` | Pass — staff get three labelled selects; a Requester gets badges and no labelled IT Priority or Current Status; a cancelled ticket is read-only even for staff, with the cannot-be-moved note. |
+| STYLE-10 | §1 | Validation placement | Every new message renders inside its own field group | `client/tests/lab-03/style/fields.test.tsx` | Pass — the message and the note composer's message each render as an alert inside their own `.tkt-field-group`. |
 
 ### Responsive and visual
 
@@ -181,10 +181,10 @@ Every test here calls the API directly with a session of the wrong kind. None dr
 | MIG-01 | BR-39 | Identifiers survive | Every pre-existing user keeps its id; every ticket's requester still resolves | `server/tests/lab-03/migration.api.test.ts` | Pass — the Lab 3 migrations are read for anything that drops, truncates or renumbers users; the foreign key is read from the schema; and a ticket written against a stored id is read back through a signed-in session. |
 | MIG-02 | BR-39 | Attachment relations survive | Uploader and remover references remain valid | `server/tests/lab-03/migration.api.test.ts` | Pass |
 | MIG-03 | BR-24 | The renamed status | Rows previously `PENDING` read as `WAITING_FOR_REQUESTER`; the filter returns them | `server/tests/lab-03/migration.api.test.ts` | Pass — the migration renames the enum value in place and drops no type; the database holds the eight statuses in lifecycle order; `PENDING` no longer casts; the queue filter returns the row under the new name and refuses the old one; the same migration backfills IT Priority. |
-| MIG-04 | AC-27 | Existing attachments still reachable | By their owner, and now by staff | `server/tests/lab-03/migration.api.test.ts` | Planned |
-| MIG-05 | BR-43 | The seed restores credentials | Running it twice returns a consumed must-change flag to its seeded state | `server/tests/lab-03/seed.api.test.ts` | Planned |
+| MIG-04 | AC-27 | Existing attachments still reachable | By their owner, and now by staff | `server/tests/lab-03/migration.api.test.ts` | Pass — a row written straight to the table with no session, Lab 2 style, is listed and downloaded by its owner and by staff with the bytes intact. (The suite's own fixture cannot serve: it is removed by design and answers 404 by contract.) |
+| MIG-05 | BR-43 | The seed restores credentials | Running it twice returns a consumed must-change flag to its seeded state | `server/tests/lab-03/seed.api.test.ts` | Pass — the seed runs in a child process exactly as `prisma db seed` runs it: after a password change consumes the flag, a rerun restores the seeded password and the flag, with no duplicate accounts. |
 | MIG-06 | BR-41 | Nothing client-supplied remains | No route, module or stored value accepts a client-supplied identity | `server/tests/lab-03/authorization.api.test.ts` | Pass — read from the source: no module names the header, the endpoint or the route, the client touches no browser storage, and no server module reads `requesterId` from a body. |
-| MIG-08 | §7 | Password hash backfill | After migration no account has a null hash, and every migrated account is flagged to change it at next sign-in | `server/tests/lab-03/migration.api.test.ts` | Planned |
+| MIG-08 | §7 | Password hash backfill | After migration no account has a null hash; an account the seed does not know stays locked (fails closed) until an Administrator issues it a password | `server/tests/lab-03/migration.api.test.ts` | Pass — the migration sets `'!'` then `NOT NULL` (read from the migration itself); no row holds null; a `'!'` account answers 401 `INVALID_CREDENTIALS` like an unknown address. Corrects the earlier wording, which claimed migrated accounts are flagged to change — the specification (§7) and the code fail them closed instead. |
 | MIG-07 | Lab 2 suite | The Lab 2 suites still pass, after the four changes below | Behaviour assertions are untouched; only setup and the renamed value change | `server/tests/lab-02/`, `client/tests/lab-02/`, `e2e/lab-02/` | Pass — server, client and all three browser viewports. Beyond the four changes below, three server assertions that named the retired `REQUESTER_CONTEXT_REQUIRED` now expect its documented successor, 401 `UNAUTHENTICATED` (api-spec.md §3), and one client test about re-selecting the same requester became one about signing out on the page. |
 
 **What changes in the Lab 2 suites, and what does not.** Four things force an edit, and none of them is an assertion about behaviour:
@@ -277,18 +277,22 @@ npm exec -- ultracite check
 
 ## 5. Final Results
 
-To be completed as the implementing Pull Requests land.
+Run on 2026-09-18/19, after the closing PR's tests landed: server `npx vitest run`
+(26 files, 577 tests), client `npx vitest run` (30 files, 436 tests) — both green.
+The browser levels ran green as PR #66 and are untouched by this PR, which
+changes no application code; their counts below are the specs' own tests times
+the three viewport projects.
 
 | Level | Files | Tests | Result |
 | --- | --- | --- | --- |
-| Unit | | | Pending |
-| API / integration | | | Pending |
-| Security / authorization | | | Pending |
-| Migration / regression | | | Pending |
-| UI component | | | Pending |
-| UI style | | | Pending |
-| Responsive and visual | | | Pending |
-| End-to-end | | | Pending |
+| Unit | 5 | 45 | Pass |
+| API / integration | 5 | 151 | Pass |
+| Security / authorization | 4 | 38 | Pass — 31 in the authorization suite, 7 SEC rows beside the endpoints they guard |
+| Migration / regression | 29 | 625 | Pass — 18 Lab 3 rows (17 migration + 1 seed); the Lab 2 server (331) and client (276) suites green unchanged |
+| UI component | 10 | 137 | Pass |
+| UI style | 6 | 23 | Pass |
+| Responsive and visual | 1 | 27 | Pass as PR #66 — 9 specs × desktop, tablet, mobile |
+| End-to-end | 3 | 21 | Pass as PR #66 — 7 journey specs × desktop, tablet, mobile |
 
 ---
 
