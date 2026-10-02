@@ -151,7 +151,7 @@ Edit a **Planned** Action. IT Staff and Administrator; any of them, not only the
 
 **Request** — `{ "version": integer, "cancelReason": string }`, reason 1–500 after trimming (BR-05).
 
-**Response `200`** — the Action, now `CANCELLED`, with the reason, `version` incremented. A follow-up that this Action had closed is open again, because closure is derived (BR-09). Failures: as `PATCH`, with a missing reason answering `400 VALIDATION_FAILED`, `details.cancelReason`.
+**Response `200`** — the Action, now `CANCELLED`, with the reason, `version` incremented. Only a Planned Action can be cancelled, and a Planned Action never closed a follow-up, so cancelling one changes no follow-up's state (BR-09). Failures: as `PATCH`, with a missing reason answering `400 VALIDATION_FAILED`, `details.cancelReason`.
 
 There is **no** endpoint that deletes an Action or moves it out of Done or Cancelled (BR-04).
 

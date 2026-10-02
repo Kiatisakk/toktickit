@@ -100,6 +100,7 @@ Ten levels, each answering a question the others cannot.
 | WF-16 | AC-49 | Resolve with a Planned Action pending | 400 `RESOLUTION_GATE_FAILED`, `details.plannedActions`; status unchanged; succeeds after the Action is completed, and after it is cancelled instead; a Planned Action blocks even with a Done Action, no follow-up and a summary | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
 | CONC-01 | AC-27 | Resolve against a new open follow-up, concurrently | Over repeated rounds of real simultaneous requests, no Ticket ends Resolved with an open follow-up; either the resolve or the creation is refused | `server/tests/lab-04/concurrency.api.test.ts` | Planned |
 | CONC-02 | AC-25 | Two completions of one Action at once | Exactly one 200 and one 409 `STALE_UPDATE`; one state change | `server/tests/lab-04/concurrency.api.test.ts` | Planned |
+| CONC-03 | AC-27 | Resolve against an edit that sets Follow-Up Required, concurrently | Over repeated rounds, a `PATCH` turning Follow-Up Required on and a resolve sent together never leave a Resolved Ticket with an open follow-up: either the edit commits first and the resolve is refused, or the resolve commits first and the edit is refused `409 TICKET_NOT_ACTIONABLE` | `server/tests/lab-04/concurrency.api.test.ts` | Planned |
 
 ### Dashboard and list filters
 
@@ -285,7 +286,7 @@ Every acceptance criterion maps to at least one planned test.
 | AC-24 | WF-11, WF-15, E2E-06 |
 | AC-25 | API-15, CONC-02 |
 | AC-26 | UNIT-07, API-14, WF-12 |
-| AC-27 | CONC-01 |
+| AC-27 | CONC-01, CONC-03 |
 | AC-28 | DASH-01, DASH-02, UI-01, UI-03, E2E-08 |
 | AC-29 | UNIT-06, DASH-02 |
 | AC-30 | DASH-06, DASH-13, E2E-08 |

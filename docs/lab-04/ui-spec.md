@@ -109,7 +109,7 @@ Actions are listed in their stable order (date/time, then id). On desktop a tabl
 | --- | --- | --- |
 | **Create** | An **Add action** button above the list, while the Ticket accepts Actions | A form: Date/time (default now) · Description · Result (optional) · Performed by (default *me*) · Follow-up required (checkbox) · Follow-up note (appears and is required when ticked) · Follows up (select of this Ticket's non-cancelled Actions that require follow-up, optional) · Attachment notes |
 | **View** | **View** on a row | The Action's fields as read-only values with the recorder, performer, state and times |
-| **Edit** | **Edit** on a Planned Action | The create form, filled; Save and Cancel |
+| **Edit** | **Edit** on a Planned Action | The create form, filled; Save and Cancel. **Follows up** is shown as a read-only value, not a select: the link is fixed at creation (BR-10), and the `PATCH` body never carries `followsUpId` |
 | **Complete** | **Complete** on a Planned Action | A short form for Result (prefilled if stored, required), Confirm |
 | **Cancel action** | **Cancel action** on a Planned Action | A short form for Reason (required), Confirm |
 
