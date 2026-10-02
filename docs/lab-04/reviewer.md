@@ -17,6 +17,18 @@ Review runs in both directions with the same partner: he reviews the Pull Reques
 
 ## Reviews I received
 
+### PR #71 — Sprint 4 engineering contract (Issue #70)
+
+[PR #71](https://github.com/Kiatisakk/toktickit/pull/71) · reviewed 2026-10-02 · **3 line comments**, verdict **Changes requested**.
+
+Three findings, all real, all about the contract contradicting itself rather than the handout.
+
+*Action edits could race a resolution.* The gate held the Ticket lock and so did Action creation, but an edit can also turn Follow-Up Required on, and the lock was stated for creation only. The fourth gate condition added after the user's review (no Planned Action) already blocks this particular case, because only a Planned Action can be edited — but the rule should not depend on that. Every Action write now takes the Ticket lock and re-checks that the Ticket accepts Actions under it; AC-27 covers edits as well as creation, and CONC-03 races an edit against a resolve.
+
+*Cancelling a closing Action was promised to reopen its follow-up.* Only a Done Action closes a follow-up, and Done is terminal, so the outcome could never happen — and API-11 already said so, which made the contract disagree with its own test. BR-09, D-22 and the cancel response now state the true consequence.
+
+*The edit form offered an immutable field.* It reused the create form, including the Follows-up selector, while BR-10 fixes the link at creation and `PATCH` refuses `followsUpId`. The field is now read-only in edit mode.
+
 ---
 
 ## Reviews I gave
@@ -54,4 +66,5 @@ Our own contract (this PR) was checked against the same list before it was opene
 
 | Pull Request | Direction | Findings | Verdict | State |
 | --- | --- | --- | --- | --- |
+| [#71](https://github.com/Kiatisakk/toktickit/pull/71) | received | 3 | Changes requested | Open — fixes pushed |
 | [beambeambeam#80](https://github.com/beambeambeam/toktickit/pull/80) | given | 8 | Changes requested → Approved | Open — awaiting merge |
