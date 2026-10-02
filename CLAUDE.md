@@ -240,6 +240,19 @@ Linking the _branch_ at the Started stage is optional, signals only that work ha
 - Docs after the code is merged — recording how a PR ended in `reviewer.md`, a stale `tests.md` row, a typo: **do not open a PR for it.** Commit it on the next feature branch and let it ride in that branch's PR, saying so in one line in the description. A PR that exists only to record the previous one is noise in the reviewer's queue, and it conflicts with the PR it is recording (#58 did, with #59, and was closed).
 - Only the end-of-sprint report, with no next feature branch to carry it, gets its own `docs/<lab>-<topic>` branch (e.g. `docs/lab2-report`) and PR. Link it to an Issue if it has one; if not, say so in one line.
 
+### Waiting on a review: work in parallel first, stack only one deep
+
+Lab 3's pull requests waited a median of 10.7 hours from opening to merge, and 9 of 12 drew at least one round of findings before approval. Waiting is a real cost; so is rework that has to be carried through every branch built on top of a changed one. The rule balances the two.
+
+1. **An Issue that does not depend on the one under review branches from `<lab>-staging` as usual** and goes ahead in parallel. This is ordinary workflow and needs nothing special. Prefer it whenever such an Issue is unblocked.
+2. **Only when every unblocked Issue depends on one still under review**, the next may branch from that Issue's branch — **one level deep, never more**:
+   - its Pull Request targets **`<lab>-staging`**, never the branch it was built on. The labsheet's branch flow says each Issue enters staging through a reviewed Pull Request, and the board defines PR Review as a Pull Request to staging; a PR based on another feature branch satisfies neither;
+   - it carries the **`DO NOT MERGE`** label from the moment it opens, so it cannot land before the one beneath it;
+   - its description says the diff includes the earlier Issue's commits until that one merges, and links `compare/<earlier-branch>...<this-branch>` so the reviewer can read this Issue's change alone;
+   - once the earlier one merges: merge `<lab>-staging` into this branch, confirm the diff now holds only this Issue, then remove the label.
+3. **Never stack on the contract Pull Request.** The contract merges first; Part 2 is graded on evidence that the specification existed before the implementation.
+4. If review on the earlier PR changes something the stacked one uses, fix the earlier one, then merge its branch into the stacked one and re-run the stacked one's tests before pushing.
+
 ## Living documents — updated by the PR that makes them true
 
 Four documents under `docs/<lab>/` are part of the submission and are graded directly. None of them is written at the end of the sprint. Each is updated **in the same Pull Request as the work it describes**, while the work is still in front of you.
