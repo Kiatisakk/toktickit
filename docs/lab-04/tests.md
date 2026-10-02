@@ -44,12 +44,13 @@ Ten levels, each answering a question the others cannot.
 | --- | --- | --- | --- | --- | --- |
 | UNIT-01 | AC-11, BR-03 | Action state machine, every cell | Planned → Done and Planned → Cancelled allowed; every other move, including out of Done and Cancelled, refused | `server/tests/lab-04/actions-domain.test.ts` | Planned |
 | UNIT-02 | AC-12, BR-09 | Follow-up state derivation | Not required / Void / Open / Closed for every combination of required flag, own state and followers' states; a Planned or Cancelled follower never closes | `server/tests/lab-04/actions-domain.test.ts` | Planned |
-| UNIT-03 | AC-15, AC-16, AC-18, BR-16 | Resolution gate evaluator | All eight combinations of the three conditions; Resolved only when all hold; every unmet condition named | `server/tests/lab-04/actions-domain.test.ts` | Planned |
+| UNIT-03 | AC-15, AC-16, AC-18, BR-16 | Resolution gate evaluator | All sixteen combinations of the four conditions; Resolved only when all hold; every unmet condition named | `server/tests/lab-04/actions-domain.test.ts` | Planned |
 | UNIT-04 | AC-05, BR-08, BR-14 | Action input validation | Boundary lengths accepted and one over refused for description, result, note, attachment notes; note required iff follow-up required; future `actionAt` over one minute refused | `server/tests/lab-04/actions-domain.test.ts` | Planned |
 | UNIT-05 | AC-17, BR-17 | Resolution Summary validation | Empty, whitespace-only and over 2000 refused; trimmed value kept; refused for a non-Resolved target | `server/tests/lab-04/actions-domain.test.ts` | Planned |
 | UNIT-06 | AC-29, BR-23 | Bangkok day boundary | T0 for instants either side of 17:00 UTC is the right Bangkok midnight; no daylight-saving shift across a year | `server/tests/lab-04/dashboard-time.test.ts` | Planned |
 | UNIT-07 | AC-26, BR-19 | Version parsing | Positive integer accepted; missing, zero, negative, fractional, string and boolean refused with `details.version` | `server/tests/lab-04/actions-domain.test.ts` | Planned |
 | UNIT-08 | AC-34, BR-29 | `statusGroup` and `followUp` parsing | Only `open` and `mine` accepted; blank is absent; conflicting with `status`, or `followUp` in My Tickets scope, refused | `server/tests/lab-04/list-filters.test.ts` | Planned |
+| UNIT-09 | AC-48, BR-35 | `requestId` validation | A UUID accepted; missing, empty, non-UUID and non-string refused with `details.requestId` | `server/tests/lab-04/actions-domain.test.ts` | Planned |
 
 ### API / integration — Actions Taken
 
@@ -73,6 +74,9 @@ Ten levels, each answering a question the others cannot.
 | API-16 | AC-07 | Requester reads their Ticket's Actions | Every Action and every field returned; no Internal Note content anywhere in the body | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
 | API-17 | BR-10 | Clearing the follow-up flag on a followed Action | 400 `details.followUpRequired`; the Action unchanged | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
 | API-18 | BR-02 | Performer differs from Ticket Owner | Action performed by staff B on a Ticket owned by staff A is saved and listed with both identities intact | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
+| API-19 | AC-48 | Replay of a create | The same request sent twice: 201 then 200 with the same Action; exactly one row; nothing else written; a replay after the Ticket was Resolved still answers 200 | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
+| API-20 | AC-48 | Same key, changed payload | Any changed field under the same `requestId` 409 `REQUEST_ID_CONFLICT`; nothing stored; a new `requestId` creates a second Action | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
+| API-21 | AC-48 | Key validation and simultaneous replays | A missing or non-UUID `requestId` 400 `details.requestId`; ten simultaneous requests with one key leave exactly one Action, one 201 and nine 200 | `server/tests/lab-04/actions-taken.api.test.ts` | Planned |
 
 ### Workflow
 
@@ -81,7 +85,7 @@ Ten levels, each answering a question the others cannot.
 | WF-01 | AC-15 | Resolve with no Done Action | 400 `RESOLUTION_GATE_FAILED`, `details.doneAction`; status unchanged; a Planned or Cancelled Action does not count | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
 | WF-02 | AC-16 | Resolve with an open follow-up | 400, `details.openFollowUp`; status unchanged; succeeds once a Done Action follows it up | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
 | WF-03 | AC-17 | Resolve with no summary | Missing, empty and whitespace-only summary 400, `details.resolutionSummary` | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
-| WF-04 | AC-18 | Every unmet condition at once | A bare Ticket with no summary answers one 400 whose `details` holds all three keys; with two unmet, exactly those two | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
+| WF-04 | AC-18 | Every unmet condition at once | A bare Ticket with no summary answers one 400 whose `details` holds all four keys; with two unmet, exactly those two | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
 | WF-05 | AC-19 | Resolve when the gate holds | 200; status Resolved; trimmed summary stored in `resolutionSummary`; version +1; response is the whole Ticket | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
 | WF-06 | AC-20 | Gate by direct API from every source, and only into Resolved | From Open, In Progress, Waiting and Reopened an ungated resolve is refused; Closed, Reopened, In Progress and Cancelled targets evaluate no gate condition | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
 | WF-07 | AC-21 | Requester indication is advisory | With `resolvedIndicatedAt` set, a failing Ticket is still refused and its status unchanged | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
@@ -93,6 +97,7 @@ Ten levels, each answering a question the others cannot.
 | WF-13 | BR-17 | Summary lifecycle | Summary with a non-Resolved target 400; stored on Resolved; kept after Reopened; overwritten by the next resolution | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
 | WF-14 | BR-19 | Resolved indication bumps the version | The indication increments the Ticket version and sends none; a staff write carrying the earlier version then 409 | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
 | WF-15 | AC-24 | Two staff move one Ticket at once | One 200, the other 409 `STALE_UPDATE` (no longer 400 `INVALID_STATUS_TRANSITION`); exactly one history row | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
+| WF-16 | AC-49 | Resolve with a Planned Action pending | 400 `RESOLUTION_GATE_FAILED`, `details.plannedActions`; status unchanged; succeeds after the Action is completed, and after it is cancelled instead; a Planned Action blocks even with a Done Action, no follow-up and a summary | `server/tests/lab-04/ticket-workflow.api.test.ts` | Planned |
 | CONC-01 | AC-27 | Resolve against a new open follow-up, concurrently | Over repeated rounds of real simultaneous requests, no Ticket ends Resolved with an open follow-up; either the resolve or the creation is refused | `server/tests/lab-04/concurrency.api.test.ts` | Planned |
 | CONC-02 | AC-25 | Two completions of one Action at once | Exactly one 200 and one 409 `STALE_UPDATE`; one state change | `server/tests/lab-04/concurrency.api.test.ts` | Planned |
 
@@ -170,11 +175,13 @@ Every test here calls the API directly with a session of the wrong kind. None dr
 | UI-29 | AC-46 | Double submit | Two rapid clicks send one request; the control is disabled and labelled busy | `client/tests/lab-04/ActionsTaken.test.tsx` | Planned |
 | UI-30 | AC-42 | Stale Action write | `409 STALE_UPDATE` shows the message, loads the latest record, keeps the user's text and re-enables the control | `client/tests/lab-04/ActionsTaken.test.tsx` | Planned |
 | UI-31 | AC-22 | Status control | Offers exactly the permitted targets for each status, read from the shared transitions module | `client/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
-| UI-32 | AC-41 | Resolve dialog | Choosing Resolved opens the dialog with the summary field and the three-condition checklist, each met or not met in text and icon, from the loaded Actions | `client/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
+| UI-32 | AC-41 | Resolve dialog | Choosing Resolved opens the dialog with the summary field and the four-condition checklist, each met or not met in text and icon, from the loaded Actions | `client/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
 | UI-33 | AC-18, AC-41 | Gate refusal | A `RESOLUTION_GATE_FAILED` response updates the checklist and shows each message beside its condition; the Ticket summary status is unchanged | `client/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
 | UI-34 | AC-41 | Resolve success | The request carries the summary and the version; the Ticket summary status and version refresh from the response | `client/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
 | UI-35 | AC-43 | Dialog focus | Focus enters the dialog, is trapped, `Escape` closes, and focus returns to the opening control | `client/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
 | UI-36 | AC-42 | Stale status change | `409 STALE_UPDATE` shows the message, reloads the Ticket and keeps the summary text | `client/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
+| UI-37 | AC-49 | Planned-action condition in the resolve dialog | With a Planned Action loaded the checklist shows "No planned actions pending" as not met with the count and a link; a server `details.plannedActions` sets the same state; completing or cancelling the Action clears it | `client/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
+| UI-38 | AC-48 | Request key across retries | A failed or lost-response submit resent keeps the same `requestId`; a `200` replay is shown as success without a second row; after a save, or a fresh **Add action**, the next create carries a new key; `REQUEST_ID_CONFLICT` reloads the list, keeps the input and rotates the key | `client/tests/lab-04/ActionsTaken.test.tsx` | Planned |
 
 ### UI style
 
@@ -299,6 +306,8 @@ Every acceptance criterion maps to at least one planned test.
 | AC-45 | MIG-07, MIG-08, MIG-09, MIG-10, MIG-11, E2E-12 |
 | AC-46 | UI-29, E2E-14 |
 | AC-47 | E2E-13 |
+| AC-48 | UNIT-09, API-19, API-20, API-21, UI-38 |
+| AC-49 | WF-16, UI-37 |
 
 **Tests with no acceptance criterion.** API-18 and WF-13 and WF-14 (rules BR-02, BR-17, BR-19), DASH-05, DASH-07, DASH-08, DASH-15 (BR-26, BR-25, handout §6.2, BR-22), UI-08, UI-09 (FR-18, BR-26), API-17 (BR-10), and PERF-01 to PERF-03 (A-06). They check a rule or an assumption directly rather than an acceptance criterion.
 
@@ -388,4 +397,4 @@ To be completed in the Pull Request that makes the last row pass. Every figure b
 - **Deltas for legacy Tickets are approximate** (specification.md §7): the backfilled history is derived from `updatedAt`, so MIG-02 checks the stated approximation, not the Tickets' real past.
 - **Performance is a smoke check,** not a benchmark (A-06); a failing PERF row is a prompt to add an index, not proof of a defect.
 - **The end-to-end suite runs single-worker,** as in Labs 2 and 3, because two workers racing over one database produce evidence of nothing.
-- **Network-retry duplicates** of Action creation are not prevented by the server (BR-35); E2E-14 and UI-29 test the interface's prevention only.
+- **A retry after a lost response is tested against the API** (API-19 to API-21) and in the interface's key handling (UI-38); losing a real response mid-flight in a browser is not reproduced, so E2E-14 covers repeated clicking only.

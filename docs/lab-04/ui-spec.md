@@ -119,6 +119,8 @@ Done and Cancelled Actions show **View** only: no Edit, Complete or Cancel contr
 
 **Validation** sits beneath the field it concerns, from `details`, with the field focused on submit and the error associated with it (Lab 3 §10). The submit control is disabled and labelled busy while a request is in flight (AC-46, BR-35).
 
+**Request key.** The form generates one `requestId` (a UUID) when it opens for a new Action and sends it with every submit of that Action. A retry after a failure or a lost response, and any resubmit after editing the fields, resends the same key; the key changes only when a new Action is begun (after a successful save, or when **Add action** is opened afresh). A `200` replay is treated as success. On `409 REQUEST_ID_CONFLICT` the screen reloads the Actions, says "An earlier attempt may already have been saved — check the list", keeps the user's entries, and uses a new key for the next submit (AC-48, D-24).
+
 ### Requester
 
 The list is the same, read-only, with every Action and every field visible and **no** Add, Edit, Complete or Cancel control present — absent, not disabled. The section heading carries a one-line note: "Work IT has recorded on your ticket." Private content stays in Internal Notes, which the Requester screen still does not show.
@@ -131,11 +133,12 @@ The status control offers only the transitions the matrix permits from the curre
 
 Choosing **Resolved** opens a **resolve dialog** instead of changing at once:
 
-- A heading "Resolve ticket TKT-…", a **Resolution Summary** textarea (required, 2000 characters, with a counter), and a **checklist** of the three conditions, each shown with an icon *and* text:
+- A heading "Resolve ticket TKT-…", a **Resolution Summary** textarea (required, 2000 characters, with a counter), and a **checklist** of the four conditions, each shown with an icon *and* text:
   - "At least one completed action" — met / not met
   - "No open follow-ups" — met / not met, with "2 open" when unmet and a link to the first
+  - "No planned actions pending" — met / not met, with "1 planned" when unmet and a link to the first; the user completes or cancels it first
   - "Resolution summary entered" — met when the textarea is non-empty
-- **Confirm resolution** and **Cancel**. Confirm is enabled when the summary is non-empty; unmet action and follow-up conditions are shown before the user submits, from the loaded Actions. The server remains the authority: its `RESOLUTION_GATE_FAILED` `details` replace the checklist's state, with each message beside the condition it names (AC-41).
+- **Confirm resolution** and **Cancel**. Confirm is enabled when the summary is non-empty; unmet action, follow-up and planned-action conditions are shown before the user submits, from the loaded Actions. The server remains the authority: its `RESOLUTION_GATE_FAILED` `details` replace the checklist's state, with each message beside the condition it names (AC-41).
 - The dialog is a real modal: focus moves into it, is trapped, returns to the control that opened it on close, and `Escape` closes it. Closing keeps nothing half-applied.
 
 Every other transition is a single control with a confirmation only for Cancelled, as in Lab 3.

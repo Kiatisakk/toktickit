@@ -62,7 +62,6 @@ Excluded by this specification, though not forbidden by the handout:
 - Pagination of the Actions list (a Ticket has a handful; see A-03)
 - File upload on an Action: Attachment Notes is free text saying what file to look for, as the handout words it
 - A separate Administrator dashboard: the Administrator reuses the staff dashboard (handout §4.6)
-- Server-side idempotency keys for Action creation (BR-35)
 
 ## 4. Functional Requirements
 
@@ -102,7 +101,7 @@ Excluded by this specification, though not forbidden by the handout:
 
 - **FR-24** Loading, validation, success, empty, no-results, forbidden, conflict, not-found and safe API-failure feedback is consistent across every screen.
 - **FR-25** Forms keep the user's entered data after a recoverable failure, including a stale-update refusal.
-- **FR-26** Repeated clicking does not create duplicate Actions or repeat a transition.
+- **FR-26** Repeated clicking, or a retry after a lost response, does not create a duplicate Action or repeat a transition.
 - **FR-27** The seed is idempotent and demonstrates zero and non-zero metrics; the README setup, migration, seed, test and demonstration instructions are current.
 - **FR-28** No console errors, broken links, placeholder text or unfinished controls remain; temporary and obsolete elements from earlier labs are removed.
 - **FR-29** Every Lab 1–3 function continues to work for the roles that were permitted it.
@@ -132,7 +131,7 @@ Excluded by this specification, though not forbidden by the handout:
 ### Ticket status and resolution
 
 - **BR-15** The eight statuses and the Lab 3 transition matrix are unchanged; §5.1 restates it with the gate.
-- **BR-16** **Resolution gate.** A transition to Resolved, from any status, is permitted only when all three hold: (a) the Ticket has at least one Done Action; (b) the Ticket has no open follow-up (BR-09); (c) the request carries a non-empty Resolution Summary. The gate is evaluated inside the transition's transaction with the Ticket row locked, and Action creation locks the same row, so a follow-up created concurrently cannot slip past it. Every unmet condition is reported together.
+- **BR-16** **Resolution gate.** A transition to Resolved, from any status, is permitted only when all four hold: (a) the Ticket has at least one Done Action; (b) the Ticket has no open follow-up (BR-09); (c) the Ticket has no Action in the Planned state, so remaining planned work must be completed or cancelled first; (d) the request carries a non-empty Resolution Summary. The gate is evaluated inside the transition's transaction with the Ticket row locked, and Action creation locks the same row, so an Action created concurrently cannot slip past it. Every unmet condition is reported together. Condition (c) was added after review (D-03).
 - **BR-17** Resolution Summary is 1 to 2000 characters after trimming, required when the target is Resolved and refused otherwise. It is stored in `Ticket.resolutionSummary`, kept when the Ticket is later reopened, and overwritten by the next resolution.
 - **BR-18** A Requester's indication that the problem appears resolved (Lab 3 BR-27) is advisory. It does not change the status and does not satisfy any condition of the gate.
 
@@ -160,7 +159,7 @@ Excluded by this specification, though not forbidden by the handout:
 - **BR-32** Error responses use the Lab 3 envelope and never disclose a stack trace, path, database message, or the existence of a resource the caller cannot see (Lab 3 BR-20).
 - **BR-33** The seed is safe to run repeatedly: it never duplicates a Ticket, Action or history row.
 - **BR-34** Dashboard drill-down destinations are returned by the backend with the card, so the screen and the rule that defines the count cannot drift apart.
-- **BR-35** Action creation is not idempotent on the server. The interface disables the submit control while a request is pending and never retries a write automatically; repeating a completion or cancellation is harmless because the second attempt carries a stale version.
+- **BR-35** Action creation is idempotent on a client-generated key. The client sends a UUID `requestId` with each *intentional* create and resends the same value when it retries. `(ticketId, requestId)` is unique. A create whose key already exists on that Ticket returns the existing Action (`200`, not `201`) and writes nothing; the same key with different field values is refused `409 REQUEST_ID_CONFLICT`; a new intentional Action uses a new key. The interface also disables the submit control while a request is pending. Repeating a completion or cancellation is harmless because the second attempt carries a stale version.
 
 ### 5.1 Ticket status transition matrix
 
@@ -229,7 +228,7 @@ Full detail is in [ui-spec.md](ui-spec.md). In summary:
 
 ### New models
 
-**ActionTaken** — `id`, `ticketId` (cascade on delete of the Ticket), `recordedById` and `performedById` (both Users), `actionAt`, `description`, `result` (nullable), `state` (enum `ActionState`: `PLANNED`, `DONE`, `CANCELLED`), `followUpRequired` (boolean), `followUpNote` (nullable; required iff `followUpRequired`), `attachmentNotes` (nullable), `followsUpId` (nullable self-relation to another ActionTaken), `cancelReason` (nullable), `version` (integer, default 1), `createdAt`, `updatedAt`. Indexes: `(ticketId, actionAt, id)` for the Ticket's list order, and `(performedById, state)` for "my open follow-ups". `updatedAt` of a Done or Cancelled Action is the moment it reached that state, because it is never written again.
+**ActionTaken** — `id`, `ticketId` (cascade on delete of the Ticket), `recordedById` and `performedById` (both Users), `actionAt`, `description`, `result` (nullable), `state` (enum `ActionState`: `PLANNED`, `DONE`, `CANCELLED`), `followUpRequired` (boolean), `followUpNote` (nullable; required iff `followUpRequired`), `attachmentNotes` (nullable), `requestId` (UUID text, the client's idempotency key, BR-35), `followsUpId` (nullable self-relation to another ActionTaken), `cancelReason` (nullable), `version` (integer, default 1), `createdAt`, `updatedAt`. Indexes: `(ticketId, actionAt, id)` for the Ticket's list order, `(performedById, state)` for "my open follow-ups", and a **unique** `(ticketId, requestId)` that makes a repeated create find its first result. `updatedAt` of a Done or Cancelled Action is the moment it reached that state, because it is never written again.
 
 **TicketStatusChange** — `id`, `ticketId` (cascade), `fromStatus` (nullable `TicketStatus`; null on creation), `toStatus`, `changedById` (nullable User; null means *migrated*), `changedAt` (default now). Indexes: `(ticketId, changedAt)` for "status as at T0" and `(changedAt)` for range scans.
 
@@ -277,7 +276,9 @@ Full detail is in [api-spec.md](api-spec.md). In summary:
 
 **Changed from Lab 3.** The three staff Ticket writes (`/owner`, `/it-priority`, `/status`) now accept their one named field **plus `version`**, and the status endpoint also accepts `resolutionSummary`, required only when the target is Resolved. Lab 3's race refusal `400 INVALID_STATUS_TRANSITION` ("the ticket moved while this change was being made") becomes `409 STALE_UPDATE`. Ticket responses carry `version`. The queue gains `statusGroup` and `followUp`; My Tickets gains `statusGroup`.
 
-**New error codes.** `STALE_UPDATE` (409), `RESOLUTION_GATE_FAILED` (400), `ACTION_ASSIGNEE_INELIGIBLE` (400), `ACTION_NOT_EDITABLE` (409), `ACTION_NOT_FOUND` (404), `TICKET_NOT_ACTIONABLE` (409).
+**Create is idempotent** (`requestId`; a replay answers `200` with the existing Action).
+
+**New error codes.** `STALE_UPDATE` (409), `RESOLUTION_GATE_FAILED` (400), `ACTION_ASSIGNEE_INELIGIBLE` (400), `ACTION_NOT_EDITABLE` (409), `ACTION_NOT_FOUND` (404), `TICKET_NOT_ACTIONABLE` (409), `REQUEST_ID_CONFLICT` (409).
 
 **Unchanged.** Authentication, password change, reference data, Ticket creation and listing and detail, attachments, Public Comments, Internal Notes, the resolved indication, Administrator user management, health.
 
@@ -308,7 +309,7 @@ Full detail is in [api-spec.md](api-spec.md). In summary:
 - **AC-16** Given a Ticket with an open follow-up, when a transition to Resolved is requested, then it is refused `400 RESOLUTION_GATE_FAILED` naming the open follow-up, and the status is unchanged.
 - **AC-17** Given a missing, empty or whitespace-only Resolution Summary, when a transition to Resolved is requested, then it is refused `400 RESOLUTION_GATE_FAILED` naming the summary.
 - **AC-18** Given a Ticket failing several conditions, when a transition to Resolved is requested, then every unmet condition is named in one response.
-- **AC-19** Given a Ticket with a Done Action, no open follow-up and a summary, when it is moved to Resolved, then the status, the Resolution Summary and a history row are saved, and the response carries the new Ticket.
+- **AC-19** Given a Ticket with a Done Action, no open follow-up, no Planned Action and a summary, when it is moved to Resolved, then the status, the Resolution Summary and a history row are saved, and the response carries the new Ticket.
 - **AC-20** Given a Ticket in each of Open, In Progress, Waiting for Requester and Reopened, when a client calls the API directly to resolve it without meeting the gate, then it is refused; and given a transition to any other status, then no gate condition is evaluated.
 - **AC-21** Given a Requester who has indicated the problem appears resolved, when the Ticket fails the gate, then it is still refused and its status is unchanged.
 - **AC-22** Given the Lab 3 status matrix, when each permitted and each non-permitted transition is requested, then only permitted ones succeed, and Cancelled stays terminal.
@@ -353,6 +354,11 @@ Full detail is in [api-spec.md](api-spec.md). In summary:
 - **AC-46** Given repeated clicking of submit on the Action form, when requests are in flight, then exactly one Action is created.
 - **AC-47** Given the full journeys (record an Action, resolve a Ticket, view the dashboards), when run end to end in a real browser, then they pass with no console errors and no broken links.
 
+### Added after review
+
+- **AC-48** Given an Action create carrying a `requestId`, when the same request is sent a second time (a retry after a lost response), then the second returns the existing Action with `200`, only one Action exists, and nothing else is written; and given the same `requestId` with a changed field, then it is refused `409 REQUEST_ID_CONFLICT` and nothing is stored; and given a missing or non-UUID `requestId`, then `400 VALIDATION_FAILED`; and given a different `requestId`, then a second Action is created.
+- **AC-49** Given a Ticket with an Action in the Planned state, when a transition to Resolved is requested, then it is refused `400 RESOLUTION_GATE_FAILED` naming the pending Planned Actions and the status is unchanged; and given those Actions are then completed or cancelled, then the transition succeeds.
+
 ## 10. Definition of Done
 
 The sprint is complete when every item below holds on `main`.
@@ -363,7 +369,8 @@ The sprint is complete when every item below holds on `main`.
 - [ ] An inactive or non-staff performer is refused; Done and Cancelled Actions cannot change
 - [ ] A follow-up shows as open until a Done Action follows it up
 - [ ] A Requester sees every Action on their own Tickets, read-only, and no one else's
-- [ ] A Ticket cannot be Resolved without a Done Action, with no open follow-up, and with a Resolution Summary — even when the API is called directly — and every unmet condition is reported
+- [ ] A Ticket cannot be Resolved without a Done Action, with an open follow-up, with a Planned Action still pending, or without a Resolution Summary — even when the API is called directly — and every unmet condition is reported
+- [ ] A repeated Action create with the same `requestId` yields one Action; a changed payload under that key is refused
 - [ ] A stale Ticket or Action write is refused `409` and overwrites nothing
 - [ ] Every status transition is in the history; dashboard deltas use midnight Asia/Bangkok
 - [ ] Both dashboards show the defined cards with correct counts, recent Tickets and quick actions, and every card drills into a correctly filtered list
@@ -400,7 +407,7 @@ The first thirteen decisions were settled with the author before this document w
 
 - **D-02 Action state is Planned → Done or Cancelled.** Done and Cancelled are terminal and read-only; Cancel requires a reason. *Why:* the stakeholder wants work planned *and* tracked, and a terminal state is what makes the record evidence.
 
-- **D-03 The resolution gate has three conditions, all enforced by the backend:** at least one Done Action, no open follow-up, and a non-empty Resolution Summary sent with the transition. Refusal is `400 RESOLUTION_GATE_FAILED` with `details` naming each unmet condition. *Why:* the handout requires the rule to hold when a client bypasses the screen; naming every unmet condition at once saves the user a refusal per condition.
+- **D-03 The resolution gate has four conditions, all enforced by the backend:** at least one Done Action, no open follow-up, no Action still in the Planned state, and a non-empty Resolution Summary sent with the transition. Refusal is `400 RESOLUTION_GATE_FAILED` with `details` naming each unmet condition. *Why:* the handout requires the rule to hold when a client bypasses the screen; naming every unmet condition at once saves the user a refusal per condition. *Added after review:* the three conditions settled in the grill left a gap, because with D-17 freezing Actions on resolved Tickets a Planned Action left at resolution would stay Planned forever and show the Requester planned work on a resolved Ticket; the author added the fourth condition so remaining work is completed or cancelled first.
 
 - **D-04 A Requester sees every Action, every field, read-only.** Private content stays in Internal Notes. *Rejected:* a per-Action visibility flag, which makes a leak a matter of remembering a filter — the same reasoning that gave Lab 3 two message tables (Lab 3 D-09).
 
@@ -430,7 +437,7 @@ The next decisions fill gaps the grill left, approved afterwards.
 
 - **D-16 Lab 3 behaviour that this sprint changes, stated rather than discovered.** (1) The three staff Ticket PATCH endpoints accept the named field **plus `version`**, and `/status` also accepts `resolutionSummary`, required only when the target is Resolved. (2) Lab 3's race refusal `400 INVALID_STATUS_TRANSITION` becomes `409 STALE_UPDATE`. (3) `Ticket.resolutionSummary` is reused; no new column. (4) `/` and sign-in land on `/dashboard`, not `/my-tickets`, and `AuthGuard`'s role-refusal redirect also goes to `/dashboard`. Lab 3 tests and end-to-end specs that expect the old behaviour are updated, and tests.md lists them (MIG-07, MIG-08).
 
-- **D-17 Actions are writable only on a Ticket that is not Resolved, Closed or Cancelled.** `409 TICKET_NOT_ACTIONABLE` otherwise. *Why:* without it a Ticket could be Resolved and then acquire an open follow-up, contradicting the gate. *Cost:* a Planned Action stranded on a Resolved Ticket stays frozen until the Ticket is reopened; acceptable, because Resolved is a hand-over.
+- **D-17 Actions are writable only on a Ticket that is not Resolved, Closed or Cancelled.** `409 TICKET_NOT_ACTIONABLE` otherwise. *Why:* without it a Ticket could be Resolved and then acquire an open follow-up, contradicting the gate. *Cost:* none stranded: the fourth gate condition (D-03) means no Action is Planned when a Ticket is Resolved, so nothing is left frozen half-done.
 
 - **D-18 Result is optional while Planned and required to complete.** A Planned Action describes intent; its result does not exist yet. *Rejected:* requiring Result at creation, which forces planned work to carry an invented outcome.
 
@@ -446,9 +453,11 @@ The next decisions fill gaps the grill left, approved afterwards.
 
 - **D-23 The backfill is SQL inside the migration.** *Why:* it needs no application code (unlike Lab 3's scrypt step), so it can run in the same transaction as the schema change and cannot be skipped by someone who forgot a script — the defect Lab 3's review forced a rewrite to remove.
 
+- **D-24 Action creation is idempotent on a client-generated `requestId`.** The client generates one UUID per intentional create and resends it on retry; `(ticketId, requestId)` is unique; a repeat returns the existing Action with `200` and writes nothing; the same key with different fields is `409 REQUEST_ID_CONFLICT`. *Why:* handout §8.5 requires duplicates caused by repeated clicking *or network retry* to be prevented or safely handled, and a lost response is the case the interface cannot see: the Action was saved, the user never learned it, and a retry would otherwise save it again. *Rejected:* UI-only prevention (disabling the button), which covers a second click but not a retry after a lost response, and which no other client of the API would inherit; and de-duplicating on content (same description within a few seconds), which refuses legitimate repeated work and guesses at intent.
+
 **Assumptions**
 
-- **A-01** A PLANNED Action with no follow-up does not block resolution: the gate is the three conditions in D-03 and no more. A Planned Action left on a Ticket when it is Resolved is frozen by D-17.
+- **A-01** A Planned Action blocks resolution (the fourth condition of D-03, added after review), so no Planned Action can be left on a Resolved Ticket. Legacy Tickets have no Actions, so the gate never retroactively blocks one. (The earlier reading, that a Planned Action without a follow-up did not block, no longer holds.)
 - **A-02** The clock is injected in the server so that tests can fix "now" and place history either side of midnight Bangkok.
 - **A-03** The Actions list is not paginated; a Ticket has a handful of Actions, and the contract states the assumption rather than hiding it.
 - **A-04** "Open" for the Requester card includes Reopened and New, since the Requester has not been told the work is finished in either.

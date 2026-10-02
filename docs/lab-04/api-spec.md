@@ -20,6 +20,7 @@ Unchanged from Lab 3: base path `/api`; session cookie `toktickit.session`; iden
 | --- | --- |
 | `200` | A successful read, or a successful change that returns the new state |
 | `201` | An Action was created |
+| `200` | (also) An Action create repeated with the same `requestId`: the existing Action is returned and nothing is written |
 | `400` | Malformed JSON, failed field validation, invalid query parameter, invalid transition, resolution gate failed, ineligible performer |
 | `401` | No session, or an expired or deleted one |
 | `403` | The role forbids this, or a password change is outstanding |
@@ -39,6 +40,7 @@ Unchanged from Lab 3: base path `/api`; session cookie `toktickit.session`; iden
 | `ACTION_NOT_EDITABLE` | 409 | An edit, completion or cancellation of an Action that is Done or Cancelled |
 | `ACTION_NOT_FOUND` | 404 | An Action id that does not exist, or whose Ticket is outside the caller's scope |
 | `TICKET_NOT_ACTIONABLE` | 409 | An Action write on a Ticket that is Resolved, Closed or Cancelled |
+| `REQUEST_ID_CONFLICT` | 409 | An Action create whose `requestId` already exists on that Ticket with different field values |
 
 ### Changed
 
@@ -95,6 +97,7 @@ Every Lab 3 code: `UNAUTHENTICATED` · `INVALID_CREDENTIALS` · `ACCOUNT_INACTIV
 
 | Field | Type | Required | Rule |
 | --- | --- | --- | --- |
+| `requestId` | string (UUID) | yes | Client-generated, one per intentional create, resent unchanged on retry (BR-35, D-24) |
 | `description` | string | yes | 1–2000 characters after trimming (BR-14) |
 | `actionAt` | string (ISO 8601 instant) | no | Not more than one minute in the future; default server now |
 | `result` | string or `null` | no | 1–2000 if given; may be empty while Planned (BR-06) |
@@ -106,12 +109,16 @@ Every Lab 3 code: `UNAUTHENTICATED` · `INVALID_CREDENTIALS` · `ACCOUNT_INACTIV
 
 The new Action is `PLANNED`, `version` 1, with `recordedBy` the caller. Creation locks the Ticket row, so it serialises with a resolution (BR-16, AC-27).
 
-**Response `201`** — the Action.
+**Idempotency (BR-35).** After the body is validated and the Ticket found, the server looks for an Action with this `(ticketId, requestId)`. If one exists and every submitted field equals its stored value, the response is `200` with that Action and nothing is written, even when the Ticket has since been Resolved. If one exists and any field differs, the response is `409 REQUEST_ID_CONFLICT`. Otherwise the Action is created. Two simultaneous requests with one key are serialised by the Ticket lock and the unique `(ticketId, requestId)` constraint: one creates, the other replays. A different `requestId` always creates a new Action.
+
+**Response `201`** — the Action (`200` for a replay). The Action resource does not expose `requestId`.
 
 | Condition | Status | Code |
 | --- | --- | --- |
 | Body not an object, unexpected field, wrong type, bound exceeded | 400 | `VALIDATION_FAILED`, field in `details` |
+| `requestId` missing or not a UUID | 400 | `VALIDATION_FAILED`, `details.requestId` |
 | `followsUpId` invalid | 400 | `VALIDATION_FAILED`, `details.followsUpId` |
+| `requestId` exists with different fields | 409 | `REQUEST_ID_CONFLICT` |
 | `performedById` ineligible | 400 | `ACTION_ASSIGNEE_INELIGIBLE` |
 | Ticket absent | 404 | `TICKET_NOT_FOUND` |
 | Ticket Resolved, Closed or Cancelled | 409 | `TICKET_NOT_ACTIONABLE` |
@@ -175,7 +182,7 @@ There is **no** endpoint that deletes an Action or moves it out of Done or Cance
 
 `resolutionSummary` is 1–2000 characters after trimming (BR-17). It is **required only when `status` is `RESOLVED`**. Sending it with any other target is `400 VALIDATION_FAILED` (`details.resolutionSummary`); omitting or blanking it when resolving is a gate failure (below), not a shape error, so that the user sees every unmet condition together.
 
-The gate (BR-16) runs after the matrix check, inside the transition's transaction with the Ticket row locked. All three conditions are evaluated; every unmet one is reported:
+The gate (BR-16) runs after the matrix check, inside the transition's transaction with the Ticket row locked. All four conditions are evaluated; every unmet one is reported:
 
 ```json
 {
@@ -185,13 +192,14 @@ The gate (BR-16) runs after the matrix check, inside the transition's transactio
     "details": {
       "doneAction": "Record at least one completed action before resolving.",
       "openFollowUp": "2 follow-ups are still open.",
+      "plannedActions": "Complete or cancel the 1 planned action before resolving.",
       "resolutionSummary": "Enter a resolution summary."
     }
   }
 }
 ```
 
-Only the keys for unmet conditions are present: `doneAction`, `openFollowUp`, `resolutionSummary`. The refusal is `400`, the Ticket is unchanged, and nothing is written to the history (BR-21).
+Only the keys for unmet conditions are present: `doneAction`, `openFollowUp`, `plannedActions`, `resolutionSummary`. The refusal is `400`, the Ticket is unchanged, and nothing is written to the history (BR-21).
 
 On success the Ticket's status becomes `RESOLVED`, `resolutionSummary` is stored (trimmed), `version` increments, and one history row is appended in the same transaction (AC-19, AC-23). Transitions to any other status evaluate no gate condition (AC-20). A Requester's resolved indication does not satisfy any condition (BR-18).
 
@@ -331,7 +339,7 @@ Every row also answers `401` without a session and `403 PASSWORD_CHANGE_REQUIRED
 
 ## 9. What is not in this API
 
-No Action delete; no endpoint for the status history; no idempotency key on Action creation (BR-35); no bulk Action operations; no pagination of Actions; no Action file upload (Attachment Notes is text); no dashboard filters or date-range parameters; no export; no notifications.
+No Action delete; no endpoint for the status history; no bulk Action operations; no pagination of Actions; no Action file upload (Attachment Notes is text); no dashboard filters or date-range parameters; no export; no notifications.
 
 ## 10. Unchanged from Lab 3
 
