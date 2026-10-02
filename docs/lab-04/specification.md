@@ -289,7 +289,7 @@ Full detail is in [api-spec.md](api-spec.md). In summary:
 
 - **AC-01** Given a permitted IT Staff user and valid data, when an Action Taken is created, then it is saved under the correct Ticket with the authenticated creator as `recordedBy` and the approved assignee as `performedBy`.
 - **AC-02** Given an authenticated Requester, when dashboard data is retrieved, then only metrics and recent Tickets owned by that Requester are returned.
-- **AC-03** Given an Action created with no `performedById`, when it is saved, then `performedBy` is the creator; and given a `recordedById` or `state` in the body, then it is ignored.
+- **AC-03** Given an Action created with no `performedById`, when it is saved, then `performedBy` is the creator; and given a `recordedById` or `state` in the body, then it is refused `400 VALIDATION_FAILED` and the recorder is still the session user.
 - **AC-04** Given a `performedById` naming an inactive user, a Requester, or an unknown id, when an Action is created or edited, then it is refused `400 ACTION_ASSIGNEE_INELIGIBLE` and nothing is stored.
 - **AC-05** Given an Action with a missing description, a Follow-Up Required with no note, a note without Follow-Up Required, or a field over its limit, when it is submitted, then it is refused `400 VALIDATION_FAILED` with the field named in `details`.
 - **AC-06** Given a Ticket with several Actions, when they are listed, then all are returned in action date/time then id order, each with its performer, recorder, state and follow-up state.
