@@ -7,6 +7,11 @@ import {
 } from "../../src/actions/domain.js";
 import type { ActionState } from "../../src/actions/domain.js";
 import {
+  evaluateResolutionGate,
+  gateFactsOf,
+  validateResolutionSummary,
+} from "../../src/tickets/resolutionGate.js";
+import {
   mergeFollowUp,
   validateCancel,
   validateComplete,
@@ -452,4 +457,145 @@ describe("UNIT-04 keys that exist on every object are not fields (review of PR 8
       }
     }
   );
+});
+
+describe("UNIT-03 the resolution gate evaluator", () => {
+  const FACTS = (unmet: {
+    done: boolean;
+    followUp: boolean;
+    planned: boolean;
+  }) => ({
+    doneActions: unmet.done ? 0 : 2,
+    openFollowUps: unmet.followUp ? 2 : 0,
+    plannedActions: unmet.planned ? 1 : 0,
+  });
+
+  const KEYS = {
+    done: "doneAction",
+    followUp: "openFollowUp",
+    planned: "plannedActions",
+    summary: "resolutionSummary",
+  } as const;
+
+  const BOOLEANS = [false, true] as const;
+
+  for (const done of BOOLEANS) {
+    for (const followUp of BOOLEANS) {
+      for (const planned of BOOLEANS) {
+        for (const summary of BOOLEANS) {
+          const expected = [
+            done ? KEYS.done : null,
+            followUp ? KEYS.followUp : null,
+            planned ? KEYS.planned : null,
+            summary ? KEYS.summary : null,
+          ].filter((key): key is string => key !== null);
+
+          it(`unmet [${expected.join(", ") || "none"}] names exactly those`, () => {
+            const details = evaluateResolutionGate(
+              FACTS({ done, followUp, planned }),
+              summary ? "" : "Replaced the access point."
+            );
+
+            expect(Object.keys(details).toSorted()).toStrictEqual(
+              expected.toSorted()
+            );
+          });
+        }
+      }
+    }
+  }
+
+  it("words each condition with its count", () => {
+    const details = evaluateResolutionGate(
+      { doneActions: 0, openFollowUps: 2, plannedActions: 1 },
+      ""
+    );
+
+    expect(details).toStrictEqual({
+      doneAction: "Record at least one completed action before resolving.",
+      openFollowUp: "2 follow-ups are still open.",
+      plannedActions: "Complete or cancel the 1 planned action before resolving.",
+      resolutionSummary: "Enter a resolution summary.",
+    });
+    expect(
+      evaluateResolutionGate(
+        { doneActions: 1, openFollowUps: 1, plannedActions: 3 },
+        "ok"
+      )
+    ).toStrictEqual({
+      openFollowUp: "1 follow-up is still open.",
+      plannedActions: "Complete or cancel the 3 planned actions before resolving.",
+    });
+  });
+
+  it("counts the facts from the Actions: only a Done follower closes a follow-up, a cancelled one is void", () => {
+    const facts = gateFactsOf([
+      // Needs follow-up, followed up by a Done Action: closed.
+      { id: 1, state: "DONE", followUpRequired: true, followsUpId: null },
+      { id: 2, state: "DONE", followUpRequired: false, followsUpId: 1 },
+      // Needs follow-up, only a Planned follower: still open (and a planned one).
+      { id: 3, state: "DONE", followUpRequired: true, followsUpId: null },
+      { id: 4, state: "PLANNED", followUpRequired: false, followsUpId: 3 },
+      // Needs follow-up but cancelled: void.
+      { id: 5, state: "CANCELLED", followUpRequired: true, followsUpId: null },
+    ]);
+
+    expect(facts).toStrictEqual({
+      doneActions: 3,
+      openFollowUps: 1,
+      plannedActions: 1,
+    });
+    expect(gateFactsOf([])).toStrictEqual({
+      doneActions: 0,
+      openFollowUps: 0,
+      plannedActions: 0,
+    });
+  });
+});
+
+describe("UNIT-05 Resolution Summary validation", () => {
+  it("keeps the trimmed value when resolving", () => {
+    expect(validateResolutionSummary("RESOLVED", "  Fixed it.  ")).toStrictEqual(
+      { ok: true, value: "Fixed it." }
+    );
+    expect(validateResolutionSummary("RESOLVED", repeat(2000))).toStrictEqual({
+      ok: true,
+      value: repeat(2000),
+    });
+  });
+
+  it("passes an absent, empty or whitespace-only summary through for the gate to name", () => {
+    for (const raw of [undefined, "", "   \n\t "]) {
+      expect(validateResolutionSummary("RESOLVED", raw)).toStrictEqual({
+        ok: true,
+        value: "",
+      });
+    }
+  });
+
+  it("refuses more than 2000 characters after trimming, and a non-string", () => {
+    for (const raw of [repeat(2001), `  ${repeat(2001)}  `, 5, null, {}, []]) {
+      const result = validateResolutionSummary("RESOLVED", raw);
+
+      expect(detailsOf(result)).toStrictEqual(["resolutionSummary"]);
+    }
+  });
+
+  it("accepts 2000 characters that only fit once trimmed", () => {
+    expect(
+      validateResolutionSummary("RESOLVED", ` ${repeat(2000)} `).ok
+    ).toBe(true);
+  });
+
+  it("refuses a summary sent with any other target, and accepts none", () => {
+    for (const target of ["OPEN", "IN_PROGRESS", "CLOSED", "REOPENED"]) {
+      expect(
+        detailsOf(validateResolutionSummary(target, "Fixed it.")),
+        target
+      ).toStrictEqual(["resolutionSummary"]);
+      expect(validateResolutionSummary(target, undefined), target).toStrictEqual(
+        { ok: true, value: undefined }
+      );
+    }
+  });
 });
