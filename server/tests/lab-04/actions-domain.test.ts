@@ -8,6 +8,8 @@ import {
 import type { ActionState } from "../../src/actions/domain.js";
 import {
   mergeFollowUp,
+  validateCancel,
+  validateComplete,
   validateCreateAction,
   validateEditAction,
   validateRequestId,
@@ -371,4 +373,83 @@ describe("UNIT-09 requestId validation", () => {
       detailsOf(validateCreateAction({ description: "x" }, NOW))
     ).toContain("requestId");
   });
+});
+
+describe("UNIT-04 an action time must be a real calendar moment (review of PR 81)", () => {
+  it.each([
+    ["30 February", "2026-02-30T10:00:00Z"],
+    ["29 February in a common year", "2026-02-29T10:00:00Z"],
+    ["31 April", "2026-04-31T10:00:00Z"],
+    ["month 13", "2026-13-01T10:00:00Z"],
+    ["month 0", "2026-00-10T10:00:00Z"],
+    ["day 0", "2026-03-00T10:00:00Z"],
+    ["hour 24", "2026-03-10T24:00:00Z"],
+    ["minute 60", "2026-03-10T10:60:00Z"],
+    ["second 60", "2026-03-10T10:00:60Z"],
+    ["an offset of 24 hours", "2026-03-10T10:00:00+24:00"],
+    ["an offset of 60 minutes", "2026-03-10T10:00:00+05:60"],
+  ])("refuses %s rather than rolling it into the next month", (_name, raw) => {
+    expect(detailsOf(okCreate({ actionAt: raw }))).toStrictEqual(["actionAt"]);
+  });
+
+  it("still accepts 29 February in a leap year, the last second of a day and an offset", () => {
+    expect(okCreate({ actionAt: "2024-02-29T10:00:00Z" }).ok).toBe(true);
+    expect(okCreate({ actionAt: "2026-03-10T23:59:59.999Z" }).ok).toBe(true);
+    expect(okCreate({ actionAt: "2026-03-10T10:00+07:00" }).ok).toBe(true);
+  });
+
+  it("applies the same check to an edit", () => {
+    expect(
+      detailsOf(
+        validateEditAction(
+          { version: 1, actionAt: "2026-02-30T10:00:00Z" },
+          NOW
+        )
+      )
+    ).toStrictEqual(["actionAt"]);
+  });
+});
+
+// JSON.parse makes `__proto__` an own key, as a request body does.
+const bodyWith = (key: string, rest: Record<string, unknown>): unknown =>
+  JSON.parse(
+    `{${JSON.stringify(key)}: 1, ${Object.entries(rest)
+      .map(([k, v]) => `${JSON.stringify(k)}: ${JSON.stringify(v)}`)
+      .join(", ")}}`
+  );
+
+describe("UNIT-04 keys that exist on every object are not fields (review of PR 81)", () => {
+  const INHERITED = ["__proto__", "constructor", "toString", "hasOwnProperty"];
+
+  it.each(INHERITED)("%s is refused by name on create", (key) => {
+    const result = validateCreateAction(
+      bodyWith(key, { requestId: UUID, description: "x" }),
+      NOW
+    );
+
+    expect(result.ok).toBe(false);
+    expect(Object.keys(result.ok ? {} : result.details)).toStrictEqual([key]);
+    expect(result.ok ? null : result.details[key]).toBe(
+      "This field is not accepted here."
+    );
+  });
+
+  it.each(INHERITED)(
+    "%s is refused by name on edit, complete and cancel",
+    (key) => {
+      const edit = validateEditAction(bodyWith(key, { version: 1 }), NOW);
+      const complete = validateComplete(bodyWith(key, { version: 1 }));
+      const cancel = validateCancel(
+        bodyWith(key, { version: 1, cancelReason: "x" })
+      );
+
+      for (const result of [edit, complete, cancel]) {
+        expect(result.ok).toBe(false);
+        expect(Object.keys(result.ok ? {} : result.details)).toContain(key);
+        expect(result.ok ? null : result.details[key]).toBe(
+          "This field is not accepted here."
+        );
+      }
+    }
+  );
 });

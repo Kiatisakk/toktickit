@@ -30,9 +30,51 @@ export type Parsed<T> =
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
-/** An ISO 8601 instant that names its offset, so it means one moment. */
+/**
+ * An ISO 8601 instant that names its offset, so it means one moment. The
+ * groups are the calendar fields, which `Date` would otherwise roll over
+ * silently (30 February becomes 2 March), so they are checked before it is
+ * asked to parse anything.
+ */
 const INSTANT_PATTERN =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/u;
+  /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})T(?<hour>\d{2}):(?<minute>\d{2})(?::(?<second>\d{2})(?:\.\d+)?)?(?:Z|[+-](?<offsetHour>\d{2}):(?<offsetMinute>\d{2}))$/u;
+
+const MONTHS_IN_YEAR = 12;
+const HOURS_IN_DAY = 24;
+const MINUTES_IN_HOUR = 60;
+
+/** Day 0 of the next month is the last day of this one. */
+const daysInMonth = (year: number, month: number): number =>
+  new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+/**
+ * Whether the captured calendar and clock fields name a moment that exists:
+ * a real day of a real month, an hour below 24, a minute and second below 60,
+ * and an offset of the same shape.
+ */
+const isRealInstant = (parts: Record<string, string | undefined>): boolean => {
+  const field = (name: string): number => Number(parts[name] ?? 0);
+  const year = field("year");
+  const month = field("month");
+  const day = field("day");
+  const hour = field("hour");
+  const minute = field("minute");
+  const second = field("second");
+  const offsetHour = field("offsetHour");
+  const offsetMinute = field("offsetMinute");
+
+  return (
+    month >= 1 &&
+    month <= MONTHS_IN_YEAR &&
+    day >= 1 &&
+    day <= daysInMonth(year, month) &&
+    hour < HOURS_IN_DAY &&
+    minute < MINUTES_IN_HOUR &&
+    second < MINUTES_IN_HOUR &&
+    offsetHour < HOURS_IN_DAY &&
+    offsetMinute < MINUTES_IN_HOUR
+  );
+};
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -139,7 +181,9 @@ const readFollowsUp = (raw: unknown): Field<number | null> => {
 const readActionAt =
   (now: Date) =>
   (raw: unknown): Field<Date> => {
-    if (typeof raw !== "string" || !INSTANT_PATTERN.test(raw)) {
+    const match = typeof raw === "string" ? INSTANT_PATTERN.exec(raw) : null;
+
+    if (typeof raw !== "string" || match === null) {
       return {
         ok: false,
         why: "Enter the date and time as an ISO 8601 instant, such as 2026-10-05T03:15:00Z.",
@@ -148,7 +192,7 @@ const readActionAt =
 
     const value = new Date(raw);
 
-    if (Number.isNaN(value.getTime())) {
+    if (!isRealInstant(match.groups ?? {}) || Number.isNaN(value.getTime())) {
       return { ok: false, why: "That is not a real date and time." };
     }
 
@@ -160,18 +204,31 @@ const readActionAt =
 /* --------------------------------------------------------- the bodies -- */
 
 /**
+ * An object with no prototype, so a body key such as `__proto__` or
+ * `constructor` is an ordinary key and cannot reach what every object inherits.
+ */
+const bare = <T>(): Record<string, T> =>
+  Object.create(null) as Record<string, T>;
+
+/**
  * Reads the named fields of a body with one reader each, collecting every
  * refusal rather than stopping at the first, and refusing any other key.
+ *
+ * The readers are looked up in a `Map` and the results kept in prototype-free
+ * records: a body is attacker-shaped, `JSON.parse` makes `"__proto__"` an own
+ * key, and `readers["__proto__"]` on a plain object is `Object.prototype`, not
+ * a reader.
  */
 const readFields = (
   body: Record<string, unknown>,
-  readers: Record<string, (raw: unknown) => Field<unknown>>
+  fieldReaders: Record<string, (raw: unknown) => Field<unknown>>
 ): { values: Record<string, unknown>; details: Details } => {
-  const values: Record<string, unknown> = {};
-  const details: Details = {};
+  const readers = new Map(Object.entries(fieldReaders));
+  const values = bare<unknown>();
+  const details: Details = bare<string>();
 
   for (const key of Object.keys(body)) {
-    const read = readers[key];
+    const read = readers.get(key);
 
     if (!read) {
       details[key] = "This field is not accepted here.";
