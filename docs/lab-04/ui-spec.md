@@ -125,6 +125,14 @@ Done and Cancelled Actions show **View** only: no Edit, Complete or Cancel contr
 
 The list is the same, read-only, with every Action and every field visible and **no** Add, Edit, Complete or Cancel control present — absent, not disabled. The section heading carries a one-line note: "Work IT has recorded on your ticket." Private content stays in Internal Notes, which the Requester screen still does not show.
 
+### Settled in the build (Issue #74)
+
+- **Row controls.** Edit, Complete and **Cancel action** sit in the row beside **View**, for a Planned Action on an actionable Ticket; each carries the Action's number in its accessible name ("Edit action #12"). The forms and the view open beneath the list.
+- **One table, two presentations.** The list is a single `<table>`; below 768 px the stylesheet lays each row out as a card with every cell restated under its column label, so no column is lost and no second copy of the rows exists. From 768 px the table scrolls inside its own container.
+- **Date/time** is a `datetime-local` control, defaulting to the current minute. An edit sends `actionAt` only when the person changed it, so an Action's stored seconds are not rewritten from a minute-precision field, and the "not in the future" check applies only to a date the person changed.
+- **A refusal that cannot succeed closes the form.** `ACTION_NOT_EDITABLE` and `TICKET_NOT_ACTIONABLE` re-read the record, close the form and leave the plain-words explanation above the list; the Ticket is re-read through the Ticket Detail screen's own reload, so the status shown follows.
+- **Request key.** One `crypto.randomUUID()` per mounted create form; the form is mounted afresh by each **Add action**, so a new Action gets a new key and a retry never does.
+
 ---
 
 ## 7. Status control and the resolve flow
