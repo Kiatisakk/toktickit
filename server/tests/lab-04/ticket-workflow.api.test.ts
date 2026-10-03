@@ -433,6 +433,36 @@ describe("the version is required", () => {
 });
 
 describe("two people at once", () => {
+  it("WF-15 two staff changing the owner, or the IT Priority, from the same version: one 200, one 409 STALE_UPDATE", async () => {
+    for (let round = 0; round < RACE_ROUNDS; round += 1) {
+      // oxlint-disable-next-line no-await-in-loop
+      const id = await createTicket("NEW");
+      // oxlint-disable-next-line no-await-in-loop
+      const owners = await Promise.all([
+        patch(staff, id, "owner", { ownerId: staff.id, version: 1 }),
+        patch(admin, id, "owner", { ownerId: admin.id, version: 1 }),
+      ]);
+
+      expect(
+        owners.map((response) => response.status).toSorted(),
+        `owner, round ${round}`
+      ).toStrictEqual([200, 409]);
+
+      // oxlint-disable-next-line no-await-in-loop
+      const priorities = await Promise.all([
+        patch(staff, id, "it-priority", { itPriority: "LOW", version: 2 }),
+        patch(admin, id, "it-priority", { itPriority: "HIGH", version: 2 }),
+      ]);
+
+      expect(
+        priorities.map((response) => response.status).toSorted(),
+        `priority, round ${round}`
+      ).toStrictEqual([200, 409]);
+      // oxlint-disable-next-line no-await-in-loop
+      expect(await versionOf(id)).toBe(3);
+    }
+  });
+
   it("WF-15 two staff moving one Ticket from the same version: one 200, one 409 STALE_UPDATE, one history row", async () => {
     for (let round = 0; round < RACE_ROUNDS; round += 1) {
       // Sequential rounds, each racing a pair.
