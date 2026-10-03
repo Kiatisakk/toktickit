@@ -31,6 +31,7 @@ export const ErrorCode = {
   ticketNotFound: "TICKET_NOT_FOUND",
   ticketOwnerIneligible: "TICKET_OWNER_INELIGIBLE",
   invalidStatusTransition: "INVALID_STATUS_TRANSITION",
+  staleUpdate: "STALE_UPDATE",
   attachmentNotFound: "ATTACHMENT_NOT_FOUND",
   attachmentRemoved: "ATTACHMENT_REMOVED",
   attachmentLimitReached: "ATTACHMENT_LIMIT_REACHED",

@@ -159,6 +159,23 @@ export const TicketDetail = () => {
     setState({ kind: "loaded", ticket: updated });
   };
 
+  // A staff write was refused as stale (AC-42). Fetch the Ticket again without
+  // the loading state, so the controls stay mounted and keep the message that
+  // explains why the screen just changed under the person using it.
+  const onStale = async (): Promise<boolean> => {
+    try {
+      const ticket = await fetchTicket(Number(ticketId));
+
+      setState({ kind: "loaded", ticket });
+
+      return true;
+    } catch {
+      // Leave what is on screen, and tell the control the reload failed: it
+      // must not say the latest version was loaded when it was not.
+      return false;
+    }
+  };
+
   const onResolvedIndicated = (resolvedIndicatedAt: string) => {
     setState((current) =>
       current.kind === "loaded"
@@ -272,7 +289,11 @@ export const TicketDetail = () => {
             </div>
           </div>
           {staffControls ? (
-            <ItPriorityControl onUpdated={onTicketChanged} ticket={ticket} />
+            <ItPriorityControl
+              onStale={onStale}
+              onUpdated={onTicketChanged}
+              ticket={ticket}
+            />
           ) : (
             <div className="tkt-field-group">
               <span className="tkt-field-label">IT Priority</span>
@@ -286,7 +307,11 @@ export const TicketDetail = () => {
             </div>
           )}
           {staffControls ? (
-            <StatusControl onUpdated={onTicketChanged} ticket={ticket} />
+            <StatusControl
+              onStale={onStale}
+              onUpdated={onTicketChanged}
+              ticket={ticket}
+            />
           ) : (
             <div className="tkt-field-group">
               <span className="tkt-field-label">Current Status</span>
@@ -297,7 +322,11 @@ export const TicketDetail = () => {
           )}
 
           {staffControls ? (
-            <OwnerControl onUpdated={onTicketChanged} ticket={ticket} />
+            <OwnerControl
+              onStale={onStale}
+              onUpdated={onTicketChanged}
+              ticket={ticket}
+            />
           ) : (
             <TextInput
               label="Ticket Owner"

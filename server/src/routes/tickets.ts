@@ -9,6 +9,7 @@ import { ErrorCode, sendError, sendInternalError } from "../http/errors.js";
 import { identifier } from "../http/identifier.js";
 import { currentUser, requireSignedIn } from "../middleware/session.js";
 import { prisma } from "../prisma.js";
+import { recordStatusChange } from "../tickets/statusHistory.js";
 import {
   LIST_SHAPE,
   readTicketPage,
@@ -103,7 +104,7 @@ ticketsRouter.post("/tickets", ...requireSignedIn, async (req, res) => {
         new Date().getFullYear()
       );
 
-      return await tx.ticket.create({
+      const created = await tx.ticket.create({
         data: {
           ticketNumber,
           // Ownership comes from the session. Anything the body said about who
@@ -124,6 +125,17 @@ ticketsRouter.post("/tickets", ...requireSignedIn, async (req, res) => {
         },
         select: TICKET_SHAPE,
       });
+
+      // The first history row, in the creation's own transaction (AC-23): a
+      // Ticket without one would have no status "as at" its first moment.
+      await recordStatusChange(tx, {
+        ticketId: created.id,
+        from: null,
+        to: "NEW",
+        changedById: user.id,
+      });
+
+      return created;
     });
 
     res.status(201).json({ ...ticket, attachments: [] });

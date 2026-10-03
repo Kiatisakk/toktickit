@@ -29,6 +29,18 @@ Three findings, all real, all about the contract contradicting itself rather tha
 
 *The edit form offered an immutable field.* It reused the create form, including the Follows-up selector, while BR-10 fixes the link at creation and `PATCH` refuses `followsUpId`. The field is now read-only in edit mode.
 
+He approved with `LGTM` at 16:54:20Z on 2026-10-02 and merged ten seconds later as `5419199`. Issue #70 was closed by hand. Recorded on the next feature branch, #72's.
+
+### PR #80 — Ticket versioning and status history (Issue #72)
+
+[PR #80](https://github.com/Kiatisakk/toktickit/pull/80) · reviewed 2026-10-03 (review 5399433733) · **3 line comments**, verdict **Changes requested**. Fixes in `9edda8a` and `171253a`; each thread answered.
+
+*The migration was not transactional.* Prisma Migrate does not wrap a SQL migration in a transaction, so a failure after the backfill could leave it half-applied, contrary to specification section 7. Real. The file now opens with `BEGIN;` and ends with `COMMIT;` (`down.sql` already did); there is no `ALTER TYPE ... ADD VALUE` in it, which is what would have forbidden that. New test MIG-12 asserts both statements and runs the file on the scratch database with a division by zero injected before the commit, then shows no `version` column, no `TicketStatusChange` table and every earlier row intact; it failed first on the missing `BEGIN;`. Honest limit: the behavioural half alone passes on the old file, because the driver sends a multi-statement string as one implicit transaction. The migration was already applied to the shared databases; `prisma migrate status` and `deploy` do not verify applied checksums, so nothing in `_prisma_migrations` was touched.
+
+*The scratch database name was fixed and dropped with FORCE.* Real: a parallel run or a database with that name would be terminated and erased. The name now carries 12 random hex characters after the same prefix, is created without a prior drop and dropped by that exact name in `afterAll`. Verified by running the suite twice at once; both passed.
+
+*A failed reload after a stale write was swallowed.* Real: the control said "We've loaded the latest version" even when that fetch had failed. The reload now reports whether it worked; the stale message waits for it, and a failure shows a distinct alert saying the data may be out of date and to reload the page. ui-spec section 8 states it. The new client test failed first (the alert never appeared).
+
 ---
 
 ## Reviews I gave
@@ -58,7 +70,7 @@ A detailed contract — lock ordering, an idempotent create, and drill-down filt
 
 Our own contract (this PR) was checked against the same list before it was opened for review: eleven handout headings, ACs in Given/When/Then form, one gate error code listing every unmet condition, and a screenshot inventory.
 
-**Outcome.** He replied on all eight threads within the hour, each naming the commit that fixed it, and fixed the three process problems too: created `lab4-staging`, retargeted the Pull Request, added the `lab-04` label and the two missing registers, and linked his Issue. Re-reviewed at `7717a45` against the files rather than the replies, plus a mechanical check (AC-01 to AC-25 without gaps, every AC in his crosswalk, no duplicate or undefined test ID). **Approved** 2026-10-02 16:46:21Z.
+**Outcome.** He replied on all eight threads within the hour, each naming the commit that fixed it, and fixed the three process problems too: created `lab4-staging`, retargeted the Pull Request, added the `lab-04` label and the two missing registers, and linked his Issue. Re-reviewed at `7717a45` against the files rather than the replies, plus a mechanical check (AC-01 to AC-25 without gaps, every AC in his crosswalk, no duplicate or undefined test ID). **Approved** 2026-10-02 16:46:21Z. Merged 2026-10-02 16:48:36Z by the author's account, Kiatisakk, after the approval.
 
 ---
 
@@ -66,5 +78,6 @@ Our own contract (this PR) was checked against the same list before it was opene
 
 | Pull Request | Direction | Findings | Verdict | State |
 | --- | --- | --- | --- | --- |
-| [#71](https://github.com/Kiatisakk/toktickit/pull/71) | received | 3 | Changes requested | Open — fixes pushed |
-| [beambeambeam#80](https://github.com/beambeambeam/toktickit/pull/80) | given | 8 | Changes requested → Approved | Open — awaiting merge |
+| [#71](https://github.com/Kiatisakk/toktickit/pull/71) | received | 3 | Changes requested → Approved | Merged |
+| [#80](https://github.com/Kiatisakk/toktickit/pull/80) | received | 3 | Changes requested → fixed, awaiting re-review | Open |
+| [beambeambeam#80](https://github.com/beambeambeam/toktickit/pull/80) | given | 8 | Changes requested → Approved | Merged |

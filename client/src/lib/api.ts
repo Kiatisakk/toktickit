@@ -484,6 +484,11 @@ export interface TicketDetail extends TicketListRow {
   resolutionSummary: string | null;
   /** When the Requester said the problem appears resolved, or null (FR-18). */
   resolvedIndicatedAt: string | null;
+  /**
+   * The concurrency token (BR-19). A staff write sends the one it read and is
+   * refused `409 STALE_UPDATE` if the Ticket has moved on since.
+   */
+  version: number;
   requester: ReferenceItem;
   attachments: AttachmentMetadata[];
 }
@@ -510,6 +515,7 @@ const isTicketDetail = (value: unknown): value is TicketDetail =>
     typeof value["resolutionSummary"] === "string") &&
   (value["resolvedIndicatedAt"] === null ||
     typeof value["resolvedIndicatedAt"] === "string") &&
+  Number.isSafeInteger(value["version"]) &&
   isReferenceItem(value["requester"]) &&
   Array.isArray(value["attachments"]) &&
   value["attachments"].every(isAttachment);
@@ -563,17 +569,26 @@ const patchTicket = async (
  * All three of these answer with the whole ticket, so the screen refreshes from
  * the response rather than fetching again (api-spec.md §7).
  */
-export const setTicketOwner = (ticketId: number, ownerId: number | null) =>
-  patchTicket(ticketId, "owner", { ownerId });
+export const setTicketOwner = (
+  ticketId: number,
+  ownerId: number | null,
+  version: number
+) => patchTicket(ticketId, "owner", { ownerId, version });
 
 /** The three values IT Priority may take, or null to leave it unset. */
 export type Priority = "LOW" | "MEDIUM" | "HIGH";
 
-export const setItPriority = (ticketId: number, itPriority: Priority | null) =>
-  patchTicket(ticketId, "it-priority", { itPriority });
+export const setItPriority = (
+  ticketId: number,
+  itPriority: Priority | null,
+  version: number
+) => patchTicket(ticketId, "it-priority", { itPriority, version });
 
-export const setTicketStatus = (ticketId: number, status: TicketStatus) =>
-  patchTicket(ticketId, "status", { status });
+export const setTicketStatus = (
+  ticketId: number,
+  status: TicketStatus,
+  version: number
+) => patchTicket(ticketId, "status", { status, version });
 
 /* ------------------------------------------------------- public comments -- */
 
