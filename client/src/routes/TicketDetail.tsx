@@ -162,16 +162,18 @@ export const TicketDetail = () => {
   // A staff write was refused as stale (AC-42). Fetch the Ticket again without
   // the loading state, so the controls stay mounted and keep the message that
   // explains why the screen just changed under the person using it.
-  const onStale = () => {
-    const id = Number(ticketId);
+  const onStale = async (): Promise<boolean> => {
+    try {
+      const ticket = await fetchTicket(Number(ticketId));
 
-    fetchTicket(id)
-      .then((ticket) => {
-        setState({ kind: "loaded", ticket });
-      })
-      .catch(() => {
-        // Leave what is on screen; the message already says to try again.
-      });
+      setState({ kind: "loaded", ticket });
+
+      return true;
+    } catch {
+      // Leave what is on screen, and tell the control the reload failed: it
+      // must not say the latest version was loaded when it was not.
+      return false;
+    }
   };
 
   const onResolvedIndicated = (resolvedIndicatedAt: string) => {

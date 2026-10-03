@@ -25,6 +25,9 @@ configure({ asyncUtilTimeout: 5000 });
 const STALE_MESSAGE =
   "This record was changed by someone else since you opened it. We've loaded the latest version — check it and try again.";
 
+const RELOAD_FAILED_MESSAGE =
+  "This record was changed by someone else since you opened it, but the latest version could not be loaded. What you see may be out of date — reload the page before trying again.";
+
 const OWNERS = [
   { id: 11, name: "Michael Brown" },
   { id: 16, name: "Wanida Thongchai" },
@@ -53,7 +56,11 @@ const staleResponse = () =>
  * later read answers `latest`, and a PATCH is refused as stale until
  * `refuseWrites` is turned off.
  */
-const staleServer = (opened: object, latest: object) => {
+const staleServer = (
+  opened: object,
+  latest: object,
+  { reloadFails = false }: { reloadFails?: boolean } = {}
+) => {
   const calls: Call[] = [];
   let reads = 0;
   let refuseWrites = true;
@@ -88,6 +95,15 @@ const staleServer = (opened: object, latest: object) => {
       }
 
       reads += 1;
+
+      if (reads > 1 && reloadFails) {
+        return Promise.resolve(
+          jsonResponse(
+            { error: { code: "INTERNAL", message: "Something went wrong." } },
+            500
+          )
+        );
+      }
 
       return Promise.resolve(jsonResponse(reads === 1 ? opened : latest));
     })
@@ -265,6 +281,40 @@ describe("UI-36 a stale write shows the message and reloads the Ticket", () => {
       status: "IN_PROGRESS",
       version: 2,
     });
+  });
+
+  it("says so, and does not claim fresh data, when the reload itself fails", async () => {
+    const { calls } = staleServer(
+      { ...TICKET, currentStatus: "NEW", version: 1 },
+      { ...TICKET, currentStatus: "OPEN", version: 2 },
+      { reloadFails: true }
+    );
+
+    asStaff();
+
+    const user = userEvent.setup();
+    const control = await screen.findByRole("combobox", {
+      name: /current status/iu,
+    });
+
+    await user.selectOptions(control, "CANCELLED");
+
+    await waitFor(() => expect(ticketReads(calls)).toHaveLength(2));
+    await waitFor(() => {
+      expect(
+        screen
+          .getAllByRole("alert")
+          .some((one) => one.textContent === RELOAD_FAILED_MESSAGE)
+      ).toBe(true);
+    });
+
+    // The wording that says the latest version was loaded must not remain.
+    expect(screen.queryByText(STALE_MESSAGE)).toBeNull();
+    expect(
+      screen
+        .getAllByRole("alert")
+        .some((one) => one.textContent?.includes("We've loaded the latest"))
+    ).toBe(false);
   });
 
   it("does the same for a claim and for IT Priority", async () => {

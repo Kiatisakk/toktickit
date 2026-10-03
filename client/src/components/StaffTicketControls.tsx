@@ -41,18 +41,25 @@ import { Select } from "./Select";
 interface ControlProps {
   ticket: TicketDetail;
   onUpdated: (ticket: TicketDetail) => void;
-  /** Reload the Ticket: the write was refused because it had moved on. */
-  onStale: () => void;
+  /**
+   * Reload the Ticket: the write was refused because it had moved on. Resolves
+   * to whether the latest version was actually loaded.
+   */
+  onStale: () => Promise<boolean>;
 }
 
 /** ui-spec.md §8: the one wording for a refused stale write, on every form. */
 const STALE_MESSAGE =
   "This record was changed by someone else since you opened it. We've loaded the latest version — check it and try again.";
 
+/** ui-spec.md §8: the stale write was refused and the reload failed too. */
+const STALE_RELOAD_FAILED_MESSAGE =
+  "This record was changed by someone else since you opened it, but the latest version could not be loaded. What you see may be out of date — reload the page before trying again.";
+
 /** What a failed change says, and how a busy one looks. */
 const useChange = (
   onUpdated: (ticket: TicketDetail) => void,
-  onStale: () => void
+  onStale: () => Promise<boolean>
 ) => {
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -68,8 +75,10 @@ const useChange = (
         // Someone else changed the Ticket since this screen loaded it (AC-42).
         // Say so, and load what is there now, so the next attempt names the
         // version that is actually stored.
-        setFailure(STALE_MESSAGE);
-        onStale();
+        // The message waits for the reload, so it never claims data it lacks.
+        const reloaded = await onStale();
+
+        setFailure(reloaded ? STALE_MESSAGE : STALE_RELOAD_FAILED_MESSAGE);
         return;
       }
 
