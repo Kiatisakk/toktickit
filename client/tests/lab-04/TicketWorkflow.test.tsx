@@ -625,7 +625,7 @@ describe("UI-32 the resolve dialog and its four-condition checklist", () => {
   });
 });
 
-describe("UI-32 the dialog is a real modal", () => {
+describe("UI-35 the dialog is a real modal", () => {
   it("moves focus in, traps Tab, closes on Escape and returns focus to the control", async () => {
     const { calls } = dialogServer();
 
