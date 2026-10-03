@@ -1353,3 +1353,207 @@ describe("AC-44 every Action endpoint is guarded", () => {
     }
   });
 });
+
+const at = (offsetMs: number): string =>
+  new Date(Date.now() + offsetMs).toISOString();
+
+describe("follow-up chronology (review of PR 81)", () => {
+  const HOUR = 3_600_000;
+  const followUpTarget = (actionAt: string) =>
+    seedAction(staff, ticket, {
+      actionAt,
+      followUpRequired: true,
+      followUpNote: "n",
+    });
+
+  const detailKeys = (response: {
+    body: { error?: Record<string, unknown> };
+  }) => Object.keys((errorOf(response)["details"] ?? {}) as object);
+
+  it("API-12 a create dated before the Action it follows up is refused on followsUpId and stores nothing", async () => {
+    const target = await followUpTarget(at(-2 * HOUR));
+
+    const response = await createAction(
+      staff,
+      ticket,
+      actionBody({ followsUpId: target.id, actionAt: at(-3 * HOUR) })
+    );
+
+    expect(response.status).toBe(400);
+    expect(errorOf(response)["code"]).toBe("VALIDATION_FAILED");
+    expect(detailKeys(response)).toStrictEqual(["followsUpId"]);
+    expect(await actionCount(ticket)).toBe(1);
+  });
+
+  it("API-12 the same instant is allowed, because the id then puts the follow-up second", async () => {
+    const when = at(-2 * HOUR);
+    const target = await followUpTarget(when);
+
+    const response = await createAction(
+      staff,
+      ticket,
+      actionBody({ followsUpId: target.id, actionAt: when })
+    );
+
+    expect(response.status).toBe(201);
+  });
+
+  it("API-12 an omitted time is the server clock, so a target dated ahead of it is refused", async () => {
+    const target = await followUpTarget(at(30_000));
+
+    const response = await createAction(
+      staff,
+      ticket,
+      actionBody({ followsUpId: target.id })
+    );
+
+    expect(response.status).toBe(400);
+    expect(detailKeys(response)).toStrictEqual(["followsUpId"]);
+  });
+
+  it("API-17 an edit that moves a follow-up before its target is refused on actionAt and changes nothing", async () => {
+    const target = await followUpTarget(at(-3 * HOUR));
+    const follower = await seedAction(staff, ticket, {
+      followsUpId: target.id,
+      actionAt: at(-HOUR),
+    });
+    const before = await storedAction(follower.id);
+
+    const refused = await editAction(staff, follower.id, {
+      version: follower.version,
+      actionAt: at(-4 * HOUR),
+    });
+
+    expect(refused.status).toBe(400);
+    expect(errorOf(refused)["code"]).toBe("VALIDATION_FAILED");
+    expect(detailKeys(refused)).toStrictEqual(["actionAt"]);
+    expect(await storedAction(follower.id)).toStrictEqual(before);
+
+    const storedTarget = await storedAction(target.id);
+    const equal = await editAction(staff, follower.id, {
+      version: follower.version,
+      actionAt: storedTarget.actionAt.toISOString(),
+    });
+
+    expect(equal.status).toBe(200);
+  });
+
+  it("API-17 an edit that moves a followed-up Action after one that follows it is refused on actionAt", async () => {
+    const target = await followUpTarget(at(-3 * HOUR));
+    const follower = await seedAction(staff, ticket, {
+      followsUpId: target.id,
+      actionAt: at(-2 * HOUR),
+    });
+
+    const refused = await editAction(staff, target.id, {
+      version: target.version,
+      actionAt: at(-HOUR),
+    });
+
+    expect(refused.status).toBe(400);
+    expect(detailKeys(refused)).toStrictEqual(["actionAt"]);
+
+    const unchanged = await storedAction(target.id);
+    const storedFollower = await storedAction(follower.id);
+
+    expect(unchanged.version).toBe(target.version);
+
+    const stillFine = await editAction(staff, target.id, {
+      version: target.version,
+      actionAt: storedFollower.actionAt.toISOString(),
+    });
+
+    expect(stillFine.status).toBe(200);
+  });
+});
+
+const raw = (
+  who: SignedInUser,
+  method: "post" | "patch",
+  path: string,
+  json: string
+) => {
+  const call =
+    method === "post" ? request(app).post(path) : request(app).patch(path);
+
+  return call
+    .set("Cookie", who.cookie)
+    .set("Content-Type", "application/json")
+    .send(json);
+};
+
+describe("a body key that exists on every object (review of PR 81)", () => {
+  const KEYS = ["__proto__", "constructor", "toString"];
+
+  const expectRefused = (
+    response: { status: number; body: { error?: Record<string, unknown> } },
+    key: string
+  ) => {
+    expect(response.status).toBe(400);
+    expect(errorOf(response)["code"]).toBe("VALIDATION_FAILED");
+    expect(Object.keys(errorOf(response)["details"] as object)).toContain(key);
+  };
+
+  it.each(KEYS)(
+    "API-05 %s in a raw JSON body is a 400 naming it, on all four writes",
+    async (key) => {
+      const { id, version } = await seedAction(staff, ticket, { result: "r" });
+      const json = (rest: string) => `{${JSON.stringify(key)}: 1, ${rest}}`;
+
+      expectRefused(
+        await raw(
+          staff,
+          "post",
+          `/api/tickets/${ticket}/actions`,
+          json(`"requestId": "${randomUUID()}", "description": "x"`)
+        ),
+        key
+      );
+      expectRefused(
+        await raw(
+          staff,
+          "patch",
+          `/api/actions/${id}`,
+          json(`"version": ${version}`)
+        ),
+        key
+      );
+      expectRefused(
+        await raw(
+          staff,
+          "post",
+          `/api/actions/${id}/complete`,
+          json(`"version": ${version}`)
+        ),
+        key
+      );
+      expectRefused(
+        await raw(
+          staff,
+          "post",
+          `/api/actions/${id}/cancel`,
+          json(`"version": ${version}, "cancelReason": "x"`)
+        ),
+        key
+      );
+
+      const unchanged = await storedAction(id);
+
+      expect(unchanged.version).toBe(version);
+    }
+  );
+
+  it("API-05 an impossible calendar date such as 30 February is a 400 on actionAt", async () => {
+    const response = await createAction(
+      staff,
+      ticket,
+      actionBody({ actionAt: "2026-02-30T10:00:00Z" })
+    );
+
+    expect(response.status).toBe(400);
+    expect(Object.keys(errorOf(response)["details"] as object)).toStrictEqual([
+      "actionAt",
+    ]);
+    expect(await actionCount(ticket)).toBe(0);
+  });
+});
