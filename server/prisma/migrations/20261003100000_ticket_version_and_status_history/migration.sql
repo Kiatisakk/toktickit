@@ -5,6 +5,13 @@
 -- migration so it cannot be skipped by someone who forgot a script
 -- (specification.md section 7). The matching rollback is down.sql beside this
 -- file.
+--
+-- Prisma Migrate does not wrap a SQL migration in a transaction, so this one
+-- opens its own: a failure anywhere, even after the backfill, leaves nothing
+-- applied. (There is no ALTER TYPE ... ADD VALUE here, which is what would
+-- forbid it.)
+
+BEGIN;
 
 -- AlterTable
 ALTER TABLE "Ticket" ADD COLUMN     "version" INTEGER NOT NULL DEFAULT 1;
@@ -48,3 +55,5 @@ INSERT INTO "TicketStatusChange" ("ticketId", "fromStatus", "toStatus", "changed
 SELECT "id", 'NEW', "currentStatus", NULL, "updatedAt"
 FROM "Ticket"
 WHERE "currentStatus" <> 'NEW';
+
+COMMIT;

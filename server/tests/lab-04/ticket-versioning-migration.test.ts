@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,7 +21,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  */
 
 const MIGRATION = "20261003100000_ticket_version_and_status_history";
-const THROWAWAY = "toktickit_versioning_migration_scratch";
+// A name unique to this run, so a parallel run (or a database that happens to
+// carry the prefix) is never the one dropped: only this exact name is ever
+// created or dropped here.
+const THROWAWAY = `toktickit_versioning_migration_scratch_${randomBytes(6).toString("hex")}`;
 const MIGRATIONS_DIR = fileURLToPath(
   new URL("../../prisma/migrations/", import.meta.url)
 );
@@ -162,7 +166,6 @@ let firstBackfill: HistoryRow[];
 beforeAll(async () => {
   admin = new Client({ connectionString: connectionUrl("postgres") });
   await admin.connect();
-  await admin.query(`DROP DATABASE IF EXISTS ${THROWAWAY} WITH (FORCE)`);
   await admin.query(`CREATE DATABASE ${THROWAWAY}`);
 
   db = new Client({ connectionString: connectionUrl(THROWAWAY) });
@@ -205,6 +208,29 @@ afterAll(async () => {
 });
 
 describe("the migration, its rollback and its re-application", () => {
+  it("MIG-12 is one transaction: a failure after the backfill leaves nothing behind", async () => {
+    const script = await sql("migration.sql");
+
+    // Prisma Migrate does not wrap a SQL migration in a transaction; the file
+    // has to (specification.md section 7).
+    expect(script).toMatch(/^BEGIN;$/mu);
+    expect(script).toMatch(/^COMMIT;$/mu);
+
+    // Inject a failure after the backfill, just before the commit.
+    const failing = script.replace(/^COMMIT;$/mu, "SELECT 1 / 0;\nCOMMIT;");
+
+    expect(failing).not.toBe(script);
+    await expect(db.query(failing)).rejects.toThrow(/division by zero/u);
+
+    // The session is left in an aborted transaction, as a failed run would
+    // leave it; ending it is what the runner's closing connection does.
+    await db.query("ROLLBACK");
+
+    expect(await hasVersionColumn()).toBe(false);
+    expect(await tableNames()).toStrictEqual(tablesBefore);
+    expect(await snapshot()).toStrictEqual(before);
+  });
+
   it("MIG-01 preserves every row with the same ids, gives each Ticket version 1, and invents no Actions", async () => {
     expect(before.Ticket).toHaveLength(4);
 
