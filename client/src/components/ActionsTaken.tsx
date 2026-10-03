@@ -150,11 +150,6 @@ export const ActionsTaken = ({
 
   const actions = state.kind === "loaded" ? state.actions : [];
 
-  // The newest copy of an Action. Handed to the forms as a prop, so a form that
-  // is still open after a stale reload sees the reloaded version on its next
-  // submit: it re-renders with the new function.
-  const latestOf = (id: number) => actions.find((one) => one.id === id);
-
   const selected =
     mode.kind === "none" || mode.kind === "create"
       ? undefined
@@ -167,7 +162,6 @@ export const ActionsTaken = ({
           actions={actions}
           editing={null}
           key={`create-${mode.session}`}
-          latestOf={latestOf}
           onCancel={() => setMode({ kind: "none" })}
           onRefused={onRefused}
           onSaved={onSaved}
@@ -183,7 +177,6 @@ export const ActionsTaken = ({
     }
 
     const common = {
-      latestOf,
       onRefused,
       onSaved,
       reloadActions,

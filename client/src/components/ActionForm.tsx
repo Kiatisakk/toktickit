@@ -128,8 +128,6 @@ interface ActionFormProps {
   editing: TicketAction | null;
   /** The Ticket's Actions, for the "Follows up" choices and the read-only link. */
   actions: TicketAction[];
-  /** The latest copy of the Action being edited, so a retry names the newest version. */
-  latestOf: (id: number) => TicketAction | undefined;
   reloadActions: () => Promise<TicketAction[] | null>;
   reloadTicket: () => Promise<boolean>;
   onSaved: (action: TicketAction) => void;
@@ -141,7 +139,6 @@ export const ActionForm = ({
   ticketId,
   editing,
   actions,
-  latestOf,
   reloadActions,
   reloadTicket,
   onSaved,
@@ -245,11 +242,10 @@ export const ActionForm = ({
 
     const refused = await write.submit(() => {
       if (editing) {
-        // The newest copy, not the one the form opened with: after a stale
-        // refusal and a reload, the retry must name the version now stored.
-        const version = latestOf(editing.id)?.version ?? editing.version;
-
-        return updateAction(editing.id, version, body);
+        // `editing` is the list's own copy, so after a stale refusal and a
+        // reload it already carries the version now stored, and the retry
+        // names that one.
+        return updateAction(editing.id, editing.version, body);
       }
 
       return createAction(ticketId, requestId.current, body, followsUpId);

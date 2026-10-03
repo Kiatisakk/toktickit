@@ -662,7 +662,7 @@ describe("UI-24 edit rules by state", () => {
 
 describe("UI-25 complete form", () => {
   it("requires a Result, prefills the stored one, and turns the row Done", async () => {
-    const server = serve([action({ id: 1, result: "Half done" })]);
+    const server = serve([action({ id: 1, version: 3, result: "Half done" })]);
     const user = userEvent.setup();
 
     asStaff();
@@ -694,7 +694,7 @@ describe("UI-25 complete form", () => {
     const [post] = writes(server);
 
     expect(post?.url).toMatch(/\/api\/actions\/1\/complete$/u);
-    expect(post?.body).toEqual({ version: 1, result: "Replaced the unit" });
+    expect(post?.body).toEqual({ version: 3, result: "Replaced the unit" });
 
     const row = within(await table()).getAllByRole("row")[1] as HTMLElement;
 
@@ -708,7 +708,7 @@ describe("UI-25 complete form", () => {
 
 describe("UI-26 cancel form", () => {
   it("requires a Reason and turns the row Cancelled with the reason visible", async () => {
-    const server = serve([action({ id: 1 })]);
+    const server = serve([action({ id: 1, version: 2 })]);
     const user = userEvent.setup();
 
     asStaff();
@@ -732,7 +732,7 @@ describe("UI-26 cancel form", () => {
     const [post] = writes(server);
 
     expect(post?.url).toMatch(/\/api\/actions\/1\/cancel$/u);
-    expect(post?.body).toEqual({ version: 1, cancelReason: "Booked in error" });
+    expect(post?.body).toEqual({ version: 2, cancelReason: "Booked in error" });
 
     const row = within(await table()).getAllByRole("row")[1] as HTMLElement;
 

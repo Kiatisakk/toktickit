@@ -42,7 +42,6 @@ const COPY = {
 interface ActionStepFormProps {
   step: Step;
   action: TicketAction;
-  latestOf: (id: number) => TicketAction | undefined;
   reloadActions: () => Promise<TicketAction[] | null>;
   reloadTicket: () => Promise<boolean>;
   onSaved: (action: TicketAction) => void;
@@ -53,7 +52,6 @@ interface ActionStepFormProps {
 export const ActionStepForm = ({
   step,
   action,
-  latestOf,
   reloadActions,
   reloadTicket,
   onSaved,
@@ -103,9 +101,9 @@ export const ActionStepForm = ({
     }
 
     const refused = await write.submit(() => {
-      // The newest copy, so a retry after a stale refusal names the version
-      // now stored rather than the one this form opened with.
-      const version = latestOf(action.id)?.version ?? action.version;
+      // `action` is the list's own copy: after a stale refusal and a reload it
+      // carries the version now stored, so the retry names that one.
+      const version = action.version;
 
       return step === "complete"
         ? completeAction(action.id, version, value)
