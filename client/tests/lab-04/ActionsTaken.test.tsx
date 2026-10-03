@@ -296,6 +296,9 @@ describe("UI-19 the Actions list", () => {
     expect(rows[1]).toHaveTextContent("Void");
     expect(rows[1]).toHaveTextContent("Follows up #1");
     expect(rows[0]).not.toHaveTextContent("Follows up");
+    // The resolve dialog (#75) links to an Action as `#action-<id>`.
+    expect(rows[0]).toHaveAttribute("id", "action-1");
+    expect(rows[1]).toHaveAttribute("id", "action-2");
   });
 
   it("says so when the Ticket has no Actions", async () => {

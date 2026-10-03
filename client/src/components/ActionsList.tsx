@@ -43,7 +43,7 @@ export const ActionsList = ({
       </thead>
       <tbody>
         {actions.map((action) => (
-          <tr key={action.id}>
+          <tr id={`action-${action.id}`} key={action.id}>
             <td data-label="Date/time">
               <time dateTime={action.actionAt}>
                 {formatWhen(action.actionAt)}
