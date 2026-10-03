@@ -17,6 +17,12 @@ import {
   isTicketStatus,
   PRIORITIES,
 } from "../tickets/domain.js";
+import { lockTicket } from "../tickets/lock.js";
+import {
+  evaluateResolutionGate,
+  gateFactsOf,
+  validateResolutionSummary,
+} from "../tickets/resolutionGate.js";
 import { recordStatusChange } from "../tickets/statusHistory.js";
 import {
   QUEUE_SHAPE,
@@ -108,7 +114,9 @@ staffTicketsRouter.get("/staff/owners", ...staffOnly, async (_req, res) => {
 const fieldWithVersion = <T>(
   body: unknown,
   field: string,
-  read: (value: unknown) => { ok: true; value: T } | { ok: false; why: string }
+  read: (value: unknown) => { ok: true; value: T } | { ok: false; why: string },
+  /** Further keys this endpoint accepts; the caller reads them from `body`. */
+  alsoAccepted: readonly string[] = []
 ):
   | { ok: true; value: T; version: number }
   | { ok: false; details: Record<string, string> } => {
@@ -126,7 +134,7 @@ const fieldWithVersion = <T>(
   const details: Record<string, string> = {};
 
   for (const key of Object.keys(record)) {
-    if (key !== field && key !== "version") {
+    if (key !== field && key !== "version" && !alsoAccepted.includes(key)) {
       details[key] = `This endpoint accepts ${field} and version only.`;
     }
   }
@@ -376,24 +384,29 @@ staffTicketsRouter.patch(
 );
 
 /**
- * Move a ticket along its lifecycle (BR-25, AC-20, AC-21, AC-23).
+ * Move a ticket along its lifecycle (BR-25, BR-16, AC-20, AC-21, AC-23).
  *
- * Checked in BR-20's order: body shape, existence, version, then the matrix.
- * The change is written conditionally on the version it was checked against,
- * and the history row is written in the same transaction. Two staff acting at
- * once therefore cannot both pass the check and both write: the second update
- * matches no row, nothing is recorded for it, and it is answered `409` rather
- * than overwriting the first.
+ * Checked in BR-20's order: body shape, existence, version, the matrix, then
+ * the resolution gate. The gate is decided **inside the transaction, with the
+ * Ticket row locked** (BR-16): every Action write takes the same lock first, so
+ * a write racing a resolution either commits before it, and the gate sees it,
+ * or waits and is refused `TICKET_NOT_ACTIONABLE` (AC-27). The change is
+ * written conditionally on the version it was checked against, so a status
+ * change that raced this one is answered `409` rather than overwritten.
  */
 staffTicketsRouter.patch(
   "/staff/tickets/:id/status",
   ...staffOnly,
   // oxlint-disable-next-line oxc/no-async-endpoint-handlers
   async (req, res) => {
-    const input = fieldWithVersion<TicketStatus>(req.body, "status", (value) =>
-      isTicketStatus(value)
-        ? { ok: true, value }
-        : { ok: false, why: "Choose a status from the list." }
+    const input = fieldWithVersion<TicketStatus>(
+      req.body,
+      "status",
+      (value) =>
+        isTicketStatus(value)
+          ? { ok: true, value }
+          : { ok: false, why: "Choose a status from the list." },
+      ["resolutionSummary"]
     );
 
     if (!input.ok) {
@@ -402,6 +415,22 @@ staffTicketsRouter.patch(
         ErrorCode.validationFailed,
         "The status could not be changed.",
         input.details
+      );
+      return;
+    }
+
+    const target = input.value;
+    const summary = validateResolutionSummary(
+      target,
+      (req.body as Record<string, unknown>)["resolutionSummary"]
+    );
+
+    if (!summary.ok) {
+      badRequest(
+        res,
+        ErrorCode.validationFailed,
+        "The status could not be changed.",
+        summary.details
       );
       return;
     }
@@ -419,7 +448,7 @@ staffTicketsRouter.patch(
         return;
       }
 
-      if (!isPermittedTransition(ticket.currentStatus, input.value)) {
+      if (!isPermittedTransition(ticket.currentStatus, target)) {
         badRequest(
           res,
           ErrorCode.invalidStatusTransition,
@@ -430,34 +459,85 @@ staffTicketsRouter.patch(
         return;
       }
 
-      const target = input.value;
       const actor = currentUser(res);
 
-      const moved = await prisma.$transaction(async (tx) => {
-        const written = await tx.ticket.updateMany({
-          where: { id: ticket.id, version: input.version },
-          data: { currentStatus: target, version: { increment: 1 } },
-        });
+      const outcome = await prisma.$transaction(
+        async (tx): Promise<StatusOutcome> => {
+          // From here on no Action write can commit under this transaction.
+          const locked = await lockTicket(tx, ticket.id);
 
-        if (written.count === 0) {
-          // Somebody else wrote between the check and this statement, so the
-          // transition just approved was approved from a picture that is no
-          // longer true. Nothing is recorded.
-          return false;
-        }
+          if (!locked) {
+            return { kind: "missing" };
+          }
 
-        await recordStatusChange(tx, {
-          ticketId: ticket.id,
-          from: ticket.currentStatus,
-          to: target,
-          changedById: actor.id,
-        });
+          if (target === "RESOLVED") {
+            const actions = await tx.actionTaken.findMany({
+              where: { ticketId: ticket.id },
+              select: {
+                id: true,
+                state: true,
+                followUpRequired: true,
+                followsUpId: true,
+              },
+            });
+            const unmet = evaluateResolutionGate(
+              gateFactsOf(actions),
+              summary.value ?? ""
+            );
 
-        return true;
-      });
+            if (Object.keys(unmet).length > 0) {
+              return { kind: "gate", details: unmet };
+            }
+          }
 
-      if (!moved) {
+          const written = await tx.ticket.updateMany({
+            where: { id: ticket.id, version: input.version },
+            data: {
+              currentStatus: target,
+              version: { increment: 1 },
+              ...(target === "RESOLVED"
+                ? { resolutionSummary: summary.value ?? "" }
+                : {}),
+            },
+          });
+
+          if (written.count === 0) {
+            // Somebody else wrote between the check and the lock, so the
+            // transition just approved was approved from a picture that is no
+            // longer true. Nothing is recorded.
+            return { kind: "stale" };
+          }
+
+          await recordStatusChange(tx, {
+            ticketId: ticket.id,
+            from: ticket.currentStatus,
+            to: target,
+            changedById: actor.id,
+          });
+
+          return { kind: "moved" };
+        },
+        // Queued behind Action writes on the same Ticket.
+        { maxWait: 10_000, timeout: 20_000 }
+      );
+
+      if (outcome.kind === "missing") {
+        ticketNotFound(res);
+        return;
+      }
+
+      if (outcome.kind === "stale") {
         staleUpdate(res);
+        return;
+      }
+
+      if (outcome.kind === "gate") {
+        badRequest(
+          res,
+          ErrorCode.resolutionGateFailed,
+          "This ticket cannot be resolved yet.",
+          outcome.details
+        );
         return;
       }
 
@@ -467,3 +547,10 @@ staffTicketsRouter.patch(
     }
   }
 );
+
+/** What the status transaction decided, answered after it ends. */
+type StatusOutcome =
+  | { kind: "moved" }
+  | { kind: "missing" }
+  | { kind: "stale" }
+  | { kind: "gate"; details: Record<string, string> };

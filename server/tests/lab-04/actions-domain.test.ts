@@ -7,11 +7,6 @@ import {
 } from "../../src/actions/domain.js";
 import type { ActionState } from "../../src/actions/domain.js";
 import {
-  evaluateResolutionGate,
-  gateFactsOf,
-  validateResolutionSummary,
-} from "../../src/tickets/resolutionGate.js";
-import {
   mergeFollowUp,
   validateCancel,
   validateComplete,
@@ -20,6 +15,11 @@ import {
   validateRequestId,
   validateVersion,
 } from "../../src/actions/validation.js";
+import {
+  evaluateResolutionGate,
+  gateFactsOf,
+  validateResolutionSummary,
+} from "../../src/tickets/resolutionGate.js";
 
 /**
  * UNIT-01, UNIT-02, UNIT-04, UNIT-07 and UNIT-09 — the Action rules that need
@@ -459,17 +459,17 @@ describe("UNIT-04 keys that exist on every object are not fields (review of PR 8
   );
 });
 
-describe("UNIT-03 the resolution gate evaluator", () => {
-  const FACTS = (unmet: {
-    done: boolean;
-    followUp: boolean;
-    planned: boolean;
-  }) => ({
-    doneActions: unmet.done ? 0 : 2,
-    openFollowUps: unmet.followUp ? 2 : 0,
-    plannedActions: unmet.planned ? 1 : 0,
-  });
+const FACTS = (unmet: {
+  done: boolean;
+  followUp: boolean;
+  planned: boolean;
+}) => ({
+  doneActions: unmet.done ? 0 : 2,
+  openFollowUps: unmet.followUp ? 2 : 0,
+  plannedActions: unmet.planned ? 1 : 0,
+});
 
+describe("UNIT-03 the resolution gate evaluator", () => {
   const KEYS = {
     done: "doneAction",
     followUp: "openFollowUp",
@@ -483,12 +483,18 @@ describe("UNIT-03 the resolution gate evaluator", () => {
     for (const followUp of BOOLEANS) {
       for (const planned of BOOLEANS) {
         for (const summary of BOOLEANS) {
-          const expected = [
-            done ? KEYS.done : null,
-            followUp ? KEYS.followUp : null,
-            planned ? KEYS.planned : null,
-            summary ? KEYS.summary : null,
-          ].filter((key): key is string => key !== null);
+          const expected: string[] = [];
+
+          for (const [unmet, key] of [
+            [done, KEYS.done],
+            [followUp, KEYS.followUp],
+            [planned, KEYS.planned],
+            [summary, KEYS.summary],
+          ] as const) {
+            if (unmet) {
+              expected.push(key);
+            }
+          }
 
           it(`unmet [${expected.join(", ") || "none"}] names exactly those`, () => {
             const details = evaluateResolutionGate(
@@ -514,7 +520,8 @@ describe("UNIT-03 the resolution gate evaluator", () => {
     expect(details).toStrictEqual({
       doneAction: "Record at least one completed action before resolving.",
       openFollowUp: "2 follow-ups are still open.",
-      plannedActions: "Complete or cancel the 1 planned action before resolving.",
+      plannedActions:
+        "Complete or cancel the 1 planned action before resolving.",
       resolutionSummary: "Enter a resolution summary.",
     });
     expect(
@@ -524,7 +531,8 @@ describe("UNIT-03 the resolution gate evaluator", () => {
       )
     ).toStrictEqual({
       openFollowUp: "1 follow-up is still open.",
-      plannedActions: "Complete or cancel the 3 planned actions before resolving.",
+      plannedActions:
+        "Complete or cancel the 3 planned actions before resolving.",
     });
   });
 
@@ -553,11 +561,14 @@ describe("UNIT-03 the resolution gate evaluator", () => {
   });
 });
 
+/** No `resolutionSummary` field in the body (a literal `undefined` argument is formatted away). */
+const NO_SUMMARY: unknown = undefined;
+
 describe("UNIT-05 Resolution Summary validation", () => {
   it("keeps the trimmed value when resolving", () => {
-    expect(validateResolutionSummary("RESOLVED", "  Fixed it.  ")).toStrictEqual(
-      { ok: true, value: "Fixed it." }
-    );
+    expect(
+      validateResolutionSummary("RESOLVED", "  Fixed it.  ")
+    ).toStrictEqual({ ok: true, value: "Fixed it." });
     expect(validateResolutionSummary("RESOLVED", repeat(2000))).toStrictEqual({
       ok: true,
       value: repeat(2000),
@@ -582,9 +593,9 @@ describe("UNIT-05 Resolution Summary validation", () => {
   });
 
   it("accepts 2000 characters that only fit once trimmed", () => {
-    expect(
-      validateResolutionSummary("RESOLVED", ` ${repeat(2000)} `).ok
-    ).toBe(true);
+    expect(validateResolutionSummary("RESOLVED", ` ${repeat(2000)} `).ok).toBe(
+      true
+    );
   });
 
   it("refuses a summary sent with any other target, and accepts none", () => {
@@ -593,9 +604,13 @@ describe("UNIT-05 Resolution Summary validation", () => {
         detailsOf(validateResolutionSummary(target, "Fixed it.")),
         target
       ).toStrictEqual(["resolutionSummary"]);
-      expect(validateResolutionSummary(target, undefined), target).toStrictEqual(
-        { ok: true, value: undefined }
-      );
+      expect(
+        validateResolutionSummary(target, NO_SUMMARY),
+        target
+      ).toStrictEqual({
+        ok: true,
+        value: undefined,
+      });
     }
   });
 });

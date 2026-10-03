@@ -59,7 +59,9 @@ export const gateFactsOf = (actions: readonly GateAction[]): GateFacts => {
       plannedActions += 1;
     }
 
-    if (followUpStateOf(action, followerStates.get(action.id) ?? []) === "OPEN") {
+    if (
+      followUpStateOf(action, followerStates.get(action.id) ?? []) === "OPEN"
+    ) {
       openFollowUps += 1;
     }
   }
