@@ -1,6 +1,7 @@
 import { prisma } from "../src/prisma.js";
 import { PRIORITIES } from "../src/tickets/domain.js";
 import { formatTicketNumber } from "../src/tickets/ticketNumber.js";
+import { seedDashboardDemo } from "./dashboardDemo.js";
 
 /**
  * Demonstration tickets, for the development database only.
@@ -280,6 +281,14 @@ const seedDemo = async () => {
 
 try {
   await seedDemo();
+
+  // Lab 4: every status, Actions Taken and dashboard metrics. Idempotent by
+  // fixed key, so it never replaces what a run of the Lab 2 seed above did.
+  const lab4 = await seedDashboardDemo(prisma, new Date());
+
+  console.log(
+    `Lab 4 demonstration data: ${lab4.ticketsCreated} tickets, ${lab4.actionsCreated} actions and ${lab4.historyCreated} history rows added.`
+  );
 } catch (error) {
   console.error(error);
   process.exitCode = 1;
