@@ -99,13 +99,13 @@ Every Lab 3 code: `UNAUTHENTICATED` · `INVALID_CREDENTIALS` · `ACCOUNT_INACTIV
 | --- | --- | --- | --- |
 | `requestId` | string (UUID) | yes | Client-generated, one per intentional create, resent unchanged on retry (BR-35, D-24) |
 | `description` | string | yes | 1–2000 characters after trimming (BR-14) |
-| `actionAt` | string (ISO 8601 instant) | no | Not more than one minute in the future; default server now |
+| `actionAt` | string (ISO 8601 instant) | no | A real calendar moment (an impossible date such as 30 February is `400`, not rolled over); not more than one minute in the future; default server now |
 | `result` | string or `null` | no | 1–2000 if given; may be empty while Planned (BR-06) |
 | `performedById` | integer | no | Default the caller; must be active IT Staff or Administrator (BR-07) |
 | `followUpRequired` | boolean | no | Default `false` |
 | `followUpNote` | string or `null` | iff `followUpRequired` | 1–1000 when required; must be absent or `null` otherwise (BR-08) |
 | `attachmentNotes` | string or `null` | no | At most 1000 characters |
-| `followsUpId` | integer or `null` | no | An Action on the same Ticket that requires follow-up and is not Cancelled (BR-10) |
+| `followsUpId` | integer or `null` | no | An Action on the same Ticket that requires follow-up, is not Cancelled and is not dated after this Action's effective `actionAt` (BR-10); the same instant is allowed |
 
 The new Action is `PLANNED`, `version` 1, with `recordedBy` the caller. Creation locks the Ticket row, so it serialises with a resolution (BR-16, AC-27).
 
@@ -117,7 +117,7 @@ The new Action is `PLANNED`, `version` 1, with `recordedBy` the caller. Creation
 | --- | --- | --- |
 | Body not an object, unexpected field, wrong type, bound exceeded | 400 | `VALIDATION_FAILED`, field in `details` |
 | `requestId` missing or not a UUID | 400 | `VALIDATION_FAILED`, `details.requestId` |
-| `followsUpId` invalid | 400 | `VALIDATION_FAILED`, `details.followsUpId` |
+| `followsUpId` invalid, or naming an Action dated after this one | 400 | `VALIDATION_FAILED`, `details.followsUpId` |
 | `requestId` exists with different fields | 409 | `REQUEST_ID_CONFLICT` |
 | `performedById` ineligible | 400 | `ACTION_ASSIGNEE_INELIGIBLE` |
 | Ticket absent | 404 | `TICKET_NOT_FOUND` |
@@ -127,7 +127,7 @@ The new Action is `PLANNED`, `version` 1, with `recordedBy` the caller. Creation
 
 Edit a **Planned** Action. IT Staff and Administrator; any of them, not only the creator (BR-11).
 
-**Request** — `version` (integer, required) plus at least one of `actionAt`, `description`, `result`, `performedById`, `followUpRequired`, `followUpNote`, `attachmentNotes`, with the same rules as creation. `ticketId`, `recordedById`, `state`, `followsUpId`, `cancelReason` and timestamps are not editable and are refused. After the change, Follow-Up Required and Follow-Up Note must still satisfy BR-08; setting `followUpRequired` to `false` on an Action that another Action already follows up is refused `400 VALIDATION_FAILED` (`details.followUpRequired`, BR-10).
+**Request** — `version` (integer, required) plus at least one of `actionAt`, `description`, `result`, `performedById`, `followUpRequired`, `followUpNote`, `attachmentNotes`, with the same rules as creation. `ticketId`, `recordedById`, `state`, `followsUpId`, `cancelReason` and timestamps are not editable and are refused. After the change, Follow-Up Required and Follow-Up Note must still satisfy BR-08; setting `followUpRequired` to `false` on an Action that another Action already follows up is refused `400 VALIDATION_FAILED` (`details.followUpRequired`, BR-10). Changing `actionAt` is refused `400 VALIDATION_FAILED` (`details.actionAt`) when it would date this Action before the Action it follows up, or after any Action that follows it up; the same instant is allowed.
 
 **Response `200`** — the Action, `version` incremented.
 
