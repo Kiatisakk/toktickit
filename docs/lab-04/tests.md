@@ -180,7 +180,7 @@ Every test here calls the API directly with a session of the wrong kind. None dr
 | UI-33 | AC-18, AC-41 | Gate refusal | A `RESOLUTION_GATE_FAILED` response updates the checklist and shows each message beside its condition; the Ticket summary status is unchanged | `client/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
 | UI-34 | AC-41 | Resolve success | The request carries the summary and the version; the Ticket summary status and version refresh from the response | `client/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
 | UI-35 | AC-43 | Dialog focus | Focus enters the dialog, is trapped, `Escape` closes, and focus returns to the opening control | `client/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
-| UI-36 | AC-42 | Stale status change | `409 STALE_UPDATE` shows the message, reloads the Ticket and keeps the summary text | `client/tests/lab-04/TicketWorkflow.test.tsx` | Partial — passes for the Ticket forms that exist (status, claim, IT Priority): the stale message shows, the Ticket reloads without remounting the control, the control is re-enabled and the retry names the new version; mutation-checked (reload removed, STALE_UPDATE branch removed). The resolve dialog and its Resolution Summary text, which this row also names, arrive with Issue #75 |
+| UI-36 | AC-42 | Stale status change | `409 STALE_UPDATE` shows the message, reloads the Ticket and keeps the summary text | `client/tests/lab-04/TicketWorkflow.test.tsx` | Partial — passes for the Ticket forms that exist (status, claim, IT Priority): the stale message shows, the Ticket reloads without remounting the control, the control is re-enabled and the retry names the new version; mutation-checked (reload removed, STALE_UPDATE branch removed); a failed reload shows a distinct message and no longer claims the latest version was loaded (added after review). The resolve dialog and its Resolution Summary text, which this row also names, arrive with Issue #75 |
 | UI-37 | AC-49 | Planned-action condition in the resolve dialog | With a Planned Action loaded the checklist shows "No planned actions pending" as not met with the count and a link; a server `details.plannedActions` sets the same state; completing or cancelling the Action clears it | `client/tests/lab-04/TicketWorkflow.test.tsx` | Planned |
 | UI-38 | AC-48 | Request key across retries | A failed or lost-response submit resent keeps the same `requestId`; a `200` replay is shown as success without a second row; after a save, or a fresh **Add action**, the next create carries a new key; `REQUEST_ID_CONFLICT` reloads the list, keeps the input and rotates the key | `client/tests/lab-04/ActionsTaken.test.tsx` | Planned |
 
@@ -220,6 +220,7 @@ Every test here calls the API directly with a session of the wrong kind. None dr
 | MIG-09 | AC-45 | Labs 1 and 2 server suites | Every Lab 1 and Lab 2 server test passes after the sprint | `server/tests/lab-01/`, `server/tests/lab-02/` | Planned |
 | MIG-10 | AC-22, AC-45 | Lab 3 server suites | Every Lab 3 server test passes, including the 64-cell transition matrix unchanged | `server/tests/lab-03/` | Planned |
 | MIG-11 | AC-45 | Labs 1–3 client suites | Every client component and style test of Labs 1–3 passes | `client/tests/lab-01/`, `client/tests/lab-02/`, `client/tests/lab-03/` | Planned |
+| MIG-12 | AC-36 | Migration is one transaction | A failure after the backfill leaves no `version` column, no `TicketStatusChange` table and every earlier row intact; the file opens with `BEGIN;` and ends with `COMMIT;` | `server/tests/lab-04/ticket-versioning-migration.test.ts` | Pass — the script is run on the scratch database with a division by zero injected just before its `COMMIT;`; it fails, and after ending the aborted transaction the column, the table and every earlier row are as before. Added after review; seen failing first on the structural assertion (no `BEGIN;`) — the behavioural half also passes on the old file, because the driver sends a multi-statement string as one implicit transaction, so the explicit `BEGIN;` is what protects a runner that does not |
 
 ### Performance-smoke
 
@@ -295,7 +296,7 @@ Every acceptance criterion maps to at least one planned test.
 | AC-33 | DASH-10, DASH-12, UI-10, UI-11, E2E-09 |
 | AC-34 | UNIT-08, FLT-01, FLT-02, FLT-03, FLT-04, FLT-05, UI-17, UI-18 |
 | AC-35 | MIG-01, MIG-02, MIG-05 |
-| AC-36 | MIG-03, MIG-04 |
+| AC-36 | MIG-03, MIG-04, MIG-12 |
 | AC-37 | MIG-06 |
 | AC-38 | UI-14, UI-15, UI-16, MIG-08, E2E-10 |
 | AC-39 | UI-02, UI-04, UI-06, UI-07, UI-13, STYLE-02, RESP-05, E2E-11 |
