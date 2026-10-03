@@ -742,7 +742,15 @@ describe("every role-restricted endpoint with each wrong role", () => {
 
   it("SEC-02 the same endpoints let the allowed roles past the guard", async () => {
     // A bad body, so nothing changes: 400 proves the guard passed, and 403
-    // would prove it did not.
+    // would prove it did not. Changed for Lab 4 (D-16, MIG-07): both bodies now
+    // carry `version`, so the 400 is for the owner or status and not for the
+    // missing version this test is not about. The current version is read,
+    // because earlier tests in this file write to the Ticket.
+    const { version } = await prisma.ticket.findUniqueOrThrow({
+      where: { id: ticketOfA },
+      select: { version: true },
+    });
+
     const [queue, owners, notes, users, owner, status] = await Promise.all([
       as(staff)(request(app).get("/api/staff/tickets")),
       as(staff)(request(app).get("/api/staff/owners")),
@@ -750,10 +758,10 @@ describe("every role-restricted endpoint with each wrong role", () => {
       as(admin)(request(app).get("/api/admin/users")),
       as(staff)(
         request(app).patch(`/api/staff/tickets/${ticketOfA}/owner`)
-      ).send({ ownerId: MISSING_ID }),
+      ).send({ ownerId: MISSING_ID, version }),
       as(staff)(
         request(app).patch(`/api/staff/tickets/${ticketOfA}/status`)
-      ).send({ status: "DONE" }),
+      ).send({ status: "DONE", version }),
     ]);
 
     for (const response of [queue, owners, notes, users]) {

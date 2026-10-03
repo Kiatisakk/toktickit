@@ -95,6 +95,10 @@ model User {
   recordedActions  ActionTaken[] @relation("ActionRecorder")
   performedActions ActionTaken[] @relation("ActionPerformer")
 
+  /// Status changes this user made (D-08). Rows the migration backfilled carry
+  /// no author and are not reachable from here.
+  statusChanges TicketStatusChange[]
+
   // The selector reads active users on every load.
   @@index([isActive])
 }
@@ -229,6 +233,11 @@ model Ticket {
   /// Set once: indicating twice keeps the first time (BR-27).
   resolvedIndicatedAt DateTime?
 
+  /// The concurrency token (D-07, D-20). Every write names the version it read
+  /// and applies only if that is still the stored one; success increments it.
+  /// An integer rather than `updatedAt`, which can tie within one clock tick.
+  version Int @default(1)
+
   /// `createdAt` is what the UI labels "Ticket Date". One timestamp, one
   /// meaning; a separate date column would only be able to disagree with it.
   createdAt DateTime @default(now())
@@ -242,15 +251,16 @@ model Ticket {
 
   actions ActionTaken[]
 
+  /// Append-only record of every status the Ticket has held (D-08).
+  statusHistory TicketStatusChange[]
+
   // Every My Tickets query filters on owner and orders by creation time. This
   // is the one index the sprint cannot do without.
   @@index([requesterId, createdAt(sort: Desc)])
-
   // The staff queue reads every ticket in its default order — newest first,
   // id as the tie-break — so the index above, which leads with requesterId,
   // cannot serve it (specification.md §7).
   @@index([createdAt(sort: Desc), id(sort: Desc)])
-
   // The Unassigned filter and the Owner filter (FR-21).
   @@index([ticketOwnerId])
 }
@@ -288,12 +298,12 @@ model Attachment {
   /// What the person called it. Displayed, never used as a path.
   originalFilename String
   /// What it is called on disk. A generated name, never exposed by the API.
-  storedFilename String @unique
-  mimeType       String
-  sizeBytes      Int
+  storedFilename   String @unique
+  mimeType         String
+  sizeBytes        Int
 
   uploadedById Int
-  uploadedBy   User @relation("AttachmentUploader", fields: [uploadedById], references: [id])
+  uploadedBy   User     @relation("AttachmentUploader", fields: [uploadedById], references: [id])
   uploadedAt   DateTime @default(now())
 
   /// Null while active. Set once, on removal, and never cleared: BR-26 keeps the
@@ -301,7 +311,7 @@ model Attachment {
   removedAt     DateTime?
   removedReason String?
   removedById   Int?
-  removedBy     User? @relation("AttachmentRemover", fields: [removedById], references: [id])
+  removedBy     User?     @relation("AttachmentRemover", fields: [removedById], references: [id])
 
   /// The active count in BR-23 is a filtered count per ticket, which is exactly
   /// what this index serves.
@@ -450,4 +460,31 @@ model ActionTaken {
   @@unique([ticketId, requestId])
   @@index([ticketId, actionAt, id])
   @@index([performedById, state])
+}
+
+/// One status change of a Ticket, written in the same transaction as the change
+/// (D-08, D-21). Append-only: nothing updates or deletes a row.
+///
+/// `fromStatus` is null on creation. `changedById` is null for rows the
+/// migration backfilled from `createdAt` and `updatedAt`, meaning *migrated*
+/// (specification.md section 7).
+model TicketStatusChange {
+  id Int @id @default(autoincrement())
+
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  fromStatus TicketStatus?
+  toStatus   TicketStatus
+
+  changedById Int?
+  changedBy   User? @relation(fields: [changedById], references: [id])
+
+  /// From the server clock, never from the request.
+  changedAt DateTime @default(now())
+
+  /// "Status as at T0" for one Ticket is one lookup on this index.
+  @@index([ticketId, changedAt])
+  /// Range scans for the dashboard's deltas.
+  @@index([changedAt])
 }

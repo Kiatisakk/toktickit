@@ -100,13 +100,44 @@ const stored = (id: number) =>
       itPriority: true,
       requestedPriority: true,
       ticketOwnerId: true,
+      version: true,
     },
   });
 
-const patch = (who: SignedInUser, id: number, path: string, body: unknown) =>
-  as(who)(request(app).patch(`/api/staff/tickets/${id}/${path}`)).send(
-    body as object
+/**
+ * Changed for Lab 4 (D-16, MIG-07): every staff write now names the `version`
+ * it read, and a body without one is refused. These Lab 3 tests are about the
+ * ownership, priority and status rules, not about versions, so the helper reads
+ * the Ticket's current version and sends it unless the body names one itself.
+ * Sending the current version is what a client that had just loaded the Ticket
+ * would do; the version rules have their own suite,
+ * `tests/lab-04/ticket-workflow.api.test.ts`.
+ */
+const patch = async (
+  who: SignedInUser,
+  id: number,
+  path: string,
+  body: unknown
+) => {
+  const named = typeof body === "object" && body !== null && "version" in body;
+  // A Ticket that does not exist has no version; 1 lets the request reach the
+  // existence check, which is what those tests are about.
+  const row = named
+    ? null
+    : await prisma.ticket.findUnique({
+        where: { id },
+        select: { version: true },
+      });
+  const current = named ? null : (row?.version ?? 1);
+
+  return await as(who)(
+    request(app).patch(`/api/staff/tickets/${id}/${path}`)
+  ).send(
+    (current === null
+      ? body
+      : { ...(body as object), version: current }) as object
   );
+};
 
 beforeAll(async () => {
   await removeFixtures();
@@ -403,16 +434,27 @@ describe("status", () => {
   it("refuses two staff moving one ticket at once, rather than letting the second overwrite", async () => {
     const id = await createTicket({ currentStatus: "NEW" });
 
+    // Both write from the version they read, as two people who opened the
+    // Ticket together would. Read once here so the helper cannot give the
+    // second request a newer version than the first.
+    const { version } = await stored(id);
+
     const [first, second] = await Promise.all([
-      patch(staff, id, "status", { status: "OPEN" }),
-      patch(admin, id, "status", { status: "CANCELLED" }),
+      patch(staff, id, "status", { status: "OPEN", version }),
+      patch(admin, id, "status", { status: "CANCELLED", version }),
     ]);
 
     const outcomes = [first.status, second.status].toSorted();
 
     // Both were permitted from NEW, so one wins and the other is told the
     // ticket moved — never both applied, and never a silent overwrite.
-    expect(outcomes).toStrictEqual([200, 400]);
+    // Changed for Lab 4 (D-16, MIG-07): the refusal is `409 STALE_UPDATE`, no
+    // longer `400 INVALID_STATUS_TRANSITION`.
+    expect(outcomes).toStrictEqual([200, 409]);
+
+    const refused = first.status === 409 ? first : second;
+
+    expect(refused.body.error.code).toBe("STALE_UPDATE");
 
     const after = await stored(id);
 

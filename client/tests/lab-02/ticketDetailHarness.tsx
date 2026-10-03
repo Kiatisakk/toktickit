@@ -49,6 +49,9 @@ export const TICKET = {
   currentStatus: "NEW",
   resolutionSummary: null,
   resolvedIndicatedAt: null as string | null,
+  // Lab 4 (D-16, MIG-08): every Ticket response now carries its version, and
+  // the client refuses a response without one.
+  version: 1,
   createdAt: "2026-08-01T09:14:00.000Z",
   updatedAt: "2026-08-03T11:02:00.000Z",
   category: { id: 2, name: "Hardware" },

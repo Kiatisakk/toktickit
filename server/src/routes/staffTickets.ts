@@ -9,7 +9,7 @@ import type { ErrorCodeValue } from "../http/errors.js";
 import { ErrorCode, sendError, sendInternalError } from "../http/errors.js";
 import { identifier } from "../http/identifier.js";
 import { requireRole } from "../middleware/role.js";
-import { requireSignedIn } from "../middleware/session.js";
+import { currentUser, requireSignedIn } from "../middleware/session.js";
 import { prisma } from "../prisma.js";
 import type { Priority, TicketStatus } from "../tickets/domain.js";
 import {
@@ -17,6 +17,7 @@ import {
   isTicketStatus,
   PRIORITIES,
 } from "../tickets/domain.js";
+import { recordStatusChange } from "../tickets/statusHistory.js";
 import {
   QUEUE_SHAPE,
   readTicketPage,
@@ -24,6 +25,7 @@ import {
   ticketListWhere,
 } from "../tickets/ticketList.js";
 import { parseTicketQuery } from "../tickets/ticketQuery.js";
+import { readVersion } from "../tickets/version.js";
 
 /**
  * The staff Ticket Queue (api-spec.md §7).
@@ -94,40 +96,57 @@ staffTicketsRouter.get("/staff/owners", ...staffOnly, async (_req, res) => {
 /* --------------------------------------------- ticket operations (§7) -- */
 
 /**
- * The body of a staff `PATCH`: exactly one named field and nothing else.
+ * The body of a staff `PATCH`: one named field and the `version` the caller
+ * read, and nothing else (api-spec.md §7).
  *
- * An unexpected field is refused rather than ignored (api-spec.md §7). A client
- * sending `{ "status": … }` to the IT Priority endpoint has misunderstood
- * something, and quietly answering `200` having changed nothing would hide it.
+ * An unexpected field is refused rather than ignored. A client sending
+ * `{ "status": … }` to the IT Priority endpoint has misunderstood something,
+ * and quietly answering `200` having changed nothing would hide it. A missing
+ * or malformed `version` is a body-shape error (`400`), kept apart from a
+ * well-formed version that is out of date (`409`, BR-19, BR-20).
  */
-const onlyField = <T>(
+const fieldWithVersion = <T>(
   body: unknown,
   field: string,
   read: (value: unknown) => { ok: true; value: T } | { ok: false; why: string }
-): { ok: true; value: T } | { ok: false; details: Record<string, string> } => {
+):
+  | { ok: true; value: T; version: number }
+  | { ok: false; details: Record<string, string> } => {
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
-    return { ok: false, details: { [field]: `${field} is required.` } };
-  }
-
-  const keys = Object.keys(body);
-  const unexpected = keys.filter((key) => key !== field);
-
-  if (unexpected.length > 0) {
     return {
       ok: false,
       details: {
-        [unexpected[0] as string]: `This endpoint accepts ${field} only.`,
+        [field]: `${field} is required.`,
+        version: "version is required.",
       },
     };
   }
 
-  if (!keys.includes(field)) {
-    return { ok: false, details: { [field]: `${field} is required.` } };
+  const record = body as Record<string, unknown>;
+  const details: Record<string, string> = {};
+
+  for (const key of Object.keys(record)) {
+    if (key !== field && key !== "version") {
+      details[key] = `This endpoint accepts ${field} and version only.`;
+    }
   }
 
-  const value = read((body as Record<string, unknown>)[field]);
+  const value = Object.hasOwn(record, field)
+    ? read(record[field])
+    : ({ ok: false, why: `${field} is required.` } as const);
+  const version = readVersion(record["version"]);
 
-  return value.ok ? value : { ok: false, details: { [field]: value.why } };
+  if (!value.ok) {
+    details[field] = value.why;
+  }
+
+  if (!version.ok) {
+    details["version"] = version.why;
+  }
+
+  return value.ok && version.ok && Object.keys(details).length === 0
+    ? { ok: true, value: value.value, version: version.value }
+    : { ok: false, details };
 };
 
 const badRequest = (
@@ -145,6 +164,16 @@ const ticketNotFound = (res: Response) => {
     404,
     ErrorCode.ticketNotFound,
     "That ticket could not be found."
+  );
+};
+
+/** The write named a version that is no longer the stored one (BR-19). */
+const staleUpdate = (res: Response) => {
+  sendError(
+    res,
+    409,
+    ErrorCode.staleUpdate,
+    "This ticket was changed by someone else since you opened it. Reload it and try again."
   );
 };
 
@@ -171,20 +200,21 @@ const updatedTicket = async (id: number) => {
   };
 };
 
-/** The ticket id from the path, if it names a ticket that exists. */
-const existingTicketId = async (raw: unknown): Promise<number | null> => {
+/**
+ * The ticket a write is aimed at, if it exists: its id, the version and the
+ * status the write will be checked against.
+ */
+const ticketForWrite = async (raw: unknown) => {
   const id = identifier(raw);
 
   if (id === null) {
     return null;
   }
 
-  const ticket = await prisma.ticket.findUnique({
+  return await prisma.ticket.findUnique({
     where: { id },
-    select: { id: true },
+    select: { id: true, version: true, currentStatus: true },
   });
-
-  return ticket?.id ?? null;
 };
 
 /**
@@ -199,17 +229,24 @@ staffTicketsRouter.patch(
   ...staffOnly,
   // oxlint-disable-next-line oxc/no-async-endpoint-handlers
   async (req, res) => {
-    const input = onlyField<number | null>(req.body, "ownerId", (value) => {
-      if (value === null) {
-        return { ok: true, value: null };
-      }
+    const input = fieldWithVersion<number | null>(
+      req.body,
+      "ownerId",
+      (value) => {
+        if (value === null) {
+          return { ok: true, value: null };
+        }
 
-      return typeof value === "number" &&
-        Number.isSafeInteger(value) &&
-        value > 0
-        ? { ok: true, value }
-        : { ok: false, why: "Choose an owner, or null to release the ticket." };
-    });
+        return typeof value === "number" &&
+          Number.isSafeInteger(value) &&
+          value > 0
+          ? { ok: true, value }
+          : {
+              ok: false,
+              why: "Choose an owner, or null to release the ticket.",
+            };
+      }
+    );
 
     if (!input.ok) {
       badRequest(
@@ -222,10 +259,15 @@ staffTicketsRouter.patch(
     }
 
     try {
-      const id = await existingTicketId(String(req.params.id));
+      const ticket = await ticketForWrite(String(req.params.id));
 
-      if (id === null) {
+      if (!ticket) {
         ticketNotFound(res);
+        return;
+      }
+
+      if (ticket.version !== input.version) {
+        staleUpdate(res);
         return;
       }
 
@@ -252,12 +294,19 @@ staffTicketsRouter.patch(
         }
       }
 
-      await prisma.ticket.update({
-        where: { id },
-        data: { ticketOwnerId: input.value },
+      // The version is in the WHERE clause, so a write that lost a race
+      // between the check above and this statement matches no row.
+      const written = await prisma.ticket.updateMany({
+        where: { id: ticket.id, version: input.version },
+        data: { ticketOwnerId: input.value, version: { increment: 1 } },
       });
 
-      res.status(200).json(await updatedTicket(id));
+      if (written.count === 0) {
+        staleUpdate(res);
+        return;
+      }
+
+      res.status(200).json(await updatedTicket(ticket.id));
     } catch (error) {
       sendInternalError(res, "Failed to change the ticket owner", error);
     }
@@ -270,7 +319,7 @@ staffTicketsRouter.patch(
   ...staffOnly,
   // oxlint-disable-next-line oxc/no-async-endpoint-handlers
   async (req, res) => {
-    const input = onlyField<Priority | null>(
+    const input = fieldWithVersion<Priority | null>(
       req.body,
       "itPriority",
       (value) => {
@@ -295,21 +344,31 @@ staffTicketsRouter.patch(
     }
 
     try {
-      const id = await existingTicketId(String(req.params.id));
+      const ticket = await ticketForWrite(String(req.params.id));
 
-      if (id === null) {
+      if (!ticket) {
         ticketNotFound(res);
+        return;
+      }
+
+      if (ticket.version !== input.version) {
+        staleUpdate(res);
         return;
       }
 
       // `requestedPriority` is absent from this statement, not merely unchanged
       // by it: the column the Requester owns cannot be written here at all.
-      await prisma.ticket.update({
-        where: { id },
-        data: { itPriority: input.value },
+      const written = await prisma.ticket.updateMany({
+        where: { id: ticket.id, version: input.version },
+        data: { itPriority: input.value, version: { increment: 1 } },
       });
 
-      res.status(200).json(await updatedTicket(id));
+      if (written.count === 0) {
+        staleUpdate(res);
+        return;
+      }
+
+      res.status(200).json(await updatedTicket(ticket.id));
     } catch (error) {
       sendInternalError(res, "Failed to change the IT priority", error);
     }
@@ -317,19 +376,21 @@ staffTicketsRouter.patch(
 );
 
 /**
- * Move a ticket along its lifecycle (BR-25, AC-20, AC-21).
+ * Move a ticket along its lifecycle (BR-25, AC-20, AC-21, AC-23).
  *
- * The transition is checked against the matrix and then written conditionally
- * on the status it was checked against. Two staff acting at once therefore
- * cannot both pass the check and both write: the second update matches no row,
- * and is answered as the refusal it is rather than overwriting the first.
+ * Checked in BR-20's order: body shape, existence, version, then the matrix.
+ * The change is written conditionally on the version it was checked against,
+ * and the history row is written in the same transaction. Two staff acting at
+ * once therefore cannot both pass the check and both write: the second update
+ * matches no row, nothing is recorded for it, and it is answered `409` rather
+ * than overwriting the first.
  */
 staffTicketsRouter.patch(
   "/staff/tickets/:id/status",
   ...staffOnly,
   // oxlint-disable-next-line oxc/no-async-endpoint-handlers
   async (req, res) => {
-    const input = onlyField<TicketStatus>(req.body, "status", (value) =>
+    const input = fieldWithVersion<TicketStatus>(req.body, "status", (value) =>
       isTicketStatus(value)
         ? { ok: true, value }
         : { ok: false, why: "Choose a status from the list." }
@@ -346,17 +407,15 @@ staffTicketsRouter.patch(
     }
 
     try {
-      const id = identifier(String(req.params.id));
-      const ticket =
-        id === null
-          ? null
-          : await prisma.ticket.findUnique({
-              where: { id },
-              select: { id: true, currentStatus: true },
-            });
+      const ticket = await ticketForWrite(String(req.params.id));
 
       if (!ticket) {
         ticketNotFound(res);
+        return;
+      }
+
+      if (ticket.version !== input.version) {
+        staleUpdate(res);
         return;
       }
 
@@ -371,20 +430,34 @@ staffTicketsRouter.patch(
         return;
       }
 
-      const moved = await prisma.ticket.updateMany({
-        where: { id: ticket.id, currentStatus: ticket.currentStatus },
-        data: { currentStatus: input.value },
+      const target = input.value;
+      const actor = currentUser(res);
+
+      const moved = await prisma.$transaction(async (tx) => {
+        const written = await tx.ticket.updateMany({
+          where: { id: ticket.id, version: input.version },
+          data: { currentStatus: target, version: { increment: 1 } },
+        });
+
+        if (written.count === 0) {
+          // Somebody else wrote between the check and this statement, so the
+          // transition just approved was approved from a picture that is no
+          // longer true. Nothing is recorded.
+          return false;
+        }
+
+        await recordStatusChange(tx, {
+          ticketId: ticket.id,
+          from: ticket.currentStatus,
+          to: target,
+          changedById: actor.id,
+        });
+
+        return true;
       });
 
-      if (moved.count === 0) {
-        // Somebody else moved it between the check and the write, so the
-        // transition just approved was approved from a status the ticket no
-        // longer holds.
-        badRequest(
-          res,
-          ErrorCode.invalidStatusTransition,
-          "The ticket moved while this change was being made. Open it again."
-        );
+      if (!moved) {
+        staleUpdate(res);
         return;
       }
 

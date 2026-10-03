@@ -147,7 +147,7 @@ Every other transition is a single control with a confirmation only for Cancelle
 
 ## 8. Stale update message
 
-When any Ticket or Action write returns `409 STALE_UPDATE` the screen shows an alert beside the form: "This record was changed by someone else since you opened it. We've loaded the latest version — check it and try again." The latest data is fetched and shown, the **user's entered text stays in the form** (FR-25, AC-42), and the control is re-enabled. The alert is associated with the form and announced. No internal detail is shown. A write refused as `ACTION_NOT_EDITABLE` or `TICKET_NOT_ACTIONABLE` reloads the record and says why in plain words ("This action has already been completed.").
+When any Ticket or Action write returns `409 STALE_UPDATE` the screen shows an alert beside the form: "This record was changed by someone else since you opened it. We've loaded the latest version — check it and try again." The latest data is fetched and shown, the **user's entered text stays in the form** (FR-25, AC-42), and the control is re-enabled. The alert is associated with the form and announced. If that fetch itself fails, the alert says so instead — "This record was changed by someone else since you opened it, but the latest version could not be loaded. What you see may be out of date — reload the page before trying again." — and the wording above, which claims fresh data, is not shown (raised in review). No internal detail is shown. A write refused as `ACTION_NOT_EDITABLE` or `TICKET_NOT_ACTIONABLE` reloads the record and says why in plain words ("This action has already been completed.").
 
 ---
 

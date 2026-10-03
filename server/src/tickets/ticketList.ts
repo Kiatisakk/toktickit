@@ -44,6 +44,7 @@ export const TICKET_SHAPE = {
   currentStatus: true,
   resolutionSummary: true,
   resolvedIndicatedAt: true,
+  version: true,
   createdAt: true,
   updatedAt: true,
   category: { select: { id: true, name: true } },
