@@ -36,6 +36,13 @@ export const ErrorCode = {
   attachmentLimitReached: "ATTACHMENT_LIMIT_REACHED",
   fileTooLarge: "FILE_TOO_LARGE",
   unsupportedFileType: "UNSUPPORTED_FILE_TYPE",
+  // Lab 4 Actions Taken (docs/lab-04/api-spec.md section 3).
+  staleUpdate: "STALE_UPDATE",
+  actionAssigneeIneligible: "ACTION_ASSIGNEE_INELIGIBLE",
+  actionNotEditable: "ACTION_NOT_EDITABLE",
+  actionNotFound: "ACTION_NOT_FOUND",
+  ticketNotActionable: "TICKET_NOT_ACTIONABLE",
+  requestIdConflict: "REQUEST_ID_CONFLICT",
   internalError: "INTERNAL_ERROR",
 } as const;
 

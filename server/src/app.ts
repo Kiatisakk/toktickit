@@ -4,6 +4,7 @@ import type { Express, NextFunction, Request, Response } from "express";
 import express from "express";
 
 import { ErrorCode, sendError, sendInternalError } from "./http/errors.js";
+import { actionsRouter } from "./routes/actions.js";
 import { adminUsersRouter } from "./routes/adminUsers.js";
 import { attachmentsRouter } from "./routes/attachments.js";
 import { authRouter } from "./routes/auth.js";
@@ -66,6 +67,7 @@ export const createApp = (): Express => {
   app.use("/api", staffTicketsRouter);
   app.use("/api", commentsRouter);
   app.use("/api", notesRouter);
+  app.use("/api", actionsRouter);
   app.use("/api", attachmentsRouter);
   app.use("/api", adminUsersRouter);
 
