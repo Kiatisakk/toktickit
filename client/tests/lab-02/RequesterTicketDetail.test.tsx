@@ -235,13 +235,14 @@ describe("the badge fields", () => {
 
     await screen.findByLabelText("Ticket No.");
 
-    // Lab 3 adds two more cards beside it (ui-spec.md §7), so this asks the
-    // question directly rather than by counting.
+    // Lab 3 adds two more cards beside it (ui-spec.md §7), and Lab 4 a fifth,
+    // Actions Taken (#74), so this asks the question directly rather than only
+    // by counting.
     const attachments = screen.getByRole("region", { name: "Attachments" });
 
     expect(attachments).toHaveClass("tkt-card");
     expect(attachments.parentElement?.closest(".tkt-card")).toBeNull();
-    expect(container.querySelectorAll(".tkt-card")).toHaveLength(4);
+    expect(container.querySelectorAll(".tkt-card")).toHaveLength(5);
   });
 });
 

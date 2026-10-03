@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
+import { ActionsTaken } from "../components/ActionsTaken";
 import { AppShell } from "../components/AppShell";
 import { AttachmentSection } from "../components/AttachmentSection";
 import { Badge } from "../components/Badge";
@@ -395,6 +396,18 @@ export const TicketDetail = () => {
         canModify={user !== null && ticket.requester.id === user.id}
         onChange={onAttachmentsChange}
         ticketId={ticket.id}
+      />
+
+      {/* Issue #74. Keyed by ticket so that moving between tickets starts a
+          fresh list and a fresh request key, and never carries one ticket's
+          open form onto another. The Ticket's own reload is handed in so a
+          refused write can learn that the status has moved on. */}
+      <ActionsTaken
+        canWrite={staffControls}
+        key={`actions-${ticket.id}`}
+        reloadTicket={onStale}
+        ticketId={ticket.id}
+        ticketStatus={ticket.currentStatus}
       />
 
       {/* Keyed by ticket so that moving between tickets starts a fresh
