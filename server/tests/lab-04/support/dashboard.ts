@@ -35,6 +35,33 @@ export const justBefore = (instant: Date): Date =>
 /** Fixes the dashboard's idea of "now" for one suite. Call from `beforeEach`. */
 export const freezeClock = () => vi.spyOn(clock, "now").mockReturnValue(NOW);
 
+const SETTLE_ATTEMPTS = 5;
+
+/**
+ * Runs `attempt` until it passes, up to five times, and rethrows the last
+ * failure.
+ *
+ * Whole-database comparisons (a card against `SELECT count(*)`) read twice, and
+ * another suite sharing this database may insert a Ticket between the two reads.
+ * Repeating the comparison absorbs that; a genuine defect fails every attempt.
+ * Use only where the read cannot be made atomic.
+ */
+export const settles = async (attempt: () => Promise<void>): Promise<void> => {
+  let failure: unknown = null;
+
+  for (let tried = 0; tried < SETTLE_ATTEMPTS; tried += 1) {
+    try {
+      // oxlint-disable-next-line no-await-in-loop
+      await attempt();
+      return;
+    } catch (error) {
+      failure = error;
+    }
+  }
+
+  throw failure;
+};
+
 export const as = (who: SignedInUser) => (r: request.Test) =>
   r.set("Cookie", who.cookie);
 

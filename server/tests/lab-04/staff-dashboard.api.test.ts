@@ -24,6 +24,7 @@ import {
   freezeClock,
   getJson,
   justBefore,
+  settles,
   NOW,
   sqlCountAsAt,
   sqlCountByStatus,
@@ -251,34 +252,42 @@ describe("DASH-01 counts equal direct SQL", () => {
       followUpRequired: true,
     });
 
-    const dashboard = await dashboardOf(me);
+    // The dashboard and the SQL are two reads; settles() absorbs another
+    // suite's insert landing between them.
+    await settles(async () => {
+      const dashboard = await dashboardOf(me);
 
-    for (const [key, status] of STATUS_CARD_KEYS) {
-      expect(card(dashboard, key).count, key).toBe(
-        await sqlCountByStatus(status)
+      for (const [key, status] of STATUS_CARD_KEYS) {
+        expect(card(dashboard, key).count, key).toBe(
+          await sqlCountByStatus(status)
+        );
+      }
+
+      expect(card(dashboard, "my-assigned").count).toBe(
+        await sqlOpenOwnedBy(me.id)
       );
-    }
-
-    expect(card(dashboard, "my-assigned").count).toBe(
-      await sqlOpenOwnedBy(me.id)
-    );
-    expect(card(dashboard, "unassigned").count).toBe(await sqlOpenUnassigned());
-    expect(card(dashboard, "my-follow-ups").count).toBe(
-      await sqlOpenFollowUpTickets(me.id)
-    );
+      expect(card(dashboard, "unassigned").count).toBe(
+        await sqlOpenUnassigned()
+      );
+      expect(card(dashboard, "my-follow-ups").count).toBe(
+        await sqlOpenFollowUpTickets(me.id)
+      );
+    });
 
     // The same SQL, pinned to numbers this suite can state by hand, so that a
     // wrong SQL helper cannot make a wrong endpoint look right.
     // The open group holds five of the eight statuses, and I own one Ticket in
     // each. Of my Actions, the open follow-up, the one with only a Planned
     // follower and the Ticket with two open follow-ups count, once each: three.
+    const dashboard = await dashboardOf(me);
+
     expect(card(dashboard, "my-assigned").count).toBe(5);
     expect(card(dashboard, "my-follow-ups").count).toBe(3);
   });
 });
 
 describe("DASH-02 deltas around midnight Bangkok", () => {
-  it("measures the change against the status as at T0, either side of the boundary", async () => {
+  const measuresChangeAgainstT0 = async () => {
     const before = await dashboardOf(me);
 
     const FAR_BEFORE = new Date(T0.getTime() - 2 * 24 * 60 * 60 * 1000);
@@ -348,12 +357,22 @@ describe("DASH-02 deltas around midnight Bangkok", () => {
 
       expect(card(after, key).delta, key).toBe(expected);
     }
+  };
+
+  it("measures the change against the status as at T0, either side of the boundary", async () => {
+    // The before/after reads and the whole-database SQL straddle fixtures; the
+    // attempt starts clean so that another suite landing a Ticket in between
+    // costs a retry, not a false failure.
+    await settles(async () => {
+      await fx.cleanTickets();
+      await measuresChangeAgainstT0();
+    });
   });
 
-  it("treats the instant of the boundary itself as after it", async () => {
-    // One Ticket whose only row sits exactly on T0: it did not exist at T0, so
-    // it is a +1 for its own status today. One millisecond earlier it would
-    // have been in the as-at count and the delta would be 0.
+  // One Ticket whose only row sits exactly on T0: it did not exist at T0, so
+  // it is a +1 for its own status today. One millisecond earlier it would
+  // have been in the as-at count and the delta would be 0.
+  const boundaryInstantIsAfter = async () => {
     const base = await dashboardOf(me);
 
     await fx.makeTicket({
@@ -373,6 +392,13 @@ describe("DASH-02 deltas around midnight Bangkok", () => {
     expect(
       (card(next, "reopened").delta ?? 0) - (card(base, "reopened").delta ?? 0)
     ).toBe(1);
+  };
+
+  it("treats the instant of the boundary itself as after it", async () => {
+    await settles(async () => {
+      await fx.cleanTickets();
+      await boundaryInstantIsAfter();
+    });
   });
 
   it("reports generatedAt from the injected clock and the Bangkok zone", async () => {
@@ -519,15 +545,19 @@ describe("DASH-06 drill-downs agree with counts", () => {
       followUpRequired: true,
     });
 
+    // Card and list are two reads of a database other suites may be writing to;
+    // settles() repeats the pair if a Ticket lands between them.
     for (const who of [me, admin]) {
-      const dashboard = await dashboardOf(who);
+      await settles(async () => {
+        const dashboard = await dashboardOf(who);
 
-      for (const c of dashboard.cards) {
-        const listed = await getJson(who, drillDownUrl(c.drillDown));
+        for (const c of dashboard.cards) {
+          const listed = await getJson(who, drillDownUrl(c.drillDown));
 
-        expect(listed.status, c.key).toBe(200);
-        expect(listed.body.meta.totalItems, c.key).toBe(c.count);
-      }
+          expect(listed.status, c.key).toBe(200);
+          expect(listed.body.meta.totalItems, c.key).toBe(c.count);
+        }
+      });
     }
   });
 
