@@ -90,6 +90,11 @@ model User {
   /// Internal Notes this user wrote (D-09).
   internalNotes InternalNote[]
 
+  /// Actions Taken this user typed in, and Actions Taken they performed (BR-02,
+  /// D-01). Two relations because the two people need not be the same.
+  recordedActions  ActionTaken[] @relation("ActionRecorder")
+  performedActions ActionTaken[] @relation("ActionPerformer")
+
   // The selector reads active users on every load.
   @@index([isActive])
 }
@@ -234,6 +239,8 @@ model Ticket {
   publicComments PublicComment[]
 
   internalNotes InternalNote[]
+
+  actions ActionTaken[]
 
   // Every My Tickets query filters on owner and orders by creation time. This
   // is the one index the sprint cannot do without.
@@ -387,4 +394,60 @@ model InternalNote {
 
   // A ticket's notes are read oldest first, with id breaking a tie.
   @@index([ticketId, createdAt, id])
+}
+
+enum ActionState {
+  PLANNED
+  DONE
+  CANCELLED
+}
+
+/// One piece of work done, or planned, on a Ticket (BR-01 to BR-14, D-01, D-02).
+///
+/// `recordedById` is the session user, never the client's word. `performedById`
+/// is independent of both that and the Ticket Owner (BR-02). Whether a
+/// follow-up is open is derived on read from `followsUpId` and `state`, never
+/// stored (D-22).
+model ActionTaken {
+  id Int @id @default(autoincrement())
+
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  recordedById Int
+  recordedBy   User @relation("ActionRecorder", fields: [recordedById], references: [id])
+
+  performedById Int
+  performedBy   User @relation("ActionPerformer", fields: [performedById], references: [id])
+
+  actionAt    DateTime
+  description String
+  result      String?
+
+  state ActionState @default(PLANNED)
+
+  followUpRequired Boolean @default(false)
+  followUpNote     String?
+  attachmentNotes  String?
+
+  /// The client's idempotency key (BR-35, D-24). Never returned.
+  requestId String
+
+  /// The earlier Action this one follows up. Set at creation, never changed
+  /// (BR-10).
+  followsUpId Int?
+  followsUp   ActionTaken?  @relation("ActionFollowUp", fields: [followsUpId], references: [id])
+  followedBy  ActionTaken[] @relation("ActionFollowUp")
+
+  cancelReason String?
+
+  /// The concurrency token (D-20): a write names the version it read.
+  version Int @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ticketId, requestId])
+  @@index([ticketId, actionAt, id])
+  @@index([performedById, state])
 }
