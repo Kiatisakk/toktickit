@@ -90,6 +90,11 @@ model User {
   /// Internal Notes this user wrote (D-09).
   internalNotes InternalNote[]
 
+  /// Actions Taken this user typed in, and Actions Taken they performed (BR-02,
+  /// D-01). Two relations because the two people need not be the same.
+  recordedActions  ActionTaken[] @relation("ActionRecorder")
+  performedActions ActionTaken[] @relation("ActionPerformer")
+
   /// Status changes this user made (D-08). Rows the migration backfilled carry
   /// no author and are not reachable from here.
   statusChanges TicketStatusChange[]
@@ -244,18 +249,18 @@ model Ticket {
 
   internalNotes InternalNote[]
 
+  actions ActionTaken[]
+
   /// Append-only record of every status the Ticket has held (D-08).
   statusHistory TicketStatusChange[]
 
   // Every My Tickets query filters on owner and orders by creation time. This
   // is the one index the sprint cannot do without.
   @@index([requesterId, createdAt(sort: Desc)])
-
   // The staff queue reads every ticket in its default order — newest first,
   // id as the tie-break — so the index above, which leads with requesterId,
   // cannot serve it (specification.md §7).
   @@index([createdAt(sort: Desc), id(sort: Desc)])
-
   // The Unassigned filter and the Owner filter (FR-21).
   @@index([ticketOwnerId])
 }
@@ -293,12 +298,12 @@ model Attachment {
   /// What the person called it. Displayed, never used as a path.
   originalFilename String
   /// What it is called on disk. A generated name, never exposed by the API.
-  storedFilename String @unique
-  mimeType       String
-  sizeBytes      Int
+  storedFilename   String @unique
+  mimeType         String
+  sizeBytes        Int
 
   uploadedById Int
-  uploadedBy   User @relation("AttachmentUploader", fields: [uploadedById], references: [id])
+  uploadedBy   User     @relation("AttachmentUploader", fields: [uploadedById], references: [id])
   uploadedAt   DateTime @default(now())
 
   /// Null while active. Set once, on removal, and never cleared: BR-26 keeps the
@@ -306,7 +311,7 @@ model Attachment {
   removedAt     DateTime?
   removedReason String?
   removedById   Int?
-  removedBy     User? @relation("AttachmentRemover", fields: [removedById], references: [id])
+  removedBy     User?     @relation("AttachmentRemover", fields: [removedById], references: [id])
 
   /// The active count in BR-23 is a filtered count per ticket, which is exactly
   /// what this index serves.
@@ -399,6 +404,62 @@ model InternalNote {
 
   // A ticket's notes are read oldest first, with id breaking a tie.
   @@index([ticketId, createdAt, id])
+}
+
+enum ActionState {
+  PLANNED
+  DONE
+  CANCELLED
+}
+
+/// One piece of work done, or planned, on a Ticket (BR-01 to BR-14, D-01, D-02).
+///
+/// `recordedById` is the session user, never the client's word. `performedById`
+/// is independent of both that and the Ticket Owner (BR-02). Whether a
+/// follow-up is open is derived on read from `followsUpId` and `state`, never
+/// stored (D-22).
+model ActionTaken {
+  id Int @id @default(autoincrement())
+
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  recordedById Int
+  recordedBy   User @relation("ActionRecorder", fields: [recordedById], references: [id])
+
+  performedById Int
+  performedBy   User @relation("ActionPerformer", fields: [performedById], references: [id])
+
+  actionAt    DateTime
+  description String
+  result      String?
+
+  state ActionState @default(PLANNED)
+
+  followUpRequired Boolean @default(false)
+  followUpNote     String?
+  attachmentNotes  String?
+
+  /// The client's idempotency key (BR-35, D-24). Never returned.
+  requestId String
+
+  /// The earlier Action this one follows up. Set at creation, never changed
+  /// (BR-10).
+  followsUpId Int?
+  followsUp   ActionTaken?  @relation("ActionFollowUp", fields: [followsUpId], references: [id])
+  followedBy  ActionTaken[] @relation("ActionFollowUp")
+
+  cancelReason String?
+
+  /// The concurrency token (D-20): a write names the version it read.
+  version Int @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ticketId, requestId])
+  @@index([ticketId, actionAt, id])
+  @@index([performedById, state])
 }
 
 /// One status change of a Ticket, written in the same transaction as the change

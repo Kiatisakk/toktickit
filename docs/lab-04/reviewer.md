@@ -41,6 +41,27 @@ He approved with `LGTM` at 16:54:20Z on 2026-10-02 and merged ten seconds later 
 
 *A failed reload after a stale write was swallowed.* Real: the control said "We've loaded the latest version" even when that fetch had failed. The reload now reports whether it worked; the stale message waits for it, and a failure shows a distinct alert saying the data may be out of date and to reload the page. ui-spec section 8 states it. The new client test failed first (the alert never appeared).
 
+**Outcome.** He approved on 2026-10-03 14:11 UTC ("LGTM", review on the fixed head) and merged it into `lab4-staging` himself eleven seconds later (`618e29e`). Issue #72 was closed by hand, since a merge into a staging branch closes nothing.
+
+---
+
+### PR #81 — Actions Taken API (Issue #73)
+
+[PR #81](https://github.com/Kiatisakk/toktickit/pull/81) · reviewed 2026-10-03 · **4 line comments**, verdict **Changes requested** (review 5399435686).
+
+Four findings, all real; each was reproduced with a failing test before it was fixed.
+
+| File | Finding | What was done |
+| --- | --- | --- |
+| routes/actions.ts L230 🔴 | `followsUpId` accepts an Action dated after the new Action, reversing the follow-up chronology | A target dated after the new Action's effective time is refused `400`, `details.followsUpId`; the same instant is allowed (the list breaks ties by id and the target is the older row). The same order is kept when `actionAt` is edited (`details.actionAt`), in both directions: before the Action it follows up, and after any Action that follows it. BR-10, AC-13 and api-spec.md say so; API-12 and API-17 cover it |
+| routes/actions.ts L149 🟡 | The performer can be deactivated after the eligibility lookup but before the Action commits | The performer's row is read `FOR SHARE` inside the writing transaction, after the Ticket lock, on create and on edit. `FOR SHARE` rather than `FOR UPDATE` because it must block the deactivation's `UPDATE` but need not make two writes naming one performer queue. Lock order is Ticket then User; the user-edit endpoint locks only User rows and never a Ticket, so there is no cycle. CONC-05 holds a pending deactivation and starts the write; removing the lock fails it |
+| actions/validation.ts L149 🔴 | `Date` normalises impossible dates such as 30 February into March | The calendar and clock fields are checked before the instant is accepted: a real day of the month (leap years included), hour below 24, minute and second below 60, an offset of the same shape. Refused `400`, `details.actionAt`; BR-14 says so. Month 13 and minute 60 were already refused by `Date`; 30 February, 29 February in a common year, 31 April and hour 24 were not |
+| actions/validation.ts L174 🔴 | A body key such as `__proto__` resolves to an inherited object and is called as a validator, giving a 500 | Validators are looked up in a `Map` and results are kept in prototype-free records, so no body key reaches anything inherited. `__proto__`, `constructor`, `toString` and `hasOwnProperty` are each refused by name on all four writes. `constructor` and `toString` had answered a 400 with an empty `details`; `__proto__` was a 500 |
+
+Lab 3's `onlyField`, `users/validation.ts` and `ticketQuery.ts` were searched for the same lookup-by-body-key pattern: none calls a looked-up value, so none can 500 this way.
+
+**Second round.** On 2026-10-03 14:11 UTC, right after merging #80, he requested changes again with one line: "Fix merge request conflict". #80 and #81 had both added to `schema.prisma` (the `User` and `Ticket` relations and a new model each), `errors.ts` (both added `STALE_UPDATE`), `ai-use-log.md` (both took row 5) and this file. `lab4-staging` was merged into the branch: both models and every relation kept, the duplicate error key removed, this PR's log row renumbered 6.
+
 ---
 
 ## Reviews I gave
@@ -74,10 +95,37 @@ Our own contract (this PR) was checked against the same list before it was opene
 
 ---
 
+### beambeambeam#82 — Create and view Actions Taken (his Issue beambeambeam/toktickit#74)
+
+[beambeambeam#82](https://github.com/beambeambeam/toktickit/pull/82) · reviewed 2026-10-03 (review 5400167296) · **12 line comments**, verdict **Changes requested**. Caveman format. Drafted by a Sonnet 5.5 agent in a separate clone of his repository, which never touched our databases; each finding was checked against his code and his contract before posting, and two were reworded as a result.
+
+The slice is mostly sound: lock order, replay before the terminal check, the Requester 403/404 split and an additive migration all follow his contract. In the body: no `lab-04` label, and `ai-use.md` not updated for this Issue.
+
+| File | Finding |
+| --- | --- |
+| repositories/actions.ts L51 🔴 | His contract contradicts itself on Resolved: BR-10 says only Closed and Cancelled are terminal, but AC-13, the error table and ui-spec reject Action writes on Resolved too. The code allows creation on Resolved, so a Resolved Ticket can hold a pending Action. Pick one side and make the documents agree |
+| actions.api.test.ts L436 🔴 | The test asserts `201` on Resolved, pinning the side AC-13 rejects |
+| tests.md L85 🟡 | API-05 is marked Pass while its result says "permits Resolved", against its own Expected cell |
+| action-rules.ts L61 🟡 | A blank assignee option passes validation and silently assigns the creator |
+| actions-taken-section.tsx L86 🟡 | Add disables itself while focused, so focus drops to `body` when the form opens |
+| actions-taken-list.tsx L43 🟡 | A global `min-height: 6rem` leaves dead space under every short field |
+| services/actions.ts L109 🟡 | `ACTION_LIST_FAILURE` is in neither api-spec nor OpenAPI; the bare `catch` loses the cause |
+| artifacts/lab-04/README.md L5 🟡 | Screenshot provenance cites a commit that does not exist in his repository |
+| services/actions.ts L29 🔵 | `ACTION_ASSIGNEE_INELIGIBLE` has no `details.field`, so the error is not shown beside the select |
+| action-payload.ts L16 🔵 | Hashed field order differs from api-spec §3 |
+| actions-taken-list.tsx L163 🔵 | Two sibling `h3`s per saved row; headings are only timestamps |
+| tests.md L113 ❓ | MIG-01 is Pass but its script is manual and wired into no test run |
+
+Not verified by us: his server suite, migration script and e2e (they need his database), and his claim of 132 client tests (the full run did not finish under load; the 25 Lab 4 client tests and `tsc -b` passed).
+
+---
+
 ## Coverage
 
 | Pull Request | Direction | Findings | Verdict | State |
 | --- | --- | --- | --- | --- |
 | [#71](https://github.com/Kiatisakk/toktickit/pull/71) | received | 3 | Changes requested → Approved | Merged |
-| [#80](https://github.com/Kiatisakk/toktickit/pull/80) | received | 3 | Changes requested → fixed, awaiting re-review | Open |
+| [#80](https://github.com/Kiatisakk/toktickit/pull/80) | received | 3 | Changes requested → Approved | Merged |
+| [#81](https://github.com/Kiatisakk/toktickit/pull/81) | received | 4 + merge conflict | Changes requested ×2 | Open — fixes and conflict resolution pushed |
 | [beambeambeam#80](https://github.com/beambeambeam/toktickit/pull/80) | given | 8 | Changes requested → Approved | Merged |
+| [beambeambeam#82](https://github.com/beambeambeam/toktickit/pull/82) | given | 12 | Changes requested | Open |
