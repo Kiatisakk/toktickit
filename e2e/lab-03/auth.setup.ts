@@ -30,8 +30,8 @@ for (const [who, account] of Object.entries(SIGNED_IN)) {
       .fill(account.password);
     await page.getByRole("button", { name: "Sign In" }).click();
 
-    await expect(page).toHaveURL(/\/my-tickets$/u);
-    await expect(page.getByText(account.name)).toBeVisible();
+    await expect(page).toHaveURL(/\/dashboard$/u);
+    await expect(page.getByText(account.name, { exact: true })).toBeVisible();
 
     await page
       .context()
