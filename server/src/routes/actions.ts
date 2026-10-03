@@ -141,17 +141,36 @@ const sendFailure = (res: Response, context: string, error: unknown): void => {
   sendInternalError(res, context, error);
 };
 
-/** BR-07: active at the moment of the write, and IT Staff or Administrator. */
+/**
+ * BR-07: active at the moment of the write, and IT Staff or Administrator.
+ *
+ * The performer's row is read `FOR SHARE`, so it stays as read until this
+ * transaction ends. A deactivation or a role change is an `UPDATE` of that row
+ * and waits for the lock; when it resumes the Action is already committed, and
+ * the performer was eligible when it was. Read the other way round, a change
+ * that committed first is what this read sees, because PostgreSQL re-evaluates
+ * the condition against the committed row after waiting. Without the lock the
+ * eligibility could change between this read and the commit, and an Action
+ * would be stored against someone who was no longer eligible (review of PR 81).
+ *
+ * `FOR SHARE` rather than `FOR UPDATE`: two writes naming the same performer
+ * on different Tickets need not queue behind each other, only behind a change
+ * to the performer. Lock order is Ticket then User everywhere: the Ticket lock
+ * is taken first in every Action write, and the user-edit endpoint locks only
+ * User rows, never a Ticket, so no cycle can form.
+ */
 const requireEligiblePerformer = async (
   tx: Prisma.TransactionClient,
   userId: number
 ): Promise<void> => {
-  const performer = await tx.user.findFirst({
-    where: { id: userId, isActive: true, role: { in: ["IT_STAFF", "ADMIN"] } },
-    select: { id: true },
-  });
+  const performers = await tx.$queryRaw<{ id: number }[]>`
+    SELECT "id" FROM "User"
+    WHERE "id" = ${userId}
+      AND "isActive" = true
+      AND "role"::text IN ('IT_STAFF', 'ADMIN')
+    FOR SHARE`;
 
-  if (!performer) {
+  if (performers.length === 0) {
     throw ineligible();
   }
 };
@@ -221,11 +240,19 @@ const sameRequest = (
   (input.actionAt === null ||
     stored.actionAt.getTime() === input.actionAt.getTime());
 
-/** BR-10: an earlier Action on this Ticket that wants follow-up. */
+/**
+ * BR-10: an earlier Action on this Ticket that wants follow-up.
+ *
+ * "Earlier" is checked, not assumed from the id: the target may not be dated
+ * after the new Action's effective time, so the list never shows a follow-up
+ * before the Action it follows up. The same instant is allowed, because the
+ * list breaks ties by id and the target, existing already, has the smaller one.
+ */
 const requireFollowable = async (
   tx: Prisma.TransactionClient,
   ticketId: number,
-  followsUpId: number
+  followsUpId: number,
+  actionAt: Date
 ): Promise<void> => {
   const target = await tx.actionTaken.findFirst({
     where: {
@@ -234,13 +261,57 @@ const requireFollowable = async (
       followUpRequired: true,
       state: { not: "CANCELLED" },
     },
-    select: { id: true },
+    select: { actionAt: true },
   });
 
   if (!target) {
     throw invalid("The action could not be saved.", {
       followsUpId:
         "Choose an earlier action on this ticket that needs follow-up and is not cancelled.",
+    });
+  }
+
+  if (target.actionAt.getTime() > actionAt.getTime()) {
+    throw invalid("The action could not be saved.", {
+      followsUpId:
+        "Choose an action dated no later than this one: a follow-up cannot come before the action it follows up.",
+    });
+  }
+};
+
+/**
+ * BR-10, on edit: moving an Action's time must keep it no earlier than the
+ * Action it follows up, and no later than any Action that follows it up.
+ */
+const requireChronologyKept = async (
+  tx: Prisma.TransactionClient,
+  action: ActionRow,
+  actionAt: Date
+): Promise<void> => {
+  const target =
+    action.followsUpId === null
+      ? null
+      : await tx.actionTaken.findUnique({
+          where: { id: action.followsUpId },
+          select: { actionAt: true },
+        });
+
+  if (target && target.actionAt.getTime() > actionAt.getTime()) {
+    throw invalid("The action could not be saved.", {
+      actionAt:
+        "This action follows up an earlier one, so it cannot be dated before it.",
+    });
+  }
+
+  const earlierFollower = await tx.actionTaken.findFirst({
+    where: { followsUpId: action.id, actionAt: { lt: actionAt } },
+    select: { id: true },
+  });
+
+  if (earlierFollower) {
+    throw invalid("The action could not be saved.", {
+      actionAt:
+        "Another action follows this one up and is dated earlier than this time.",
     });
   }
 };
@@ -310,11 +381,12 @@ actionsRouter.post(
         }
 
         const performedById = value.performedById ?? user.id;
+        const actionAt = value.actionAt ?? new Date();
 
         await requireEligiblePerformer(tx, performedById);
 
         if (value.followsUpId !== null) {
-          await requireFollowable(tx, ticketId, value.followsUpId);
+          await requireFollowable(tx, ticketId, value.followsUpId, actionAt);
         }
 
         // The recorder is the session and the state is Planned. Neither is
@@ -324,7 +396,7 @@ actionsRouter.post(
             ticketId,
             recordedById: user.id,
             performedById,
-            actionAt: value.actionAt ?? new Date(),
+            actionAt,
             description: value.description,
             result: value.result,
             followUpRequired: value.followUpRequired,
@@ -483,6 +555,7 @@ actionsRouter.patch(
         const data: Prisma.ActionTakenUncheckedUpdateManyInput = {};
 
         if (changes.actionAt !== undefined) {
+          await requireChronologyKept(tx, action, changes.actionAt);
           data.actionAt = changes.actionAt;
         }
 

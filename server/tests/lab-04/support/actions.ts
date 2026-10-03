@@ -144,6 +144,47 @@ export const holdTicketLock = async (
   return { release, finished };
 };
 
+/**
+ * Deactivates a user inside a transaction that stays open until `release` is
+ * called, then commits it.
+ *
+ * While it is open the user's row is locked by the pending update but still
+ * reads as active to anyone who does not ask for the lock, which is the window
+ * in which an Action naming that user as performer could commit unchecked
+ * (BR-07).
+ */
+export const holdUserDeactivation = async (
+  userId: number
+): Promise<{ release: () => void; finished: Promise<void> }> => {
+  let release!: () => void;
+  let acquired!: () => void;
+
+  // oxlint-disable-next-line promise/avoid-new
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  // oxlint-disable-next-line promise/avoid-new
+  const holding = new Promise<void>((resolve) => {
+    acquired = resolve;
+  });
+
+  const finished = prisma.$transaction(
+    async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { isActive: false },
+      });
+      acquired();
+      await released;
+    },
+    { timeout: 20_000 }
+  );
+
+  await Promise.race([holding, finished]);
+
+  return { release, finished };
+};
+
 /** Creates an Action and returns its id, failing loudly if that did not work. */
 export const seedAction = async (
   who: SignedInUser,

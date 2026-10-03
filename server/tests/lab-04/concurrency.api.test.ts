@@ -12,6 +12,7 @@ import {
   createTicket,
   editAction,
   holdTicketLock,
+  holdUserDeactivation,
   removeTickets,
   seedAction,
   sleep,
@@ -235,5 +236,79 @@ describe("an unrelated Ticket is not held up", () => {
     await hold.finished;
 
     expect(answer.status).toBe(201);
+  });
+});
+
+describe("a performer deactivated while an Action write is in flight (BR-07)", () => {
+  const PERFORMER_EMAIL = "actions-conc-performer@example.ac.th";
+  let performerId = 0;
+
+  beforeEach(async () => {
+    await prisma.user.deleteMany({ where: { email: PERFORMER_EMAIL } });
+
+    const performer = await prisma.user.create({
+      data: {
+        name: "Actions Conc Performer",
+        email: PERFORMER_EMAIL,
+        role: "IT_STAFF",
+        passwordHash: "!",
+      },
+      select: { id: true },
+    });
+
+    performerId = performer.id;
+  });
+
+  afterAll(async () => {
+    // The Actions name the performer, so they go first.
+    await removeTickets(PREFIX);
+    await prisma.user.deleteMany({ where: { email: PERFORMER_EMAIL } });
+  });
+
+  /**
+   * Holds an uncommitted deactivation of the performer, starts `write` while it
+   * is pending, then commits the deactivation and returns what the write was
+   * answered.
+   *
+   * Without a lock on the performer's row the write reads the committed row,
+   * which still says active, and commits while the deactivation is pending.
+   * With it the write waits, and reads the deactivated row when let in.
+   */
+  const writeDuringDeactivation = async (
+    write: () => Promise<Answer>
+  ): Promise<Answer> => {
+    const hold = await holdUserDeactivation(performerId);
+    const pending = (async () => await write())();
+
+    await sleep(HOLD_MS);
+    hold.release();
+    await hold.finished;
+
+    return pending;
+  };
+
+  it("CONC-05 a create naming that performer is refused ACTION_ASSIGNEE_INELIGIBLE and stores nothing", async () => {
+    const answer = await writeDuringDeactivation(() =>
+      createAction(staffA, ticket, actionBody({ performedById: performerId }))
+    );
+
+    expect(answer.status).toBe(400);
+    expect(answer.body.error?.code).toBe("ACTION_ASSIGNEE_INELIGIBLE");
+    expect(
+      await prisma.actionTaken.count({ where: { ticketId: ticket } })
+    ).toBe(0);
+  });
+
+  it("CONC-05 an edit naming that performer is refused and the Action keeps its performer", async () => {
+    const { id, version } = await seedAction(staffA, ticket);
+    const answer = await writeDuringDeactivation(() =>
+      editAction(staffA, id, { version, performedById: performerId })
+    );
+    const stored = await storedAction(id);
+
+    expect(answer.status).toBe(400);
+    expect(answer.body.error?.code).toBe("ACTION_ASSIGNEE_INELIGIBLE");
+    expect(stored.performedById).not.toBe(performerId);
+    expect(stored.version).toBe(version);
   });
 });
