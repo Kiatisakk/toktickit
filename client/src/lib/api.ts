@@ -762,3 +762,117 @@ export const downloadAttachment = async (
   link.remove();
   URL.revokeObjectURL(url);
 };
+
+/* ---------------------------------------------- dashboards (Issue #76) -- */
+
+/**
+ * Where a card leads, as the backend defines it (BR-34). The screen follows it
+ * and never builds one itself, so the rule that defines a count and the list the
+ * card opens cannot drift apart.
+ */
+export interface DrillDown {
+  path: string;
+  query: Record<string, string>;
+}
+
+export interface DashboardCard {
+  key: string;
+  label: string;
+  count: number;
+  /** `null` on cards with no delta: ownership cards and every Requester card. */
+  delta: number | null;
+  drillDown: DrillDown;
+}
+
+export interface RecentTicket {
+  id: number;
+  ticketNumber: string;
+  summary: string;
+  currentStatus: string;
+  updatedAt: string;
+}
+
+export interface QuickAction {
+  key: string;
+  label: string;
+  path: string;
+  query?: Record<string, string>;
+}
+
+export interface Dashboard {
+  generatedAt: string;
+  timeZone: string;
+  cards: DashboardCard[];
+  recentTickets: RecentTicket[];
+  quickActions: QuickAction[];
+}
+
+const isStringMap = (value: unknown): value is Record<string, string> =>
+  isRecord(value) && Object.values(value).every((v) => typeof v === "string");
+
+const isDashboardCard = (value: unknown): value is DashboardCard =>
+  isRecord(value) &&
+  typeof value["key"] === "string" &&
+  typeof value["label"] === "string" &&
+  typeof value["count"] === "number" &&
+  (value["delta"] === null || typeof value["delta"] === "number") &&
+  isRecord(value["drillDown"]) &&
+  typeof value["drillDown"]["path"] === "string" &&
+  isStringMap(value["drillDown"]["query"]);
+
+const isRecentTicket = (value: unknown): value is RecentTicket =>
+  isRecord(value) &&
+  typeof value["id"] === "number" &&
+  typeof value["ticketNumber"] === "string" &&
+  typeof value["summary"] === "string" &&
+  typeof value["currentStatus"] === "string" &&
+  typeof value["updatedAt"] === "string";
+
+const isQuickAction = (value: unknown): value is QuickAction =>
+  isRecord(value) &&
+  typeof value["key"] === "string" &&
+  typeof value["label"] === "string" &&
+  typeof value["path"] === "string" &&
+  (value["query"] === undefined || isStringMap(value["query"]));
+
+const toDashboard = (body: unknown): Dashboard => {
+  if (
+    !isRecord(body) ||
+    typeof body["generatedAt"] !== "string" ||
+    typeof body["timeZone"] !== "string" ||
+    !Array.isArray(body["cards"]) ||
+    !body["cards"].every(isDashboardCard) ||
+    !Array.isArray(body["recentTickets"]) ||
+    !body["recentTickets"].every(isRecentTicket) ||
+    !Array.isArray(body["quickActions"]) ||
+    !body["quickActions"].every(isQuickAction)
+  ) {
+    throw new ApiError(
+      "UNEXPECTED_RESPONSE",
+      "The TokTickIT API returned the dashboard in an unexpected format.",
+      0
+    );
+  }
+
+  return {
+    generatedAt: body["generatedAt"],
+    timeZone: body["timeZone"],
+    cards: body["cards"],
+    recentTickets: body["recentTickets"],
+    quickActions: body["quickActions"],
+  };
+};
+
+/** IT Staff and Administrators only; anyone else is refused 403. */
+export const fetchStaffDashboard = async (
+  signal?: AbortSignal
+): Promise<Dashboard> =>
+  toDashboard(await apiGet("/api/dashboard/staff", signal ? { signal } : {}));
+
+/** Requesters only; staff and Administrators are refused 403. */
+export const fetchRequesterDashboard = async (
+  signal?: AbortSignal
+): Promise<Dashboard> =>
+  toDashboard(
+    await apiGet("/api/dashboard/requester", signal ? { signal } : {})
+  );

@@ -39,6 +39,8 @@ const NAV_ITEMS: {
   icon: IconName;
   roles?: readonly Role[];
 }[] = [
+  // First for every role (D-12): the landing page.
+  { to: "/dashboard", label: "Dashboard", icon: "home" },
   {
     to: "/staff/tickets",
     label: "Ticket Queue",

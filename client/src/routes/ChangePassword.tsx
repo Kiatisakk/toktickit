@@ -94,7 +94,7 @@ export const ChangePassword = () => {
       // rather than assuming (D-13 — the server is the only identity source).
       await refresh();
 
-      void navigate("/my-tickets", { replace: true });
+      void navigate("/dashboard", { replace: true });
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         setFieldFailure({

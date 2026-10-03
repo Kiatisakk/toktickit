@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router";
 
 import { AppShell } from "../components/AppShell";
 import { Button } from "../components/Button";
@@ -42,15 +43,83 @@ interface Filters {
   itPriority: string;
   status: string;
   owner: string;
+  /** `open` or nothing. Has no control; shown as a removable chip (FR-22). */
+  statusGroup: string;
+  /** `mine` or nothing. Has no control; shown as a removable chip (FR-22). */
+  followUp: string;
 }
 
-const NO_FILTERS: Filters = {
-  search: "",
-  categoryId: "",
-  requestedPriority: "",
-  itPriority: "",
-  status: "",
-  owner: "",
+/**
+ * The filters are read from the address, so a dashboard card can open the queue
+ * already filtered, Back returns to the previous filter, and a link can be
+ * shared (FR-22, ui-spec.md section 5). A value the screen would not offer is
+ * ignored rather than sent.
+ *
+ * The address says `unassigned=true` or `ownerId=<id>`, as the API does; the
+ * Owner select holds one value for both (see UNASSIGNED).
+ */
+const filtersFromParams = (params: URLSearchParams): Filters => {
+  const status = params.get("status") ?? "";
+  const categoryId = params.get("categoryId") ?? "";
+  const ownerId = params.get("ownerId") ?? "";
+  const requestedPriority = params.get("requestedPriority") ?? "";
+  const itPriority = params.get("itPriority") ?? "";
+  const validPriority = (value: string) =>
+    PRIORITIES.some((priority) => priority.value === value) ? value : "";
+
+  let owner = "";
+
+  if (/^\d+$/u.test(ownerId)) {
+    owner = ownerId;
+  } else if (params.get("unassigned") === "true") {
+    owner = UNASSIGNED;
+  }
+
+  return {
+    search: params.get("search") ?? "",
+    categoryId: /^\d+$/u.test(categoryId) ? categoryId : "",
+    requestedPriority: validPriority(requestedPriority),
+    itPriority: validPriority(itPriority),
+    status: STATUS_OPTIONS.some((option) => option.value === status)
+      ? status
+      : "",
+    owner,
+    statusGroup:
+      params.get("statusGroup") === "open" && status === "" ? "open" : "",
+    followUp: params.get("followUp") === "mine" ? "mine" : "",
+  };
+};
+
+/** The address fragment a filter key writes: Owner is two parameters. */
+const writeFilter = (
+  next: URLSearchParams,
+  key: keyof Filters,
+  value: string
+) => {
+  if (key === "owner") {
+    next.delete("ownerId");
+    next.delete("unassigned");
+
+    if (value === UNASSIGNED) {
+      next.set("unassigned", "true");
+    } else if (value !== "") {
+      next.set("ownerId", value);
+    }
+
+    return;
+  }
+
+  if (value === "") {
+    next.delete(key);
+  } else {
+    next.set(key, value);
+  }
+
+  // The API refuses a status group alongside an exact status, so choosing a
+  // status replaces the group rather than producing a request that fails.
+  if (key === "status" && value !== "") {
+    next.delete("statusGroup");
+  }
 };
 
 type Listing =
@@ -91,6 +160,8 @@ const toQuery = (
     "requestedPriority",
     "itPriority",
     "status",
+    "statusGroup",
+    "followUp",
   ] as const) {
     if (filters[key] !== "") {
       query.set(key, filters[key]);
@@ -123,7 +194,8 @@ const toQuery = (
  * else, and the API refuses them 403 whatever the screen does (AC-13).
  */
 export const StaffTicketQueue = () => {
-  const [filters, setFilters] = useState<Filters>(NO_FILTERS);
+  const [params, setParams] = useSearchParams();
+  const filters = useMemo(() => filtersFromParams(params), [params]);
   const [sort, setSort] = useState<SortField>("createdAt");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
@@ -219,7 +291,12 @@ export const StaffTicketQueue = () => {
   }, [filters, sort, order, page, reloadToken, refresh]);
 
   const setFilter = (key: keyof Filters) => (value: string) => {
-    setFilters((current) => ({ ...current, [key]: value }));
+    const next = new URLSearchParams(params);
+
+    writeFilter(next, key, value);
+    // Typing in the search box replaces the entry instead of adding one per
+    // keystroke, so Back does not step through every letter.
+    setParams(next, { replace: key === "search" });
     // Staying on page 3 of a result that now has one page shows nothing.
     setPage(1);
   };
@@ -236,7 +313,7 @@ export const StaffTicketQueue = () => {
   };
 
   const clearFilters = () => {
-    setFilters(NO_FILTERS);
+    setParams(new URLSearchParams());
     setPage(1);
   };
 
@@ -337,6 +414,37 @@ export const StaffTicketQueue = () => {
           value={filters.owner}
         />
       </div>
+
+      {filters.statusGroup === "open" || filters.followUp === "mine" ? (
+        <div className="tkt-chips">
+          {filters.statusGroup === "open" ? (
+            <span className="tkt-chip">
+              Open tickets
+              <button
+                aria-label="Remove the Open tickets filter"
+                className="tkt-chip__remove"
+                onClick={() => setFilter("statusGroup")("")}
+                type="button"
+              >
+                ×
+              </button>
+            </span>
+          ) : null}
+          {filters.followUp === "mine" ? (
+            <span className="tkt-chip">
+              My open follow-ups
+              <button
+                aria-label="Remove the My open follow-ups filter"
+                className="tkt-chip__remove"
+                onClick={() => setFilter("followUp")("")}
+                type="button"
+              >
+                ×
+              </button>
+            </span>
+          ) : null}
+        </div>
+      ) : null}
 
       {listing.kind === "loading" ? <TicketTableSkeleton /> : null}
 

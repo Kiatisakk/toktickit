@@ -4,6 +4,7 @@ import App from "../App";
 import { AuthGuard } from "./AuthGuard";
 import { ChangePassword } from "./ChangePassword";
 import { CreateTicket } from "./CreateTicket";
+import { Dashboard } from "./Dashboard";
 import { Login } from "./Login";
 import { MyTickets } from "./MyTickets";
 import { NotFound } from "./NotFound";
@@ -33,7 +34,12 @@ const guarded = (element: React.ReactNode) => <AuthGuard>{element}</AuthGuard>;
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <Navigate replace to="/my-tickets" />,
+    element: <Navigate replace to="/dashboard" />,
+  },
+  // The landing page for every role (D-12). The role picks which dashboard.
+  {
+    path: "/dashboard",
+    element: guarded(<Dashboard />),
   },
   // Neither screen renders the application shell: the sign-in screen has
   // nobody to show in the header, and the change-password screen must not offer
