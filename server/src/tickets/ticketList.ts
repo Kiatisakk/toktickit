@@ -1,5 +1,6 @@
 import type { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../prisma.js";
+import { hasOpenFollowUpBy, inOpenGroup } from "./listPredicates.js";
 import type { TicketQuery } from "./ticketQuery.js";
 
 /**
@@ -74,10 +75,20 @@ export const QUEUE_SHAPE = {
  */
 const literal = (term: string) => term.replaceAll(/[\\%_]/gu, "\\$&");
 
-/** The filters both lists share, and the three only the queue sends. */
+/**
+ * The filters both lists share, and those only the queue sends.
+ *
+ * `callerId` is who `followUp=mine` means. It comes from the session, never from
+ * the query string (BR-29), and is needed only by the queue.
+ */
 export const ticketListWhere = (
-  query: TicketQuery
+  query: TicketQuery,
+  callerId?: number
 ): Prisma.TicketWhereInput => ({
+  ...(query.statusGroup === "open" ? inOpenGroup() : {}),
+  ...(query.followUp === "mine" && callerId !== undefined
+    ? hasOpenFollowUpBy(callerId)
+    : {}),
   ...(query.categoryId === undefined ? {} : { categoryId: query.categoryId }),
   ...(query.requestedPriority === undefined
     ? {}
