@@ -160,7 +160,9 @@ describe("a Ticket resolved while an Action write is waiting (BR-16)", () => {
         data: { currentStatus: "RESOLVED" },
       });
     });
-    const pending = write();
+    // A Supertest request is lazy: it is only sent once something awaits it.
+    // Wrapping it starts it now, while the lock is held, which is the point.
+    const pending = (async () => await write())();
 
     await sleep(HOLD_MS);
     hold.release();
