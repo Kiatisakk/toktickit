@@ -1607,3 +1607,64 @@
   background-color: var(--tkt-readonly);
   color: var(--tkt-text-muted);
 }
+
+/* ------------------------------------------- resolve dialog (Issue 75) -- */
+
+.tkt-modal-backdrop {
+  align-items: center;
+  background-color: rgb(0 0 0 / 0.45);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  overflow-y: auto;
+  padding: var(--tkt-space-4);
+  position: fixed;
+  z-index: 100;
+}
+
+.tkt-modal {
+  max-height: 100%;
+  max-width: 36rem;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.tkt-modal:focus {
+  outline: none;
+}
+
+.tkt-modal__title {
+  font-size: 1.25rem;
+  margin: 0 0 var(--tkt-space-4);
+}
+
+.tkt-modal__subtitle {
+  font-size: var(--tkt-font-body);
+  margin: var(--tkt-space-4) 0 var(--tkt-space-2);
+}
+
+.tkt-gate-list {
+  display: grid;
+  gap: var(--tkt-space-2);
+  list-style: none;
+  margin: 0 0 var(--tkt-space-4);
+  padding: 0;
+}
+
+.tkt-gate-item {
+  align-items: baseline;
+  color: var(--tkt-error);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tkt-space-2);
+}
+
+.tkt-gate-item--met {
+  color: var(--tkt-text-muted);
+}
+
+.tkt-gate-item__message {
+  flex-basis: 100%;
+  font-size: var(--tkt-font-small);
+  padding-left: var(--tkt-space-6);
+}

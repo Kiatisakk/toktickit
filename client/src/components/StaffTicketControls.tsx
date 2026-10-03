@@ -12,12 +12,17 @@ import {
   type TicketDetail,
 } from "../lib/api";
 import {
+  STALE_MESSAGE,
+  STALE_RELOAD_FAILED_MESSAGE,
+} from "../lib/staleMessages";
+import {
   permittedTargets,
   STATUS_LABELS,
   type TicketStatus,
 } from "../lib/ticketStatus";
 import { Badge } from "./Badge";
 import { Button } from "./Button";
+import { ResolveDialog } from "./ResolveDialog";
 import { Select } from "./Select";
 
 /**
@@ -47,14 +52,6 @@ interface ControlProps {
    */
   onStale: () => Promise<boolean>;
 }
-
-/** ui-spec.md §8: the one wording for a refused stale write, on every form. */
-const STALE_MESSAGE =
-  "This record was changed by someone else since you opened it. We've loaded the latest version — check it and try again.";
-
-/** ui-spec.md §8: the stale write was refused and the reload failed too. */
-const STALE_RELOAD_FAILED_MESSAGE =
-  "This record was changed by someone else since you opened it, but the latest version could not be loaded. What you see may be out of date — reload the page before trying again.";
 
 /** What a failed change says, and how a busy one looks. */
 const useChange = (
@@ -254,6 +251,7 @@ export const ItPriorityControl = ({
  */
 export const StatusControl = ({ ticket, onUpdated, onStale }: ControlProps) => {
   const { busy, failure, run } = useChange(onUpdated, onStale);
+  const [resolving, setResolving] = useState(false);
   const status = ticket.currentStatus as TicketStatus;
   const targets = permittedTargets(status);
 
@@ -282,7 +280,12 @@ export const StatusControl = ({ ticket, onUpdated, onStale }: ControlProps) => {
         onChange={(event) => {
           const next = event.target.value;
 
-          if (next !== "") {
+          // Resolving goes through the dialog, which asks for the Resolution
+          // Summary and shows the gate (BR-16, AC-41). Every other target is
+          // one request, as it was.
+          if (next === "RESOLVED") {
+            setResolving(true);
+          } else if (next !== "") {
             void run(() =>
               setTicketStatus(ticket.id, next as TicketStatus, ticket.version)
             );
@@ -297,6 +300,19 @@ export const StatusControl = ({ ticket, onUpdated, onStale }: ControlProps) => {
         ]}
         value=""
       />
+      {resolving ? (
+        <ResolveDialog
+          onClose={() => {
+            setResolving(false);
+          }}
+          onResolved={(updated) => {
+            setResolving(false);
+            onUpdated(updated);
+          }}
+          onStale={onStale}
+          ticket={ticket}
+        />
+      ) : null}
     </div>
   );
 };
