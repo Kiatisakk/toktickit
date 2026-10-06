@@ -203,7 +203,7 @@ Only the keys for unmet conditions are present: `doneAction`, `openFollowUp`, `p
 
 On success the Ticket's status becomes `RESOLVED`, `resolutionSummary` is stored (trimmed), `version` increments, and one history row is appended in the same transaction (AC-19, AC-23). Transitions to any other status evaluate no gate condition (AC-20). A Requester's resolved indication does not satisfy any condition (BR-18).
 
-Settled while implementing (Issue #75): a `resolutionSummary` that is not text, or is over 2000 characters after trimming, is `400 VALIDATION_FAILED` naming `resolutionSummary` (a shape error, checked before existence); the version is checked in the same transaction that holds the Ticket lock, so a status change that raced this one is `409 STALE_UPDATE` and nothing is written; a Ticket moved on from Resolved (Closed or Reopened) keeps its stored Resolution Summary.
+Settled while implementing (Issue #75): a `resolutionSummary` that is not text, or is over 2000 characters after trimming, is `400 VALIDATION_FAILED` naming `resolutionSummary` (a shape error, checked before existence); the version is compared again under the Ticket lock, before the transition rules and the gate, so a status change that raced this one is `409 STALE_UPDATE` (never `400 RESOLUTION_GATE_FAILED`) and nothing is written; a Ticket moved on from Resolved (Closed or Reopened) keeps its stored Resolution Summary.
 
 ### Order of failures on `/status`
 

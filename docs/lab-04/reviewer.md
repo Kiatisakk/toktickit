@@ -62,6 +62,16 @@ Lab 3's `onlyField`, `users/validation.ts` and `ticketQuery.ts` were searched fo
 
 **Second round.** On 2026-10-03 14:11 UTC, right after merging #80, he requested changes again with one line: "Fix merge request conflict". #80 and #81 had both added to `schema.prisma` (the `User` and `Ticket` relations and a new model each), `errors.ts` (both added `STALE_UPDATE`), `ai-use-log.md` (both took row 5) and this file. `lab4-staging` was merged into the branch: both models and every relation kept, the duplicate error key removed, this PR's log row renumbered 6.
 
+### PR #84 — Resolution gate (Issue #75)
+
+[PR #84](https://github.com/Kiatisakk/toktickit/pull/84) · reviewed 2026-10-06 (review 5405295367) · **1 line comment**, verdict **Comment**; treated as a finding to fix.
+
+| File | Finding | What was done |
+| --- | --- | --- |
+| routes/staffTickets.ts L488 | A concurrent status change can hit the gate refusal before the locked version check, answering `400 RESOLUTION_GATE_FAILED` instead of `409 STALE_UPDATE` | Real. The version was compared only before the transaction; under the lock the gate ran with no comparison, so a request that went stale while queued was judged against the newer Actions. `lockTicket` now returns the `version` it read under the lock and the route compares it, refusing `409 STALE_UPDATE` with nothing written, before the gate. CONC-06 holds the Ticket lock, commits a version bump, and sends a resolve (no Done Action) that was queued behind it; it was `400 RESOLUTION_GATE_FAILED` first. api-spec.md says the version is compared again under the lock |
+
+The same ordering was checked elsewhere. The owner and IT-priority writes evaluate no rule after the version check and write conditionally on the version. Action edit, complete and cancel compare the version under the lock before state and actionability; Action create has no version.
+
 ---
 
 ## Reviews I gave
@@ -127,5 +137,6 @@ Not verified by us: his server suite, migration script and e2e (they need his da
 | [#71](https://github.com/Kiatisakk/toktickit/pull/71) | received | 3 | Changes requested → Approved | Merged |
 | [#80](https://github.com/Kiatisakk/toktickit/pull/80) | received | 3 | Changes requested → Approved | Merged |
 | [#81](https://github.com/Kiatisakk/toktickit/pull/81) | received | 4 + merge conflict | Changes requested ×2 | Open — fixes and conflict resolution pushed |
+| [#84](https://github.com/Kiatisakk/toktickit/pull/84) | received | 1 | Comment | Open — fix pushed |
 | [beambeambeam#80](https://github.com/beambeambeam/toktickit/pull/80) | given | 8 | Changes requested → Approved | Merged |
 | [beambeambeam#82](https://github.com/beambeambeam/toktickit/pull/82) | given | 12 | Changes requested | Open |
