@@ -954,6 +954,140 @@ describe("UI-29 double submit", () => {
   });
 });
 
+describe("UI-29 a form in flight takes no edits", () => {
+  it("disables the create form's fields while the request is pending, so no edit can be lost", async () => {
+    let release: (response: Response) => void = () => undefined;
+    serve([], {
+      onWrite: () =>
+        new Promise<Response>((resolve) => {
+          release = resolve;
+        }),
+    });
+    const user = userEvent.setup();
+
+    asStaff();
+    await openAddForm(user);
+    await typeDescription(user);
+    await submit(user);
+    await screen.findByRole("button", { name: "Saving…" });
+
+    expect(inForm().getByLabelText(/^Description/u)).toBeDisabled();
+    expect(inForm().getByLabelText(/^Result/u)).toBeDisabled();
+    expect(inForm().getByLabelText(/^Date\/time/u)).toBeDisabled();
+
+    release(jsonResponse(action({ id: 9 }), 201));
+    await waitFor(() =>
+      expect(screen.queryByRole("form", { name: "Add action" })).toBeNull()
+    );
+  });
+
+  it("enables the fields again, keeping the text, when the write is refused", async () => {
+    const server = serve([], {
+      onWrite: () => error("INTERNAL_ERROR", "Something went wrong.", 500),
+    });
+    const user = userEvent.setup();
+
+    asStaff();
+    await openAddForm(user);
+    await typeDescription(user);
+    await submit(user);
+
+    await screen.findByText("Something went wrong.");
+
+    const description = inForm().getByLabelText(/^Description/u);
+
+    expect(description).toBeEnabled();
+    expect(description).toHaveValue("Swapped the patch cable");
+    expect(writes(server)).toHaveLength(1);
+  });
+
+  it("disables the complete form's field while the request is pending", async () => {
+    let release: (response: Response) => void = () => undefined;
+    serve([action({ id: 1 })], {
+      onWrite: () =>
+        new Promise<Response>((resolve) => {
+          release = resolve;
+        }),
+    });
+    const user = userEvent.setup();
+
+    asStaff();
+    await user.click(
+      await within(await table()).findByRole("button", {
+        name: "Complete action #1",
+      })
+    );
+    await user.type(inForm().getByLabelText(/^Result/u), "Fixed");
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+    await screen.findByRole("button", { name: "Completing…" });
+
+    expect(inForm().getByLabelText(/^Result/u)).toBeDisabled();
+
+    release(jsonResponse(action({ id: 1, state: "DONE", result: "Fixed" })));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("form", { name: /^Complete action/u })
+      ).toBeNull()
+    );
+  });
+});
+
+describe("UI-29 a write that answers after another form opened", () => {
+  it("does not close the newer form or discard its draft", async () => {
+    let release: (response: Response) => void = () => undefined;
+    const server = serve(
+      [action({ id: 1 }), action({ id: 2, description: "Second" })],
+      {
+        onWrite: () =>
+          new Promise<Response>((resolve) => {
+            release = resolve;
+          }),
+      }
+    );
+    const user = userEvent.setup();
+
+    asStaff();
+
+    const rows = within(await table())
+      .getAllByRole("row")
+      .slice(1);
+
+    await user.click(
+      within(rows[0] as HTMLElement).getByRole("button", {
+        name: "Edit action #1",
+      })
+    );
+    await user.type(inForm().getByLabelText(/^Description/u), " again");
+    await submit(user);
+    await screen.findByRole("button", { name: "Saving…" });
+
+    // Another row's form opens while the first write is still out.
+    await user.click(
+      within(rows[1] as HTMLElement).getByRole("button", {
+        name: "Complete action #2",
+      })
+    );
+    await user.type(inForm().getByLabelText(/^Result/u), "half typed");
+
+    release(
+      jsonResponse(
+        action({
+          id: 1,
+          description: "Replaced the faulty access point again",
+          version: 2,
+        })
+      )
+    );
+
+    // onSaved has run once the Actions are read again after the save.
+    await waitFor(() => expect(server.actionReads).toBeGreaterThan(1));
+
+    const newer = screen.getByRole("form", { name: "Complete action #2" });
+
+    expect(within(newer).getByLabelText(/^Result/u)).toHaveValue("half typed");
+  });
+});
+
 describe("UI-30 a stale Action write", () => {
   const staleServer = (opts: { reloadFails?: boolean } = {}) => {
     let refuse = true;

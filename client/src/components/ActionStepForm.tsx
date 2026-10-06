@@ -1,7 +1,7 @@
-import { type FormEvent, useId, useRef, useState } from "react";
+import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 
 import { cancelAction, completeAction, type TicketAction } from "../lib/api";
-import { useActionWrite } from "../lib/useActionWrite";
+import { keepFocusInForm, useActionWrite } from "../lib/useActionWrite";
 import { Button } from "./Button";
 import { TextArea } from "./TextArea";
 
@@ -77,6 +77,25 @@ export const ActionStepForm = ({
     onRefused,
   });
 
+  const pendingFocus = useRef<"field" | "form" | null>(null);
+
+  useEffect(() => {
+    const target = pendingFocus.current;
+
+    if (write.busy || target === null) {
+      return;
+    }
+
+    pendingFocus.current = null;
+
+    if (target === "field") {
+      formRef.current?.querySelector<HTMLElement>("textarea")?.focus();
+      return;
+    }
+
+    keepFocusInForm(formRef.current);
+  }, [write.busy]);
+
   const focusText = () => {
     formRef.current?.querySelector<HTMLElement>("textarea")?.focus();
   };
@@ -110,9 +129,8 @@ export const ActionStepForm = ({
         : cancelAction(action.id, version, value);
     });
 
-    if (refused.length > 0) {
-      focusText();
-    }
+    // The field is still disabled until the form renders again; wait for that.
+    pendingFocus.current = refused.length > 0 ? "field" : "form";
   };
 
   const error = clientError ?? write.fieldErrors[copy.field];
@@ -131,19 +149,21 @@ export const ActionStepForm = ({
       </h3>
       <p className="tkt-field-hint">{action.description}</p>
 
-      <TextArea
-        error={error}
-        label={copy.label}
-        name={copy.field}
-        onChange={(event) => {
-          setText(event.target.value);
-          setClientError(undefined);
-          write.clearFieldError(copy.field);
-        }}
-        required
-        rows={3}
-        value={text}
-      />
+      <fieldset className="tkt-action-form__fields" disabled={write.busy}>
+        <TextArea
+          error={error}
+          label={copy.label}
+          name={copy.field}
+          onChange={(event) => {
+            setText(event.target.value);
+            setClientError(undefined);
+            write.clearFieldError(copy.field);
+          }}
+          required
+          rows={3}
+          value={text}
+        />
+      </fieldset>
 
       {write.alert ? (
         <p className="tkt-callout tkt-callout--error" id={alertId} role="alert">

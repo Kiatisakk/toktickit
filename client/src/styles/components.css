@@ -1780,6 +1780,14 @@
 
 /* `minmax(0, 1fr)` rather than `1fr`: a long unbroken word in a field must not
    be allowed to widen its column and with it the page. */
+/* A fieldset disables its controls while a write is in flight; it draws nothing. */
+.tkt-action-form__fields {
+  border: 0;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
 .tkt-action-form__grid {
   display: grid;
   gap: 0 var(--tkt-space-4);

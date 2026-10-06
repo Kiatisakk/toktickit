@@ -9,7 +9,7 @@ import {
   type TicketAction,
   updateAction,
 } from "../lib/api";
-import { useActionWrite } from "../lib/useActionWrite";
+import { keepFocusInForm, useActionWrite } from "../lib/useActionWrite";
 import { Button } from "./Button";
 import { Select } from "./Select";
 import { TextArea } from "./TextArea";
@@ -195,6 +195,27 @@ export const ActionForm = ({
     write.clearFieldError(name);
   };
 
+  const pendingFocus = useRef<string | null>(null);
+
+  useEffect(() => {
+    const target = pendingFocus.current;
+
+    if (write.busy || target === null) {
+      return;
+    }
+
+    pendingFocus.current = null;
+
+    if (target === "") {
+      keepFocusInForm(formRef.current);
+      return;
+    }
+
+    formRef.current
+      ?.querySelector<HTMLElement>(`[name="${CSS.escape(target)}"]`)
+      ?.focus();
+  }, [write.busy]);
+
   const focusField = (name: string) => {
     formRef.current
       ?.querySelector<HTMLElement>(`[name="${CSS.escape(name)}"]`)
@@ -251,9 +272,9 @@ export const ActionForm = ({
       return createAction(ticketId, requestId.current, body, followsUpId);
     });
 
-    if (refused.length > 0) {
-      focusField(refused[0] ?? "");
-    }
+    // The fields are still disabled until the form renders again, and a
+    // disabled control cannot take focus: wait for that render.
+    pendingFocus.current = refused[0] ?? "";
   };
 
   const followUpTargets = actions.filter(
@@ -287,127 +308,131 @@ export const ActionForm = ({
     >
       <h3 className="tkt-action-form__title">{heading}</h3>
 
-      <div className="tkt-action-form__grid">
-        <TextInput
-          error={errors.actionAt}
-          label="Date/time"
-          name="actionAt"
-          onChange={(event) => set("actionAt", event.target.value)}
-          required
-          type="datetime-local"
-          value={draft.actionAt}
-        />
-
-        <Select
-          error={errors.performedById}
-          label="Performed by"
-          name="performedById"
-          onChange={(event) => set("performedById", event.target.value)}
-          options={performers.map((one) => ({
-            value: String(one.id),
-            label: one.name,
-          }))}
-          required
-          value={draft.performedById}
-        />
-
-        <div className="tkt-action-form__wide">
-          <TextArea
-            error={errors.description}
-            hint={`Up to ${DESCRIPTION_LIMIT} characters.`}
-            label="Description"
-            name="description"
-            onChange={(event) => set("description", event.target.value)}
+      <fieldset className="tkt-action-form__fields" disabled={write.busy}>
+        <div className="tkt-action-form__grid">
+          <TextInput
+            error={errors.actionAt}
+            label="Date/time"
+            name="actionAt"
+            onChange={(event) => set("actionAt", event.target.value)}
             required
-            rows={3}
-            value={draft.description}
+            type="datetime-local"
+            value={draft.actionAt}
           />
-        </div>
 
-        <div className="tkt-action-form__wide">
-          <TextArea
-            error={errors.result}
-            label="Result"
-            name="result"
-            onChange={(event) => set("result", event.target.value)}
-            rows={3}
-            value={draft.result}
+          <Select
+            error={errors.performedById}
+            label="Performed by"
+            name="performedById"
+            onChange={(event) => set("performedById", event.target.value)}
+            options={performers.map((one) => ({
+              value: String(one.id),
+              label: one.name,
+            }))}
+            required
+            value={draft.performedById}
           />
-        </div>
 
-        <div className="tkt-action-form__wide tkt-checkbox-field">
-          <input
-            checked={draft.followUpRequired}
-            id={`${alertId}-follow-up`}
-            name="followUpRequired"
-            onChange={(event) => set("followUpRequired", event.target.checked)}
-            type="checkbox"
-          />
-          <label htmlFor={`${alertId}-follow-up`}>Follow-up required</label>
-          {errors.followUpRequired ? (
-            <p className="tkt-field-error" role="alert">
-              {errors.followUpRequired}
-            </p>
-          ) : null}
-        </div>
-
-        {draft.followUpRequired ? (
           <div className="tkt-action-form__wide">
             <TextArea
-              error={errors.followUpNote}
-              label="Follow-up note"
-              name="followUpNote"
-              onChange={(event) => set("followUpNote", event.target.value)}
+              error={errors.description}
+              hint={`Up to ${DESCRIPTION_LIMIT} characters.`}
+              label="Description"
+              name="description"
+              onChange={(event) => set("description", event.target.value)}
               required
+              rows={3}
+              value={draft.description}
+            />
+          </div>
+
+          <div className="tkt-action-form__wide">
+            <TextArea
+              error={errors.result}
+              label="Result"
+              name="result"
+              onChange={(event) => set("result", event.target.value)}
+              rows={3}
+              value={draft.result}
+            />
+          </div>
+
+          <div className="tkt-action-form__wide tkt-checkbox-field">
+            <input
+              checked={draft.followUpRequired}
+              id={`${alertId}-follow-up`}
+              name="followUpRequired"
+              onChange={(event) =>
+                set("followUpRequired", event.target.checked)
+              }
+              type="checkbox"
+            />
+            <label htmlFor={`${alertId}-follow-up`}>Follow-up required</label>
+            {errors.followUpRequired ? (
+              <p className="tkt-field-error" role="alert">
+                {errors.followUpRequired}
+              </p>
+            ) : null}
+          </div>
+
+          {draft.followUpRequired ? (
+            <div className="tkt-action-form__wide">
+              <TextArea
+                error={errors.followUpNote}
+                label="Follow-up note"
+                name="followUpNote"
+                onChange={(event) => set("followUpNote", event.target.value)}
+                required
+                rows={2}
+                value={draft.followUpNote}
+              />
+            </div>
+          ) : null}
+
+          {editing ? (
+            <div className="tkt-action-form__wide">
+              <span className="tkt-field-label">Follows up</span>
+              <p className="tkt-readonly-block">
+                {editing.followsUpId
+                  ? `Action #${editing.followsUpId}${linked ? `: ${linked.description}` : ""}`
+                  : "Not linked to another action"}
+              </p>
+              <p className="tkt-field-hint">
+                The link is fixed when an action is created.
+              </p>
+            </div>
+          ) : (
+            <div className="tkt-action-form__wide">
+              <Select
+                error={errors.followsUpId}
+                label="Follows up"
+                name="followsUpId"
+                onChange={(event) => set("followsUpId", event.target.value)}
+                options={[
+                  { value: "", label: "None" },
+                  ...followUpTargets.map((one) => ({
+                    value: String(one.id),
+                    label: `#${one.id}: ${one.description}`,
+                  })),
+                ]}
+                value={draft.followsUpId}
+              />
+            </div>
+          )}
+
+          <div className="tkt-action-form__wide">
+            <TextArea
+              error={errors.attachmentNotes}
+              hint="Where a photo or file for this action is kept."
+              label="Attachment notes"
+              name="attachmentNotes"
+              onChange={(event) => set("attachmentNotes", event.target.value)}
               rows={2}
-              value={draft.followUpNote}
+              value={draft.attachmentNotes}
             />
           </div>
-        ) : null}
-
-        {editing ? (
-          <div className="tkt-action-form__wide">
-            <span className="tkt-field-label">Follows up</span>
-            <p className="tkt-readonly-block">
-              {editing.followsUpId
-                ? `Action #${editing.followsUpId}${linked ? `: ${linked.description}` : ""}`
-                : "Not linked to another action"}
-            </p>
-            <p className="tkt-field-hint">
-              The link is fixed when an action is created.
-            </p>
-          </div>
-        ) : (
-          <div className="tkt-action-form__wide">
-            <Select
-              error={errors.followsUpId}
-              label="Follows up"
-              name="followsUpId"
-              onChange={(event) => set("followsUpId", event.target.value)}
-              options={[
-                { value: "", label: "None" },
-                ...followUpTargets.map((one) => ({
-                  value: String(one.id),
-                  label: `#${one.id}: ${one.description}`,
-                })),
-              ]}
-              value={draft.followsUpId}
-            />
-          </div>
-        )}
-
-        <div className="tkt-action-form__wide">
-          <TextArea
-            error={errors.attachmentNotes}
-            hint="Where a photo or file for this action is kept."
-            label="Attachment notes"
-            name="attachmentNotes"
-            onChange={(event) => set("attachmentNotes", event.target.value)}
-            rows={2}
-            value={draft.attachmentNotes}
-          />
         </div>
-      </div>
+      </fieldset>
 
       {write.alert ? (
         <p className="tkt-callout tkt-callout--error" id={alertId} role="alert">

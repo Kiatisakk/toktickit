@@ -37,6 +37,20 @@ const notEditableMessage = (action: TicketAction | undefined): string => {
   return "This action can no longer be changed.";
 };
 
+/**
+ * A form's controls are disabled while its write is in flight, which drops the
+ * focus they held. When the form is still there afterwards (the write failed
+ * with no field to point at), put focus back on its Save control so a keyboard
+ * user is not left at the top of the page.
+ */
+export const keepFocusInForm = (form: HTMLFormElement | null) => {
+  if (!form?.isConnected || form.contains(document.activeElement)) {
+    return;
+  }
+
+  form.querySelector<HTMLElement>('button[type="submit"]')?.focus();
+};
+
 interface Options {
   /** The fields this form has a place for; any other detail goes in the alert. */
   fields: readonly string[];

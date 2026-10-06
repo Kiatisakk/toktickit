@@ -121,9 +121,24 @@ export const ActionsTaken = ({
     }
   }, [ticketId]);
 
-  const onSaved = (saved: TicketAction) => {
+  /**
+   * Close the form that made a write, and only that one. A write can answer
+   * after another row's form has opened, and the screen's mode is then not the
+   * one that submitted: that newer form and its draft are not the answer's to
+   * close. The form is not blocked from opening meanwhile; ui-spec section 6
+   * names only the submit control as busy.
+   */
+  const closeIfStill = (submitted: Mode) => {
+    setMode((current) =>
+      JSON.stringify(current) === JSON.stringify(submitted)
+        ? { kind: "none" }
+        : current
+    );
+  };
+
+  const onSavedFrom = (submitted: Mode) => (saved: TicketAction) => {
     setNotice(null);
-    setMode({ kind: "none" });
+    closeIfStill(submitted);
     setState((current) =>
       current.kind === "loaded"
         ? { kind: "loaded", actions: upsert(current.actions, saved) }
@@ -135,9 +150,9 @@ export const ActionsTaken = ({
     void reloadActions();
   };
 
-  const onRefused = (message: string) => {
+  const onRefusedFrom = (submitted: Mode) => (message: string) => {
     setNotice(message);
-    setMode({ kind: "none" });
+    closeIfStill(submitted);
   };
 
   const onCommand = (command: ActionRowCommand, action: TicketAction) => {
@@ -163,8 +178,8 @@ export const ActionsTaken = ({
           editing={null}
           key={`create-${mode.session}`}
           onCancel={() => setMode({ kind: "none" })}
-          onRefused={onRefused}
-          onSaved={onSaved}
+          onRefused={onRefusedFrom(mode)}
+          onSaved={onSavedFrom(mode)}
           reloadActions={reloadActions}
           reloadTicket={reloadTicket}
           ticketId={ticketId}
@@ -177,8 +192,8 @@ export const ActionsTaken = ({
     }
 
     const common = {
-      onRefused,
-      onSaved,
+      onRefused: onRefusedFrom(mode),
+      onSaved: onSavedFrom(mode),
       reloadActions,
       reloadTicket,
     };
