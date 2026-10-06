@@ -387,7 +387,9 @@ staffTicketsRouter.patch(
  * Move a ticket along its lifecycle (BR-25, BR-16, AC-20, AC-21, AC-23).
  *
  * Checked in BR-20's order: body shape, existence, version, the matrix, then
- * the resolution gate. The gate is decided **inside the transaction, with the
+ * the resolution gate. The version is compared twice: early, to refuse the
+ * plain stale request without queueing, and again under the lock, which is the
+ * comparison that counts. The gate is decided **inside the transaction, with the
  * Ticket row locked** (BR-16): every Action write takes the same lock first, so
  * a write racing a resolution either commits before it, and the gate sees it,
  * or waits and is refused `TICKET_NOT_ACTIONABLE` (AC-27). The change is
@@ -468,6 +470,13 @@ staffTicketsRouter.patch(
 
           if (!locked) {
             return { kind: "missing" };
+          }
+
+          // The version is compared under the lock, before the gate: a status
+          // change that committed while this one waited is a stale request,
+          // not one to be judged against the newer Actions (BR-20).
+          if (locked.version !== input.version) {
+            return { kind: "stale" };
           }
 
           if (target === "RESOLVED") {
