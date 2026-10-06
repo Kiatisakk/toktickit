@@ -506,6 +506,30 @@ describe("a resolution racing an Action write (BR-16, AC-27)", () => {
     expect(await statusOf(id)).toBe("IN_PROGRESS");
   });
 
+  it("CONC-06 a status change committed while the resolution waits answers 409 STALE_UPDATE, not the gate's 400", async () => {
+    // No Done Action, so the gate would refuse this Ticket if it were reached.
+    const id = await createTicket(PREFIX, requesterId);
+    const hold = await holdTicketLock(id, async (tx) => {
+      await tx.ticket.update({
+        where: { id },
+        data: { itPriority: "HIGH", version: { increment: 1 } },
+      });
+    });
+    // Sent with version 1, which was the stored one when it passed the early
+    // check and is no longer by the time it holds the lock.
+    const pending = (async () => await resolveTicket(staffA, id))();
+
+    await sleep(HOLD_MS);
+    hold.release();
+    await hold.finished;
+
+    const answer = await pending;
+
+    expect(answer.status).toBe(409);
+    expect(answer.body.error?.code).toBe("STALE_UPDATE");
+    expect(await statusOf(id)).toBe("IN_PROGRESS");
+  });
+
   it("CONC-01 a resolution does not hold up a write to another Ticket", async () => {
     const id = await readyTicket();
     const other = await createTicket(PREFIX, requesterId);
