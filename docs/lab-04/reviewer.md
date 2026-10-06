@@ -118,6 +118,14 @@ The slice is mostly sound: lock order, replay before the terminal check, the Req
 
 Not verified by us: his server suite, migration script and e2e (they need his database), and his claim of 132 client tests (the full run did not finish under load; the 25 Lab 4 client tests and `tsc -b` passed).
 
+### PR #83 — Role dashboards and URL-driven filters (Issue #76)
+
+[PR #83](https://github.com/Kiatisakk/toktickit/pull/83) · reviewed 2026-10-06 (review 5405297014) · **1 line comment**, verdict **Comment**; treated as a finding to fix. Fix in the commit recorded in the thread reply.
+
+*The id filters accepted `0` and unsafe integers.* Real. The screens read `categoryId` (and the queue `ownerId`) with `/^\d+$/`, so `?categoryId=0` and `?categoryId=99999999999999999999` were sent, and the API (`readPositiveInt` in `server/src/tickets/ticketQuery.ts`: digits only, `Number.isSafeInteger`, at least 1) answers 400. Four new client tests failed first for that reason (`categoryId=0` and the 20-digit value, on My Tickets and on the queue). One shared helper, `client/src/lib/positiveSafeIntegerParam.ts`, now applies the server's rule to `categoryId` on both screens and `ownerId` on the queue; a refused value is ignored, not sent. The other URL filters (`status`, `requestedPriority`, `itPriority`, `statusGroup`, `followUp`, `unassigned`) are matched against fixed lists, so they had no such gap. UI-17 and UI-18 in `tests.md` carry the new cases.
+
+---
+
 ---
 
 ## Coverage
@@ -127,5 +135,6 @@ Not verified by us: his server suite, migration script and e2e (they need his da
 | [#71](https://github.com/Kiatisakk/toktickit/pull/71) | received | 3 | Changes requested → Approved | Merged |
 | [#80](https://github.com/Kiatisakk/toktickit/pull/80) | received | 3 | Changes requested → Approved | Merged |
 | [#81](https://github.com/Kiatisakk/toktickit/pull/81) | received | 4 + merge conflict | Changes requested ×2 | Open — fixes and conflict resolution pushed |
+| [#83](https://github.com/Kiatisakk/toktickit/pull/83) | received | 1 | Comment | Open — fix pushed |
 | [beambeambeam#80](https://github.com/beambeambeam/toktickit/pull/80) | given | 8 | Changes requested → Approved | Merged |
 | [beambeambeam#82](https://github.com/beambeambeam/toktickit/pull/82) | given | 12 | Changes requested | Open |
