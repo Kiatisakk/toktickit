@@ -21,6 +21,7 @@ import {
   type ReferenceItem,
   type TicketListMeta,
 } from "../lib/api";
+import { positiveSafeIntegerParam } from "../lib/positiveSafeIntegerParam";
 import { STATUS_OPTIONS } from "../lib/ticketStatus";
 
 const PRIORITIES = [
@@ -52,9 +53,7 @@ const filtersFromParams = (params: URLSearchParams): Filters => {
 
   return {
     search: params.get("search") ?? "",
-    categoryId: /^\d+$/u.test(params.get("categoryId") ?? "")
-      ? (params.get("categoryId") ?? "")
-      : "",
+    categoryId: positiveSafeIntegerParam(params.get("categoryId")),
     requestedPriority: PRIORITIES.some(
       (p) => p.value === params.get("requestedPriority")
     )

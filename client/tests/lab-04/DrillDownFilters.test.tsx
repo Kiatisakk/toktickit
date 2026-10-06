@@ -198,6 +198,35 @@ describe("UI-17 My Tickets reads URL filters", () => {
     expect(url.searchParams.has("status")).toBe(false);
     expect(url.searchParams.has("statusGroup")).toBe(false);
   });
+
+  it.each(["0", "99999999999999999999", "-3", "1.5", "abc"])(
+    "ignores categoryId=%s, which the API would refuse as not a positive safe integer",
+    async (bad) => {
+      const fetchMock = stub("/api/tickets");
+
+      renderMyTickets(`?categoryId=${bad}`);
+
+      await waitFor(() => {
+        expect(listCalls(fetchMock, "/api/tickets")).toHaveLength(1);
+      });
+
+      expect(
+        lastCall(fetchMock, "/api/tickets").searchParams.has("categoryId")
+      ).toBe(false);
+    }
+  );
+
+  it("still sends a valid categoryId", async () => {
+    const fetchMock = stub("/api/tickets");
+
+    renderMyTickets("?categoryId=3");
+
+    await waitFor(() => {
+      expect(
+        lastCall(fetchMock, "/api/tickets").searchParams.get("categoryId")
+      ).toBe("3");
+    });
+  });
 });
 
 describe("UI-18 the queue reads URL filters", () => {
@@ -296,6 +325,24 @@ describe("UI-18 the queue reads URL filters", () => {
 
     expect(where()).toBe("/staff/tickets?unassigned=true");
   });
+
+  it.each(["0", "99999999999999999999", "-3", "1.5", "abc"])(
+    "ignores categoryId and ownerId of %s alike, not sending either",
+    async (bad) => {
+      const fetchMock = stub("/api/staff/tickets");
+
+      renderQueue(`?categoryId=${bad}&ownerId=${bad}`);
+
+      await waitFor(() => {
+        expect(listCalls(fetchMock, "/api/staff/tickets")).toHaveLength(1);
+      });
+
+      const url = lastCall(fetchMock, "/api/staff/tickets");
+
+      expect(url.searchParams.has("categoryId")).toBe(false);
+      expect(url.searchParams.has("ownerId")).toBe(false);
+    }
+  );
 
   it("Clear Filters empties the address as well as the controls", async () => {
     const fetchMock = stub("/api/staff/tickets");

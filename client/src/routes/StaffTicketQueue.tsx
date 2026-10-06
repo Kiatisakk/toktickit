@@ -20,6 +20,7 @@ import {
   type ReferenceItem,
   type TicketListMeta,
 } from "../lib/api";
+import { positiveSafeIntegerParam } from "../lib/positiveSafeIntegerParam";
 import { STATUS_OPTIONS } from "../lib/ticketStatus";
 
 const PRIORITIES = [
@@ -60,8 +61,8 @@ interface Filters {
  */
 const filtersFromParams = (params: URLSearchParams): Filters => {
   const status = params.get("status") ?? "";
-  const categoryId = params.get("categoryId") ?? "";
-  const ownerId = params.get("ownerId") ?? "";
+  const categoryId = positiveSafeIntegerParam(params.get("categoryId"));
+  const ownerId = positiveSafeIntegerParam(params.get("ownerId"));
   const requestedPriority = params.get("requestedPriority") ?? "";
   const itPriority = params.get("itPriority") ?? "";
   const validPriority = (value: string) =>
@@ -69,7 +70,7 @@ const filtersFromParams = (params: URLSearchParams): Filters => {
 
   let owner = "";
 
-  if (/^\d+$/u.test(ownerId)) {
+  if (ownerId !== "") {
     owner = ownerId;
   } else if (params.get("unassigned") === "true") {
     owner = UNASSIGNED;
@@ -77,7 +78,7 @@ const filtersFromParams = (params: URLSearchParams): Filters => {
 
   return {
     search: params.get("search") ?? "",
-    categoryId: /^\d+$/u.test(categoryId) ? categoryId : "",
+    categoryId,
     requestedPriority: validPriority(requestedPriority),
     itPriority: validPriority(itPriority),
     status: STATUS_OPTIONS.some((option) => option.value === status)
