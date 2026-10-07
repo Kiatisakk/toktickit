@@ -73,6 +73,10 @@ export interface TicketQuery {
   unassigned?: true;
   /** Queue scope only. */
   requesterId?: number;
+  /** Both scopes. Every status except Resolved, Closed and Cancelled (BR-24). */
+  statusGroup?: "open";
+  /** Queue scope only. Open follow-ups on Actions the caller performed. */
+  followUp?: "mine";
   sort: SortField;
   order: Order;
   page: number;
@@ -86,6 +90,7 @@ const KNOWN_PARAMS = new Set([
   "requestedPriority",
   "itPriority",
   "status",
+  "statusGroup",
   "sort",
   "order",
   "page",
@@ -97,6 +102,7 @@ const QUEUE_PARAMS = new Set([
   "ownerId",
   "unassigned",
   "requesterId",
+  "followUp",
 ]);
 
 export type QueryResult =
@@ -281,6 +287,20 @@ const readQueueFilters = (
     value.unassigned = true;
   }
 
+  // Resolves to the signed-in user in the query; no identity travels in the
+  // string (BR-29), so `mine` is the only accepted value.
+  const followUp = readEnum(
+    params["followUp"],
+    ["mine"] as const,
+    "followUp",
+    details,
+    "absent"
+  );
+
+  if (followUp !== undefined) {
+    value.followUp = followUp;
+  }
+
   if (value.ownerId !== undefined && value.unassigned) {
     details["unassigned"] = "unassigned cannot be combined with ownerId.";
   }
@@ -358,6 +378,24 @@ export const parseTicketQuery = (
 
   if (status !== undefined) {
     value.status = status;
+  }
+
+  // Lab 4 (D-15, BR-29). Only `open` exists, and a group alongside an exact
+  // status would be two answers to one question, so the pair is refused.
+  const statusGroup = readEnum(
+    params["statusGroup"],
+    ["open"] as const,
+    "statusGroup",
+    details,
+    "absent"
+  );
+
+  if (statusGroup !== undefined) {
+    value.statusGroup = statusGroup;
+
+    if (value.status !== undefined) {
+      details["statusGroup"] = "statusGroup cannot be combined with status.";
+    }
   }
 
   // page, pageSize, sort and order have no dropdown that sends "" for "not
