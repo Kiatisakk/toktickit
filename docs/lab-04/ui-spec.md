@@ -117,13 +117,21 @@ Done and Cancelled Actions show **View** only: no Edit, Complete or Cancel contr
 
 **Performed by** is a select of active IT Staff and Administrators from the existing owners list, defaulting to the signed-in user. If a stale list lets an ineligible person through, the server's `ACTION_ASSIGNEE_INELIGIBLE` is shown beside that field (AC-04).
 
-**Validation** sits beneath the field it concerns, from `details`, with the field focused on submit and the error associated with it (Lab 3 §10). The submit control is disabled and labelled busy while a request is in flight (AC-46, BR-35).
+**Validation** sits beneath the field it concerns, from `details`, with the field focused on submit and the error associated with it (Lab 3 §10). The submit control is disabled and labelled busy while a request is in flight (AC-46, BR-35). In an Action form the fields are disabled too, so nothing typed in flight can be dropped when success closes the form; a failure enables them again with the text kept. A write closes only the form that submitted it: if another row's form has opened meanwhile, the late answer updates the list and leaves that form and its draft alone.
 
 **Request key.** The form generates one `requestId` (a UUID) when it opens for a new Action and sends it with every submit of that Action. A retry after a failure or a lost response, and any resubmit after editing the fields, resends the same key; the key changes only when a new Action is begun (after a successful save, or when **Add action** is opened afresh). A `200` replay is treated as success. On `409 REQUEST_ID_CONFLICT` the screen reloads the Actions, says "An earlier attempt may already have been saved — check the list", keeps the user's entries, and uses a new key for the next submit (AC-48, D-24).
 
 ### Requester
 
 The list is the same, read-only, with every Action and every field visible and **no** Add, Edit, Complete or Cancel control present — absent, not disabled. The section heading carries a one-line note: "Work IT has recorded on your ticket." Private content stays in Internal Notes, which the Requester screen still does not show.
+
+### Settled in the build (Issue #74)
+
+- **Row controls.** Edit, Complete and **Cancel action** sit in the row beside **View**, for a Planned Action on an actionable Ticket; each carries the Action's number in its accessible name ("Edit action #12"). The forms and the view open beneath the list.
+- **One table, two presentations.** The list is a single `<table>`; below 768 px the stylesheet lays each row out as a card with every cell restated under its column label, so no column is lost and no second copy of the rows exists. From 768 px the table scrolls inside its own container.
+- **Date/time** is a `datetime-local` control, defaulting to the current minute. An edit sends `actionAt` only when the person changed it, so an Action's stored seconds are not rewritten from a minute-precision field, and the "not in the future" check applies only to a date the person changed.
+- **A refusal that cannot succeed closes the form.** `ACTION_NOT_EDITABLE` and `TICKET_NOT_ACTIONABLE` re-read the record, close the form and leave the plain-words explanation above the list; the Ticket is re-read through the Ticket Detail screen's own reload, so the status shown follows.
+- **Request key.** One `crypto.randomUUID()` per mounted create form; the form is mounted afresh by each **Add action**, so a new Action gets a new key and a retry never does.
 
 ---
 
