@@ -499,6 +499,11 @@ describe("a file the server refuses after it is sent", () => {
           );
         }
 
+        // Lab 4 (#74): the Actions Taken section reads its own list.
+        if (_url.endsWith("/actions")) {
+          return Promise.resolve(jsonResponse({ data: [] }));
+        }
+
         return Promise.resolve(
           jsonResponse(_url.endsWith("/comments") ? NO_COMMENTS : TICKET)
         );

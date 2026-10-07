@@ -762,3 +762,148 @@ export const downloadAttachment = async (
   link.remove();
   URL.revokeObjectURL(url);
 };
+
+/* ------------------------------------------------- Issue #74: actions taken -- */
+
+export type ActionState = "PLANNED" | "DONE" | "CANCELLED";
+export type FollowUpState = "NOT_REQUIRED" | "OPEN" | "CLOSED" | "VOID";
+
+/** An Action Taken on a Ticket (api-spec.md section 4). Never carries `requestId`. */
+export interface TicketAction {
+  id: number;
+  ticketId: number;
+  state: ActionState;
+  actionAt: string;
+  description: string;
+  result: string | null;
+  followUpRequired: boolean;
+  followUpNote: string | null;
+  followUpState: FollowUpState;
+  followsUpId: number | null;
+  attachmentNotes: string | null;
+  cancelReason: string | null;
+  recordedBy: ReferenceItem;
+  performedBy: ReferenceItem;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const ACTION_STATES: readonly unknown[] = ["PLANNED", "DONE", "CANCELLED"];
+const FOLLOW_UP_STATES: readonly unknown[] = [
+  "NOT_REQUIRED",
+  "OPEN",
+  "CLOSED",
+  "VOID",
+];
+
+const isNullableString = (value: unknown): value is string | null =>
+  value === null || typeof value === "string";
+
+const isTicketAction = (value: unknown): value is TicketAction =>
+  isRecord(value) &&
+  typeof value["id"] === "number" &&
+  typeof value["ticketId"] === "number" &&
+  ACTION_STATES.includes(value["state"]) &&
+  typeof value["actionAt"] === "string" &&
+  typeof value["description"] === "string" &&
+  isNullableString(value["result"]) &&
+  typeof value["followUpRequired"] === "boolean" &&
+  isNullableString(value["followUpNote"]) &&
+  FOLLOW_UP_STATES.includes(value["followUpState"]) &&
+  (value["followsUpId"] === null || typeof value["followsUpId"] === "number") &&
+  isNullableString(value["attachmentNotes"]) &&
+  isNullableString(value["cancelReason"]) &&
+  isReferenceItem(value["recordedBy"]) &&
+  isReferenceItem(value["performedBy"]) &&
+  typeof value["version"] === "number" &&
+  typeof value["createdAt"] === "string" &&
+  typeof value["updatedAt"] === "string";
+
+const expectAction = (body: unknown): TicketAction => {
+  if (!isTicketAction(body)) {
+    throw unexpected("the action");
+  }
+
+  return body;
+};
+
+/** A Ticket's Actions in the server's stable order (api-spec.md section 4). */
+export const fetchActions = async (
+  ticketId: number,
+  signal?: AbortSignal
+): Promise<TicketAction[]> => {
+  const body = await apiGet(
+    `/api/tickets/${ticketId}/actions`,
+    signal ? { signal } : {}
+  );
+
+  if (
+    !isRecord(body) ||
+    !Array.isArray(body["data"]) ||
+    !body["data"].every(isTicketAction)
+  ) {
+    throw unexpected("the actions");
+  }
+
+  return body["data"];
+};
+
+/** The fields a create or an edit may carry. `followsUpId` is create-only (BR-10). */
+export interface ActionFields {
+  /** Left out of an edit unless the person changed it, so seconds survive. */
+  actionAt?: string;
+  description: string;
+  result: string | null;
+  performedById: number;
+  followUpRequired: boolean;
+  followUpNote: string | null;
+  attachmentNotes: string | null;
+}
+
+/**
+ * Creates an Action. `requestId` is the caller's: one per intentional create,
+ * resent unchanged on every retry (BR-35, AC-48). A `200` replay resolves like
+ * a `201`, which is what a retry after a lost response needs.
+ */
+export const createAction = async (
+  ticketId: number,
+  requestId: string,
+  fields: ActionFields,
+  followsUpId: number | null
+): Promise<TicketAction> =>
+  expectAction(
+    await apiPost(`/api/tickets/${ticketId}/actions`, {
+      requestId,
+      ...fields,
+      ...(followsUpId === null ? {} : { followsUpId }),
+    })
+  );
+
+/** Edits a Planned Action. The body never carries `followsUpId`. */
+export const updateAction = async (
+  actionId: number,
+  version: number,
+  fields: ActionFields
+): Promise<TicketAction> =>
+  expectAction(
+    await apiPatch(`/api/actions/${actionId}`, { version, ...fields })
+  );
+
+export const completeAction = async (
+  actionId: number,
+  version: number,
+  result: string
+): Promise<TicketAction> =>
+  expectAction(
+    await apiPost(`/api/actions/${actionId}/complete`, { version, result })
+  );
+
+export const cancelAction = async (
+  actionId: number,
+  version: number,
+  cancelReason: string
+): Promise<TicketAction> =>
+  expectAction(
+    await apiPost(`/api/actions/${actionId}/cancel`, { version, cancelReason })
+  );

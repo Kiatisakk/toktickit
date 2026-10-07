@@ -1607,3 +1607,244 @@
   background-color: var(--tkt-readonly);
   color: var(--tkt-text-muted);
 }
+
+/* ------------------------------------------- Lab 4: actions taken (#74) -- */
+
+/* Action state and follow-up state ride the one badge. Closed reuses the status
+   variant above, which already means "finished"; the rest are new. Every badge
+   carries its word, so colour is never the only cue (ui-spec.md section 8). */
+.tkt-badge[data-kind="action"].tkt-badge--planned {
+  background-color: var(--tkt-info-pale);
+  color: var(--tkt-info);
+}
+
+.tkt-badge[data-kind="action"].tkt-badge--done {
+  background-color: var(--tkt-green-pale);
+  color: var(--tkt-green);
+}
+
+.tkt-badge[data-kind="action"].tkt-badge--cancelled,
+.tkt-badge[data-kind="followUp"].tkt-badge--void,
+.tkt-badge[data-kind="followUp"].tkt-badge--not-required {
+  background-color: var(--tkt-readonly);
+  color: var(--tkt-text-muted);
+}
+
+/* An open follow-up is work still owed, so it is amber, not the blue "live"
+   the status Open uses. */
+.tkt-badge[data-kind="followUp"].tkt-badge--open {
+  background-color: var(--tkt-warning-pale);
+  color: var(--tkt-warning);
+}
+
+.tkt-actions-taken__head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tkt-space-3);
+  justify-content: space-between;
+}
+
+.tkt-actions-taken__head .tkt-section-title {
+  margin: 0;
+}
+
+.tkt-actions-scroll {
+  margin-top: var(--tkt-space-4);
+}
+
+.tkt-actions-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.tkt-actions-table th,
+.tkt-actions-table td {
+  border-bottom: 1px solid var(--tkt-border);
+  padding: var(--tkt-space-3);
+  text-align: left;
+  vertical-align: top;
+}
+
+.tkt-actions-table th {
+  color: var(--tkt-text-muted);
+  font-size: var(--tkt-font-small);
+  font-weight: 600;
+}
+
+/* The description is the one cell that carries sentences: it takes the spare
+   width and wraps, long unbroken strings included. Everything else is short
+   and stays on one line. */
+.tkt-actions-table__text {
+  min-width: 14rem;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.tkt-actions-table td:not(.tkt-actions-table__text) {
+  white-space: nowrap;
+}
+
+.tkt-actions-table__description,
+.tkt-actions-table__result {
+  margin: 0;
+}
+
+.tkt-actions-table__result {
+  color: var(--tkt-text-muted);
+  margin-top: var(--tkt-space-1);
+}
+
+.tkt-actions-table__result-label {
+  font-weight: 600;
+}
+
+.tkt-actions-table__id,
+.tkt-actions-table__links {
+  color: var(--tkt-text-muted);
+  display: block;
+  font-size: var(--tkt-font-small);
+}
+
+.tkt-actions-table__row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tkt-space-2);
+}
+
+@media (width <= 767px) {
+  /* Each row becomes a card that says everything the table did: the header row
+     is hidden from sight (still read by assistive technology), and every cell
+     restates its column as a label. */
+  .tkt-actions-table,
+  .tkt-actions-table tbody,
+  .tkt-actions-table tr,
+  .tkt-actions-table td {
+    display: block;
+  }
+
+  .tkt-actions-table thead {
+    block-size: 1px;
+    inline-size: 1px;
+    overflow: hidden;
+    position: absolute;
+  }
+
+  .tkt-actions-table tr {
+    background-color: var(--tkt-surface);
+    border: 1px solid var(--tkt-border);
+    border-radius: var(--tkt-radius);
+    box-shadow: var(--tkt-shadow);
+    margin-bottom: var(--tkt-space-3);
+    padding: var(--tkt-space-2) var(--tkt-space-3);
+  }
+
+  .tkt-actions-table td,
+  .tkt-actions-table td:not(.tkt-actions-table__text) {
+    border-bottom: none;
+    padding: var(--tkt-space-1) 0;
+    white-space: normal;
+  }
+
+  .tkt-actions-table td[data-label]::before {
+    color: var(--tkt-text-muted);
+    content: attr(data-label);
+    display: block;
+    font-size: var(--tkt-font-small);
+    font-weight: 600;
+  }
+
+  .tkt-actions-table__text {
+    min-width: 0;
+  }
+
+  .tkt-actions-table__row-actions .tkt-btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* The forms and the read-only view share one surface, set inside the card. */
+.tkt-action-form {
+  background-color: var(--tkt-page);
+  border: 1px solid var(--tkt-border);
+  border-radius: var(--tkt-radius);
+  margin-top: var(--tkt-space-4);
+  padding: var(--tkt-space-4);
+}
+
+.tkt-action-form__title {
+  font-size: var(--tkt-font-body);
+  font-weight: 600;
+  margin: 0 0 var(--tkt-space-3);
+}
+
+/* `minmax(0, 1fr)` rather than `1fr`: a long unbroken word in a field must not
+   be allowed to widen its column and with it the page. */
+/* A fieldset disables its controls while a write is in flight; it draws nothing. */
+.tkt-action-form__fields {
+  border: 0;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.tkt-action-form__grid {
+  display: grid;
+  gap: 0 var(--tkt-space-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tkt-action-form__wide {
+  grid-column: 1 / -1;
+}
+
+.tkt-checkbox-field {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tkt-space-2);
+  margin-bottom: var(--tkt-space-4);
+}
+
+.tkt-checkbox-field input {
+  block-size: 1.125rem;
+  inline-size: 1.125rem;
+}
+
+.tkt-action-view__fields {
+  display: grid;
+  gap: var(--tkt-space-3) var(--tkt-space-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.tkt-action-view__fields > div {
+  min-width: 0;
+}
+
+.tkt-action-view__fields dt {
+  color: var(--tkt-text-muted);
+  font-size: var(--tkt-font-small);
+  font-weight: 600;
+}
+
+.tkt-action-view__fields dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.tkt-action-view__wide {
+  grid-column: 1 / -1;
+}
+
+.tkt-action-view__none {
+  color: var(--tkt-text-muted);
+}
+
+@media (width <= 767px) {
+  .tkt-action-form__grid,
+  .tkt-action-view__fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

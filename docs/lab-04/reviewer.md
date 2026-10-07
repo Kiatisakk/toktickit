@@ -62,6 +62,17 @@ Lab 3's `onlyField`, `users/validation.ts` and `ticketQuery.ts` were searched fo
 
 **Second round.** On 2026-10-03 14:11 UTC, right after merging #80, he requested changes again with one line: "Fix merge request conflict". #80 and #81 had both added to `schema.prisma` (the `User` and `Ticket` relations and a new model each), `errors.ts` (both added `STALE_UPDATE`), `ai-use-log.md` (both took row 5) and this file. `lab4-staging` was merged into the branch: both models and every relation kept, the duplicate error key removed, this PR's log row renumbered 6.
 
+### PR #82 — Actions Taken UI (Issue #74)
+
+[PR #82](https://github.com/Kiatisakk/toktickit/pull/82) · reviewed 2026-10-04 (review 5405306621) · **2 line comments**, verdict **Comment**; both were treated as findings to fix.
+
+Both are real; each was reproduced with a failing test before the fix.
+
+| File | Finding | What was done |
+| --- | --- | --- |
+| ActionForm.tsx L291 | Fields stay editable after Save captures the request body, so a success that closes the form drops edits made in flight | Both Action forms wrap their fields in a `<fieldset disabled>` while the write is busy; a failure enables them again with the text kept, and when the form is still there with no field to point at, focus returns to Save (the disabled control had dropped it). ui-spec section 6 says so. Three tests (create and complete fields disabled while pending, enabled again on a refusal) |
+| ActionsTaken.tsx L126 | A write can answer after another row opens a form, and the late success closes the newer form and discards its draft | Chose to guard the close by the mode that submitted, not to block row buttons: the late answer still updates the list but only closes the form whose mode matches; ui-spec names only the submit control as busy, so blocking every row button would add a state the contract does not have. Test holds a write, opens another row's form, types, releases, and asserts the newer form and draft survive |
+
 ---
 
 ## Reviews I gave
@@ -127,5 +138,6 @@ Not verified by us: his server suite, migration script and e2e (they need his da
 | [#71](https://github.com/Kiatisakk/toktickit/pull/71) | received | 3 | Changes requested → Approved | Merged |
 | [#80](https://github.com/Kiatisakk/toktickit/pull/80) | received | 3 | Changes requested → Approved | Merged |
 | [#81](https://github.com/Kiatisakk/toktickit/pull/81) | received | 4 + merge conflict | Changes requested ×2 | Open — fixes and conflict resolution pushed |
+| [#82](https://github.com/Kiatisakk/toktickit/pull/82) | received | 2 | Comment | Open — fixes pushed |
 | [beambeambeam#80](https://github.com/beambeambeam/toktickit/pull/80) | given | 8 | Changes requested → Approved | Merged |
 | [beambeambeam#82](https://github.com/beambeambeam/toktickit/pull/82) | given | 12 | Changes requested | Open |
