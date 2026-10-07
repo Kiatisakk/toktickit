@@ -177,6 +177,8 @@ Changes requested for two process problems stated in the body: the Pull Request 
 
 Not verified by us: his two-browser e2e, his full suites, and focus in a real browser (the two focus findings were reproduced in jsdom only).
 
+**Outcome.** He replied on all four threads and on the two process items: Issue #75 linked, `ai-use.md` entry added. A Sonnet 5.5 agent re-reviewed `9cbb6b6` against the code, reverting each fix to see its test fail: focus after refresh, focus on a server field error, assignee names in history (shown from current lookups, falling back to "Former assignee (User #id)"), and a new test that sees the edit block on the Ticket `FOR UPDATE` lock; deleting the lock again now fails it. One mutation was repeated in this session and also failed its test. The agent's doubt that the review heading could steal focus later was checked against the code and does not hold: every failed save sets `failure`, and a successful one closes the form. **Approved** 2026-10-07 (review 5443306339); then merged by us at 13:50:35Z (`a19fd46`) after confirming no `DO NOT MERGE` label. Not run: his e2e, full suites and lint.
+
 ---
 
 ## Coverage
@@ -191,4 +193,4 @@ Not verified by us: his two-browser e2e, his full suites, and focus in a real br
 | [#84](https://github.com/Kiatisakk/toktickit/pull/84) | received | 1 + merge conflict ×2 | Comment | Open — fix and conflict resolution pushed |
 | [beambeambeam#80](https://github.com/beambeambeam/toktickit/pull/80) | given | 8 | Changes requested → Approved | Merged |
 | [beambeambeam#82](https://github.com/beambeambeam/toktickit/pull/82) | given | 12 | Changes requested → Approved | Merged |
-| [beambeambeam#83](https://github.com/beambeambeam/toktickit/pull/83) | given | 4 + 2 process | Changes requested | Open |
+| [beambeambeam#83](https://github.com/beambeambeam/toktickit/pull/83) | given | 4 + 2 process | Changes requested → Approved | Merged |
