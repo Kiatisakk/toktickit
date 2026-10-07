@@ -80,7 +80,7 @@ export const Login = () => {
       // The server enforces this on every endpoint (AC-02); this is what makes
       // it feel like a destination rather than a wall.
       void navigate(
-        identity.mustChangePassword ? "/change-password" : "/my-tickets",
+        identity.mustChangePassword ? "/change-password" : "/dashboard",
         { replace: true }
       );
     } catch (error) {

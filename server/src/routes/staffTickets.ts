@@ -67,7 +67,7 @@ staffTicketsRouter.get("/staff/tickets", ...staffOnly, async (req, res) => {
     // Every requester's tickets (AC-15): no scope fragment, only the filters.
     const query = parsed.value;
     const page = await readTicketPage(
-      ticketListWhere(query),
+      ticketListWhere(query, currentUser(res).id),
       query,
       QUEUE_SHAPE
     );

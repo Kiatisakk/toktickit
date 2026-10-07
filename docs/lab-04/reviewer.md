@@ -77,6 +77,16 @@ Both are real; each was reproduced with a failing test before the fix.
 
 **Outcome.** He approved with `LGTM` at 2026-10-07 09:39:26Z on the fixed head and merged it himself eight seconds later (`627d3da`). Issue #74 was closed by hand. Merging it into `lab4-staging` then put #83 and #84 in conflict with it; see below.
 
+### PR #83 — Role dashboards and URL-driven filters (Issue #76)
+
+[PR #83](https://github.com/Kiatisakk/toktickit/pull/83) · reviewed 2026-10-06 (review 5405297014) · **1 line comment**, verdict **Comment**; treated as a finding to fix. Fix in the commit recorded in the thread reply.
+
+*The id filters accepted `0` and unsafe integers.* Real. The screens read `categoryId` (and the queue `ownerId`) with `/^\d+$/`, so `?categoryId=0` and `?categoryId=99999999999999999999` were sent, and the API (`readPositiveInt` in `server/src/tickets/ticketQuery.ts`: digits only, `Number.isSafeInteger`, at least 1) answers 400. Four new client tests failed first for that reason (`categoryId=0` and the 20-digit value, on My Tickets and on the queue). One shared helper, `client/src/lib/positiveSafeIntegerParam.ts`, now applies the server's rule to `categoryId` on both screens and `ownerId` on the queue; a refused value is ignored, not sent. The other URL filters (`status`, `requestedPriority`, `itPriority`, `statusGroup`, `followUp`, `unassigned`) are matched against fixed lists, so they had no such gap. UI-17 and UI-18 in `tests.md` carry the new cases.
+
+**Merge conflict after #82.** #82 merged first and both Pull Requests had appended at the same places: the end of `client/src/lib/api.ts` and `client/src/styles/components.css`, one row each in `ai-use-log.md` and this file's Coverage table, and the UI rows in `tests.md` (#82 had moved UI-19 to UI-30 to Pass, this one UI-01 to UI-18). `lab4-staging` was merged into the branch: both appended blocks kept, each `tests.md` row taken from the side that made it pass (no row was changed by both), both log rows kept.
+
+**Outcome.** He approved with `LGTM` at 2026-10-07 10:53:34Z and merged it himself ten seconds later (`e99bb1e`). Issue #76 was closed by hand. Merging it put #84 in conflict a second time; see below.
+
 ### PR #84 — Resolution gate (Issue #75)
 
 [PR #84](https://github.com/Kiatisakk/toktickit/pull/84) · reviewed 2026-10-06 (review 5405295367) · **1 line comment**, verdict **Comment**; treated as a finding to fix.
@@ -88,6 +98,8 @@ Both are real; each was reproduced with a failing test before the fix.
 The same ordering was checked elsewhere. The owner and IT-priority writes evaluate no rule after the version check and write conditionally on the version. Action edit, complete and cancel compare the version under the lock before state and actionability; Action create has no version.
 
 **Merge conflict after #82.** #82 merged first and both Pull Requests had appended at the same places: the end of `client/src/lib/api.ts` and `client/src/styles/components.css`, one row each in `ai-use-log.md` and this file's Coverage table, and the UI rows in `tests.md` (#82 had moved UI-38 to Pass, this one UI-32 to UI-37 and the resolve-dialog half of UI-36). `lab4-staging` was merged into the branch: both appended blocks kept, each `tests.md` row taken from the side that changed it (no row was changed by both), both log rows kept.
+
+**Second merge conflict, after #83.** #83 merged next and had inserted at the same places: `components.css` (both blocks placed before #74's), the next row of `ai-use-log.md`, this file, and two `tests.md` rows (UNIT-05 moved to Pass here, UNIT-06 there). `lab4-staging` was merged into the branch: both CSS blocks kept, each row taken from the side that made it pass, log rows kept in order 7, 8, 9.
 
 
 ---
@@ -175,7 +187,8 @@ Not verified by us: his two-browser e2e, his full suites, and focus in a real br
 | [#80](https://github.com/Kiatisakk/toktickit/pull/80) | received | 3 | Changes requested → Approved | Merged |
 | [#81](https://github.com/Kiatisakk/toktickit/pull/81) | received | 4 + merge conflict | Changes requested ×2 → Approved | Merged |
 | [#82](https://github.com/Kiatisakk/toktickit/pull/82) | received | 2 | Comment → Approved | Merged |
-| [#84](https://github.com/Kiatisakk/toktickit/pull/84) | received | 1 + merge conflict | Comment | Open — fix and conflict resolution pushed |
+| [#83](https://github.com/Kiatisakk/toktickit/pull/83) | received | 1 + merge conflict | Comment → Approved | Merged |
+| [#84](https://github.com/Kiatisakk/toktickit/pull/84) | received | 1 + merge conflict ×2 | Comment | Open — fix and conflict resolution pushed |
 | [beambeambeam#80](https://github.com/beambeambeam/toktickit/pull/80) | given | 8 | Changes requested → Approved | Merged |
 | [beambeambeam#82](https://github.com/beambeambeam/toktickit/pull/82) | given | 12 | Changes requested → Approved | Merged |
 | [beambeambeam#83](https://github.com/beambeambeam/toktickit/pull/83) | given | 4 + 2 process | Changes requested | Open |

@@ -108,7 +108,7 @@ test.describe("signing in (E2E-01, E2E-04)", () => {
     });
 
     await page.getByRole("button", { name: "Sign In" }).click();
-    await expect(page).toHaveURL(/\/my-tickets$/u);
+    await expect(page).toHaveURL(/\/dashboard$/u);
 
     // --- inactive-account -----------------------------------------------------
     // A fresh context: the one above is now signed in as Requester A, and
@@ -251,8 +251,10 @@ test.describe("the mandatory password change (E2E-02)", () => {
       .fill(CHOSEN_PASSWORD);
     await page.getByRole("button", { name: "Continue" }).click();
 
-    await expect(page).toHaveURL(/\/my-tickets$/u);
-    await expect(page.getByText(MUST_CHANGE_REQUESTER.name)).toBeVisible();
+    await expect(page).toHaveURL(/\/dashboard$/u);
+    await expect(
+      page.getByText(MUST_CHANGE_REQUESTER.name, { exact: true })
+    ).toBeVisible();
     await shoot(page, info, "authentication", "change-password-success");
 
     await page.context().close();

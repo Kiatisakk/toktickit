@@ -260,6 +260,8 @@ This is an approximation and is documented as one: a legacy Ticket's real journe
 
 The demonstration seed (development database only, as in Lab 3) is idempotent: each seeded Ticket and Action has a fixed key and is upserted, and its history rows are written only if absent. It provides Tickets in every status and priority, assigned and unassigned; Tickets with zero, one and several Actions; Planned, Done and Cancelled Actions; performers who are not the Ticket Owner; an open follow-up and a closed one; a Resolved Ticket that satisfied the gate; and a Requester with no Tickets and a staff member with none assigned, so zero and non-zero metrics both appear. Some history rows are timed yesterday (Bangkok) so deltas are non-zero on the day it is run. The reference seed (users, categories, related systems) is unchanged.
 
+*Settled by Issue #76.* The key is the Ticket number `TKT-DEMO-L4-nn` (outside the application's own `TKT-<year>-nnnnnn` counter, so it can never collide with a raised Ticket) and, for an Action, `(ticketId, requestId)` with a fixed `requestId`. An existing row is left exactly as it is, so work done on a demonstration Ticket survives a rerun. History is appended once and cannot be moved, so the "yesterday" rows give non-zero deltas only on the day the seed first ran; deleting the `TKT-DEMO-L4-*` Tickets and seeding again refreshes them. It runs from `npm run db:seed:demo`, after the Lab 2 demonstration Tickets, and takes its `now` as a parameter so a test can fix it.
+
 ## 8. API Contract
 
 Full detail is in [api-spec.md](api-spec.md). In summary:

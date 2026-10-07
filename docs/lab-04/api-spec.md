@@ -308,6 +308,8 @@ A recent Ticket:
 | `resolved` | Resolved | `/my-tickets?status=RESOLVED` |
 | `closed` | Closed | `/my-tickets?status=CLOSED` |
 
+The `drillDown` column is shorthand: on the wire each Requester card has the same `drillDown` object as the staff cards, `{ "path": "/my-tickets", "query": { "statusGroup": "open" } }`, and `delta` is `null` (settled by Issue #76, so both dashboards share one card shape).
+
 `recentTickets` are the caller's own Tickets, at most five, same ordering; `quickActions` are Create Ticket (`/tickets/new`) and View My Tickets (`/my-tickets`).
 
 ### Failures
