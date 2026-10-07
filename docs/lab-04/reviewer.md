@@ -62,6 +62,21 @@ Lab 3's `onlyField`, `users/validation.ts` and `ticketQuery.ts` were searched fo
 
 **Second round.** On 2026-10-03 14:11 UTC, right after merging #80, he requested changes again with one line: "Fix merge request conflict". #80 and #81 had both added to `schema.prisma` (the `User` and `Ticket` relations and a new model each), `errors.ts` (both added `STALE_UPDATE`), `ai-use-log.md` (both took row 5) and this file. `lab4-staging` was merged into the branch: both models and every relation kept, the duplicate error key removed, this PR's log row renumbered 6.
 
+**Outcome.** He approved with `LGTM` at 2026-10-03 14:39:34Z and merged it himself twelve seconds later (`d29f919`). Issue #73 was closed by hand.
+
+### PR #82 — Actions Taken UI (Issue #74)
+
+[PR #82](https://github.com/Kiatisakk/toktickit/pull/82) · reviewed 2026-10-04 (review 5405306621) · **2 line comments**, verdict **Comment**; both were treated as findings to fix.
+
+Both are real; each was reproduced with a failing test before the fix.
+
+| File | Finding | What was done |
+| --- | --- | --- |
+| ActionForm.tsx L291 | Fields stay editable after Save captures the request body, so a success that closes the form drops edits made in flight | Both Action forms wrap their fields in a `<fieldset disabled>` while the write is busy; a failure enables them again with the text kept, and when the form is still there with no field to point at, focus returns to Save (the disabled control had dropped it). ui-spec section 6 says so. Three tests (create and complete fields disabled while pending, enabled again on a refusal) |
+| ActionsTaken.tsx L126 | A write can answer after another row opens a form, and the late success closes the newer form and discards its draft | Chose to guard the close by the mode that submitted, not to block row buttons: the late answer still updates the list but only closes the form whose mode matches; ui-spec names only the submit control as busy, so blocking every row button would add a state the contract does not have. Test holds a write, opens another row's form, types, releases, and asserts the newer form and draft survive |
+
+**Outcome.** He approved with `LGTM` at 2026-10-07 09:39:26Z on the fixed head and merged it himself eight seconds later (`627d3da`). Issue #74 was closed by hand. Merging it into `lab4-staging` then put #83 and #84 in conflict with it; see below.
+
 ### PR #84 — Resolution gate (Issue #75)
 
 [PR #84](https://github.com/Kiatisakk/toktickit/pull/84) · reviewed 2026-10-06 (review 5405295367) · **1 line comment**, verdict **Comment**; treated as a finding to fix.
@@ -71,6 +86,9 @@ Lab 3's `onlyField`, `users/validation.ts` and `ticketQuery.ts` were searched fo
 | routes/staffTickets.ts L488 | A concurrent status change can hit the gate refusal before the locked version check, answering `400 RESOLUTION_GATE_FAILED` instead of `409 STALE_UPDATE` | Real. The version was compared only before the transaction; under the lock the gate ran with no comparison, so a request that went stale while queued was judged against the newer Actions. `lockTicket` now returns the `version` it read under the lock and the route compares it, refusing `409 STALE_UPDATE` with nothing written, before the gate. CONC-06 holds the Ticket lock, commits a version bump, and sends a resolve (no Done Action) that was queued behind it; it was `400 RESOLUTION_GATE_FAILED` first. api-spec.md says the version is compared again under the lock |
 
 The same ordering was checked elsewhere. The owner and IT-priority writes evaluate no rule after the version check and write conditionally on the version. Action edit, complete and cancel compare the version under the lock before state and actionability; Action create has no version.
+
+**Merge conflict after #82.** #82 merged first and both Pull Requests had appended at the same places: the end of `client/src/lib/api.ts` and `client/src/styles/components.css`, one row each in `ai-use-log.md` and this file's Coverage table, and the UI rows in `tests.md` (#82 had moved UI-38 to Pass, this one UI-32 to UI-37 and the resolve-dialog half of UI-36). `lab4-staging` was merged into the branch: both appended blocks kept, each `tests.md` row taken from the side that changed it (no row was changed by both), both log rows kept.
+
 
 ---
 
@@ -128,6 +146,25 @@ The slice is mostly sound: lock order, replay before the terminal check, the Req
 
 Not verified by us: his server suite, migration script and e2e (they need his database), and his claim of 132 client tests (the full run did not finish under load; the 25 Lab 4 client tests and `tsc -b` passed).
 
+**Outcome.** He replied on the threads and pushed fixes. Re-reviewed at `1023107` against the code, not the replies: all twelve fixed, each confirmed by reverting the fix and watching its test fail (server 12/12 and Lab 4 client 27/27 on a throwaway database); Resolved is now refused on Action creation with `409 TICKET_TERMINAL`. One non-blocking leftover was raised inline: BR-10 and AC-05 still say "nonterminal" where the rest of his contract now says Resolved is closed. **Approved** 2026-10-03 19:04:00Z (review 5402317544). Merged 2026-10-03 19:06:41Z by the author's account, Kiatisakk, after the approval.
+
+---
+
+### beambeambeam#83 — Edit and assign pending Actions Taken safely (his Issue beambeambeam/toktickit#75)
+
+[beambeambeam#83](https://github.com/beambeambeam/toktickit/pull/83) · reviewed 2026-10-06 (review 5432256905) · **4 line comments**, verdict **Changes requested**. Caveman format. Drafted by a Sonnet 5.5 agent in a separate clone, run against a temporary PostgreSQL that was removed afterwards; checked before posting, and one finding was lowered from 🔴 to 🟡 because it costs focus, not data.
+
+Changes requested for two process problems stated in the body: the Pull Request is not linked to its Issue (a closing keyword does not link against a staging base), and `ai-use.md` has no entry for this Issue although its `tests.md` and description say AI helped. The server side holds: lock order, strict body, version check, assignee re-check and the edit history each failed a test when removed, and edits are refused on a Resolved Ticket, the gap raised on #82.
+
+| File | Finding |
+| --- | --- |
+| actions-taken-edit.tsx L357 🟡 | "Refresh and review" removes itself while focused, so focus falls to `body` (reproduced in a throwaway test) |
+| actions-taken-edit.tsx L186 🟡 | A server field error is shown beside its field but focus stays on Save (reproduced in a throwaway test) |
+| actions-edit.api.test.ts L590 🟡 | No test proves the Ticket lock on edit: removing it left all seven tests green, yet two `tests.md` rows are Pass on that evidence |
+| actions-taken-history.tsx L120 ❓ | History shows a bare "Assignee ID 7"; asked whether the name is meant to be shown |
+
+Not verified by us: his two-browser e2e, his full suites, and focus in a real browser (the two focus findings were reproduced in jsdom only).
+
 ---
 
 ## Coverage
@@ -136,7 +173,9 @@ Not verified by us: his server suite, migration script and e2e (they need his da
 | --- | --- | --- | --- | --- |
 | [#71](https://github.com/Kiatisakk/toktickit/pull/71) | received | 3 | Changes requested → Approved | Merged |
 | [#80](https://github.com/Kiatisakk/toktickit/pull/80) | received | 3 | Changes requested → Approved | Merged |
-| [#81](https://github.com/Kiatisakk/toktickit/pull/81) | received | 4 + merge conflict | Changes requested ×2 | Open — fixes and conflict resolution pushed |
-| [#84](https://github.com/Kiatisakk/toktickit/pull/84) | received | 1 | Comment | Open — fix pushed |
+| [#81](https://github.com/Kiatisakk/toktickit/pull/81) | received | 4 + merge conflict | Changes requested ×2 → Approved | Merged |
+| [#82](https://github.com/Kiatisakk/toktickit/pull/82) | received | 2 | Comment → Approved | Merged |
+| [#84](https://github.com/Kiatisakk/toktickit/pull/84) | received | 1 + merge conflict | Comment | Open — fix and conflict resolution pushed |
 | [beambeambeam#80](https://github.com/beambeambeam/toktickit/pull/80) | given | 8 | Changes requested → Approved | Merged |
-| [beambeambeam#82](https://github.com/beambeambeam/toktickit/pull/82) | given | 12 | Changes requested | Open |
+| [beambeambeam#82](https://github.com/beambeambeam/toktickit/pull/82) | given | 12 | Changes requested → Approved | Merged |
+| [beambeambeam#83](https://github.com/beambeambeam/toktickit/pull/83) | given | 4 + 2 process | Changes requested | Open |
