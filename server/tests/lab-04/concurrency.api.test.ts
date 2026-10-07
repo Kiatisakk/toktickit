@@ -1,6 +1,8 @@
+import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { ACTIVE_STAFF, SECOND_REQUESTER } from "../../prisma/accounts.js";
+import { app } from "../../src/app.js";
 import { prisma } from "../../src/prisma.js";
 import type { SignedInUser } from "../lab-03/support/signIn.js";
 import { signInAs } from "../lab-03/support/signIn.js";
@@ -35,7 +37,11 @@ const HOLD_MS = 400;
 
 interface Answer {
   status: number;
-  body: { error?: { code?: string }; result?: string; description?: string };
+  body: {
+    error?: { code?: string; details?: Record<string, string> };
+    result?: string;
+    description?: string;
+  };
 }
 
 let staffA: SignedInUser;
@@ -310,5 +316,234 @@ describe("a performer deactivated while an Action write is in flight (BR-07)", (
     expect(answer.body.error?.code).toBe("ACTION_ASSIGNEE_INELIGIBLE");
     expect(stored.performedById).not.toBe(performerId);
     expect(stored.version).toBe(version);
+  });
+});
+
+/* ------------------------------------ the resolution gate against Action writes -- */
+
+const statusOf = async (id: number): Promise<string> => {
+  const row = await prisma.ticket.findUniqueOrThrow({
+    where: { id },
+    select: { currentStatus: true },
+  });
+
+  return row.currentStatus;
+};
+
+describe("a resolution racing an Action write (BR-16, AC-27)", () => {
+  const SUMMARY = "Replaced the access point.";
+
+  const resolveTicket = async (
+    who: SignedInUser,
+    id: number,
+    version = 1
+  ): Promise<Answer> => {
+    const response = await request(app)
+      .patch(`/api/staff/tickets/${id}/status`)
+      .set("Cookie", who.cookie)
+      .send({ status: "RESOLVED", version, resolutionSummary: SUMMARY });
+
+    return { status: response.status, body: response.body };
+  };
+
+  /** A Ticket that satisfies the whole gate: one Done Action. */
+  const readyTicket = async (): Promise<number> => {
+    const id = await createTicket(PREFIX, requesterId);
+
+    await prisma.actionTaken.create({
+      data: {
+        ticketId: id,
+        recordedById: staffA.id,
+        performedById: staffA.id,
+        actionAt: new Date(),
+        description: "Already done.",
+        result: "Done.",
+        state: "DONE",
+        requestId: `ready-${String(id)}`,
+      },
+    });
+
+    return id;
+  };
+
+  it("CONC-01 over repeated rounds of simultaneous requests, no Ticket ends Resolved with an open follow-up", async () => {
+    let resolvedFirst = 0;
+    let createdFirst = 0;
+
+    for (let round = 0; round < ROUNDS; round += 1) {
+      // Rounds are sequential on purpose: each races its own pair.
+      // oxlint-disable-next-line no-await-in-loop
+      const id = await readyTicket();
+      // oxlint-disable-next-line no-await-in-loop
+      const [resolved, created] = await Promise.all([
+        resolveTicket(staffA, id),
+        createAction(
+          staffB,
+          id,
+          actionBody({
+            description: "Needs a check next week.",
+            followUpRequired: true,
+            followUpNote: "Check next week.",
+          })
+        ),
+      ]);
+
+      // Exactly one of the two lands: the follow-up first (the resolve is
+      // refused, and says why) or the resolution first (the create is refused).
+      if (resolved.status === 200) {
+        resolvedFirst += 1;
+        expect(created.status, `round ${round}`).toBe(409);
+        expect(created.body.error?.code).toBe("TICKET_NOT_ACTIONABLE");
+      } else {
+        createdFirst += 1;
+        expect(resolved.status, `round ${round}`).toBe(400);
+        expect(resolved.body.error?.code).toBe("RESOLUTION_GATE_FAILED");
+        expect(created.status).toBe(201);
+      }
+
+      // oxlint-disable-next-line no-await-in-loop
+      const status = await statusOf(id);
+      // oxlint-disable-next-line no-await-in-loop
+      const openFollowUps = await prisma.actionTaken.count({
+        where: { ticketId: id, followUpRequired: true },
+      });
+
+      expect(
+        status === "RESOLVED" && openFollowUps > 0,
+        `round ${round}: Resolved with an open follow-up`
+      ).toBe(false);
+    }
+
+    expect(resolvedFirst + createdFirst).toBe(ROUNDS);
+  });
+
+  it("CONC-01 a follow-up committed while the resolution waits is seen by the gate", async () => {
+    const id = await readyTicket();
+    const hold = await holdTicketLock(id, async (tx) => {
+      await tx.actionTaken.create({
+        data: {
+          ticketId: id,
+          recordedById: staffA.id,
+          performedById: staffA.id,
+          actionAt: new Date(),
+          description: "Needs a check next week.",
+          result: "Checked.",
+          state: "DONE",
+          followUpRequired: true,
+          followUpNote: "Check next week.",
+          requestId: `follow-up-${String(id)}`,
+        },
+      });
+    });
+    // Started while the lock is held, so it is queued behind it.
+    const pending = (async () => await resolveTicket(staffA, id))();
+
+    await sleep(HOLD_MS);
+    hold.release();
+    await hold.finished;
+
+    const answer = await pending;
+
+    expect(answer.status).toBe(400);
+    expect(answer.body.error?.code).toBe("RESOLUTION_GATE_FAILED");
+    expect(Object.keys(answer.body.error?.details ?? {})).toStrictEqual([
+      "openFollowUp",
+    ]);
+    expect(await statusOf(id)).toBe("IN_PROGRESS");
+  });
+
+  it("CONC-03 an edit turning Follow-Up Required on, sent with a resolution, never leaves a Resolved Ticket with an open follow-up", async () => {
+    for (let round = 0; round < ROUNDS; round += 1) {
+      // oxlint-disable-next-line no-await-in-loop
+      const id = await readyTicket();
+      // oxlint-disable-next-line no-await-in-loop
+      const planned = await seedAction(staffA, id);
+      // oxlint-disable-next-line no-await-in-loop
+      const [edited, resolved] = await Promise.all([
+        editAction(staffB, planned.id, {
+          version: planned.version,
+          followUpRequired: true,
+          followUpNote: "Check next week.",
+        }),
+        resolveTicket(staffA, id),
+      ]);
+
+      // The Planned Action blocks the resolution on its own (BR-16 (c)); the
+      // edit commits either way, and the Ticket is never left Resolved with a
+      // follow-up open.
+      expect(edited.status, `round ${round}`).toBe(200);
+      expect(resolved.status, `round ${round}`).toBe(400);
+      expect(resolved.body.error?.code).toBe("RESOLUTION_GATE_FAILED");
+
+      // oxlint-disable-next-line no-await-in-loop
+      expect(await statusOf(id)).toBe("IN_PROGRESS");
+    }
+  });
+
+  it("CONC-03 an edit committed while the resolution waits is seen by the gate", async () => {
+    const id = await readyTicket();
+    const planned = await seedAction(staffA, id);
+    const hold = await holdTicketLock(id, async (tx) => {
+      await tx.actionTaken.update({
+        where: { id: planned.id },
+        data: {
+          followUpRequired: true,
+          followUpNote: "Check next week.",
+          version: { increment: 1 },
+        },
+      });
+    });
+    const pending = (async () => await resolveTicket(staffA, id))();
+
+    await sleep(HOLD_MS);
+    hold.release();
+    await hold.finished;
+
+    const answer = await pending;
+
+    expect(answer.status).toBe(400);
+    expect(answer.body.error?.code).toBe("RESOLUTION_GATE_FAILED");
+    expect(await statusOf(id)).toBe("IN_PROGRESS");
+  });
+
+  it("CONC-06 a status change committed while the resolution waits answers 409 STALE_UPDATE, not the gate's 400", async () => {
+    // No Done Action, so the gate would refuse this Ticket if it were reached.
+    const id = await createTicket(PREFIX, requesterId);
+    const hold = await holdTicketLock(id, async (tx) => {
+      await tx.ticket.update({
+        where: { id },
+        data: { itPriority: "HIGH", version: { increment: 1 } },
+      });
+    });
+    // Sent with version 1, which was the stored one when it passed the early
+    // check and is no longer by the time it holds the lock.
+    const pending = (async () => await resolveTicket(staffA, id))();
+
+    await sleep(HOLD_MS);
+    hold.release();
+    await hold.finished;
+
+    const answer = await pending;
+
+    expect(answer.status).toBe(409);
+    expect(answer.body.error?.code).toBe("STALE_UPDATE");
+    expect(await statusOf(id)).toBe("IN_PROGRESS");
+  });
+
+  it("CONC-01 a resolution does not hold up a write to another Ticket", async () => {
+    const id = await readyTicket();
+    const other = await createTicket(PREFIX, requesterId);
+    const hold = await holdTicketLock(id);
+    const pending = (async () => await resolveTicket(staffA, id))();
+
+    await sleep(HOLD_MS / 4);
+
+    const answer = await createAction(staffB, other, actionBody());
+
+    hold.release();
+    await hold.finished;
+    await pending;
+
+    expect(answer.status).toBe(201);
   });
 });

@@ -85,6 +85,23 @@ Both are real; each was reproduced with a failing test before the fix.
 
 **Merge conflict after #82.** #82 merged first and both Pull Requests had appended at the same places: the end of `client/src/lib/api.ts` and `client/src/styles/components.css`, one row each in `ai-use-log.md` and this file's Coverage table, and the UI rows in `tests.md` (#82 had moved UI-19 to UI-30 to Pass, this one UI-01 to UI-18). `lab4-staging` was merged into the branch: both appended blocks kept, each `tests.md` row taken from the side that made it pass (no row was changed by both), both log rows kept.
 
+**Outcome.** He approved with `LGTM` at 2026-10-07 10:53:34Z and merged it himself ten seconds later (`e99bb1e`). Issue #76 was closed by hand. Merging it put #84 in conflict a second time; see below.
+
+### PR #84 — Resolution gate (Issue #75)
+
+[PR #84](https://github.com/Kiatisakk/toktickit/pull/84) · reviewed 2026-10-06 (review 5405295367) · **1 line comment**, verdict **Comment**; treated as a finding to fix.
+
+| File | Finding | What was done |
+| --- | --- | --- |
+| routes/staffTickets.ts L488 | A concurrent status change can hit the gate refusal before the locked version check, answering `400 RESOLUTION_GATE_FAILED` instead of `409 STALE_UPDATE` | Real. The version was compared only before the transaction; under the lock the gate ran with no comparison, so a request that went stale while queued was judged against the newer Actions. `lockTicket` now returns the `version` it read under the lock and the route compares it, refusing `409 STALE_UPDATE` with nothing written, before the gate. CONC-06 holds the Ticket lock, commits a version bump, and sends a resolve (no Done Action) that was queued behind it; it was `400 RESOLUTION_GATE_FAILED` first. api-spec.md says the version is compared again under the lock |
+
+The same ordering was checked elsewhere. The owner and IT-priority writes evaluate no rule after the version check and write conditionally on the version. Action edit, complete and cancel compare the version under the lock before state and actionability; Action create has no version.
+
+**Merge conflict after #82.** #82 merged first and both Pull Requests had appended at the same places: the end of `client/src/lib/api.ts` and `client/src/styles/components.css`, one row each in `ai-use-log.md` and this file's Coverage table, and the UI rows in `tests.md` (#82 had moved UI-38 to Pass, this one UI-32 to UI-37 and the resolve-dialog half of UI-36). `lab4-staging` was merged into the branch: both appended blocks kept, each `tests.md` row taken from the side that changed it (no row was changed by both), both log rows kept.
+
+**Second merge conflict, after #83.** #83 merged next and had inserted at the same places: `components.css` (both blocks placed before #74's), the next row of `ai-use-log.md`, this file, and two `tests.md` rows (UNIT-05 moved to Pass here, UNIT-06 there). `lab4-staging` was merged into the branch: both CSS blocks kept, each row taken from the side that made it pass, log rows kept in order 7, 8, 9.
+
+
 ---
 
 ## Reviews I gave
@@ -160,6 +177,8 @@ Changes requested for two process problems stated in the body: the Pull Request 
 
 Not verified by us: his two-browser e2e, his full suites, and focus in a real browser (the two focus findings were reproduced in jsdom only).
 
+**Outcome.** He replied on all four threads and on the two process items: Issue #75 linked, `ai-use.md` entry added. A Sonnet 5.5 agent re-reviewed `9cbb6b6` against the code, reverting each fix to see its test fail: focus after refresh, focus on a server field error, assignee names in history (shown from current lookups, falling back to "Former assignee (User #id)"), and a new test that sees the edit block on the Ticket `FOR UPDATE` lock; deleting the lock again now fails it. One mutation was repeated in this session and also failed its test. The agent's doubt that the review heading could steal focus later was checked against the code and does not hold: every failed save sets `failure`, and a successful one closes the form. **Approved** 2026-10-07 (review 5443306339); then merged by us at 13:50:35Z (`a19fd46`) after confirming no `DO NOT MERGE` label. Not run: his e2e, full suites and lint.
+
 ---
 
 ## Coverage
@@ -170,7 +189,8 @@ Not verified by us: his two-browser e2e, his full suites, and focus in a real br
 | [#80](https://github.com/Kiatisakk/toktickit/pull/80) | received | 3 | Changes requested → Approved | Merged |
 | [#81](https://github.com/Kiatisakk/toktickit/pull/81) | received | 4 + merge conflict | Changes requested ×2 → Approved | Merged |
 | [#82](https://github.com/Kiatisakk/toktickit/pull/82) | received | 2 | Comment → Approved | Merged |
-| [#83](https://github.com/Kiatisakk/toktickit/pull/83) | received | 1 + merge conflict | Comment | Open — fix and conflict resolution pushed |
+| [#83](https://github.com/Kiatisakk/toktickit/pull/83) | received | 1 + merge conflict | Comment → Approved | Merged |
+| [#84](https://github.com/Kiatisakk/toktickit/pull/84) | received | 1 + merge conflict ×2 | Comment | Open — fix and conflict resolution pushed |
 | [beambeambeam#80](https://github.com/beambeambeam/toktickit/pull/80) | given | 8 | Changes requested → Approved | Merged |
 | [beambeambeam#82](https://github.com/beambeambeam/toktickit/pull/82) | given | 12 | Changes requested → Approved | Merged |
-| [beambeambeam#83](https://github.com/beambeambeam/toktickit/pull/83) | given | 4 + 2 process | Changes requested | Open |
+| [beambeambeam#83](https://github.com/beambeambeam/toktickit/pull/83) | given | 4 + 2 process | Changes requested → Approved | Merged |

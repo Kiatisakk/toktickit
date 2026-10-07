@@ -43,6 +43,8 @@ export const ErrorCode = {
   actionNotFound: "ACTION_NOT_FOUND",
   ticketNotActionable: "TICKET_NOT_ACTIONABLE",
   requestIdConflict: "REQUEST_ID_CONFLICT",
+  // Lab 4 resolution gate (Issue 75; api-spec.md section 7).
+  resolutionGateFailed: "RESOLUTION_GATE_FAILED",
   internalError: "INTERNAL_ERROR",
 } as const;
 

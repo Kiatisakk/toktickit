@@ -584,11 +584,23 @@ export const setItPriority = (
   version: number
 ) => patchTicket(ticketId, "it-priority", { itPriority, version });
 
+/**
+ * `resolutionSummary` goes with a move to Resolved and with nothing else
+ * (BR-17); the server refuses it on any other target.
+ */
 export const setTicketStatus = (
   ticketId: number,
   status: TicketStatus,
-  version: number
-) => patchTicket(ticketId, "status", { status, version });
+  version: number,
+  resolutionSummary?: string
+) =>
+  patchTicket(
+    ticketId,
+    "status",
+    resolutionSummary === undefined
+      ? { status, version }
+      : { status, version, resolutionSummary }
+  );
 
 /* ------------------------------------------------------- public comments -- */
 
@@ -1021,3 +1033,47 @@ export const cancelAction = async (
   expectAction(
     await apiPost(`/api/actions/${actionId}/cancel`, { version, cancelReason })
   );
+
+/* ------------------------------------------------ resolution gate (Issue 75) -- */
+
+/** What the resolve dialog reads of an Action (ui-spec.md section 7). */
+export interface GateActionRow {
+  id: number;
+  state: "PLANNED" | "DONE" | "CANCELLED";
+  followUpState: "NOT_REQUIRED" | "VOID" | "OPEN" | "CLOSED";
+}
+
+const isGateActionRow = (value: unknown): value is GateActionRow =>
+  isRecord(value) &&
+  typeof value["id"] === "number" &&
+  ACTION_STATES.includes(value["state"]) &&
+  FOLLOW_UP_STATES.includes(value["followUpState"]);
+
+/**
+ * A Ticket's Actions, reduced to what the resolve dialog's checklist needs.
+ * Read again each time the dialog opens, so an Action completed or cancelled
+ * since is reflected (AC-49).
+ */
+export const fetchGateActions = async (
+  ticketId: number,
+  signal?: AbortSignal
+): Promise<GateActionRow[]> => {
+  const body = await apiGet(
+    `/api/tickets/${ticketId}/actions`,
+    signal ? { signal } : {}
+  );
+
+  if (
+    !isRecord(body) ||
+    !Array.isArray(body["data"]) ||
+    !body["data"].every(isGateActionRow)
+  ) {
+    throw unexpected("the actions");
+  }
+
+  return body["data"].map((one) => ({
+    id: one.id,
+    state: one.state,
+    followUpState: one.followUpState,
+  }));
+};

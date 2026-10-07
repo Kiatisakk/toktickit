@@ -147,6 +147,7 @@ Choosing **Resolved** opens a **resolve dialog** instead of changing at once:
   - "No planned actions pending" — met / not met, with "1 planned" when unmet and a link to the first; the user completes or cancels it first
   - "Resolution summary entered" — met when the textarea is non-empty
 - **Confirm resolution** and **Cancel**. Confirm is enabled when the summary is non-empty; unmet action, follow-up and planned-action conditions are shown before the user submits, from the loaded Actions. The server remains the authority: its `RESOLUTION_GATE_FAILED` `details` replace the checklist's state, with each message beside the condition it names (AC-41).
+- The "link to the first" is an in-page link to `#action-<id>` and closes the dialog. The dialog reads the Ticket's Actions each time it opens, so an Action completed or cancelled since is reflected. If the Actions cannot be loaded, the three Action conditions read "not checked yet" and the dialog says the server will check them on confirm.
 - The dialog is a real modal: focus moves into it, is trapped, returns to the control that opened it on close, and `Escape` closes it. Closing keeps nothing half-applied.
 
 Every other transition is a single control with a confirmation only for Cancelled, as in Lab 3.

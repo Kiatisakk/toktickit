@@ -329,6 +329,22 @@ describe("status", () => {
   it("API-26 walks the lifecycle a real ticket takes", async () => {
     const id = await createTicket({ currentStatus: "NEW" });
 
+    // Lab 4 (D-03, BR-16): resolving is gated, so the walk first records the
+    // Done Action and sends the Resolution Summary the gate asks for. The
+    // lifecycle it walks is unchanged.
+    await prisma.actionTaken.create({
+      data: {
+        ticketId: id,
+        recordedById: staff.id,
+        performedById: staff.id,
+        actionAt: new Date(),
+        description: "Replaced the part.",
+        result: "Works.",
+        state: "DONE",
+        requestId: `walk-${String(id)}`,
+      },
+    });
+
     for (const status of [
       "OPEN",
       "IN_PROGRESS",
@@ -340,7 +356,14 @@ describe("status", () => {
     ] as const) {
       // Sequential by nature: each step starts from the one before it.
       // oxlint-disable-next-line no-await-in-loop
-      const response = await patch(staff, id, "status", { status });
+      const response = await patch(
+        staff,
+        id,
+        "status",
+        status === "RESOLVED"
+          ? { status, resolutionSummary: "Replaced the part." }
+          : { status }
+      );
 
       expect(response.status, status).toBe(200);
       expect(response.body.currentStatus).toBe(status);
