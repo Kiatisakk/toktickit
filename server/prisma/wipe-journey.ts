@@ -14,7 +14,8 @@ import { prisma } from "../src/prisma.js";
  * `summaryFor` in `e2e/lab-02/requester-ticket-flow.spec.ts`, the rows
  * `e2e/lab-02/evidence.spec.ts` creates so that a second page of tickets
  * exists to photograph, and `e2e/lab-03/support.ts`'s `lab3Summary`, which
- * every Lab 3 spec that creates a ticket goes through for the same reason.
+ * every Lab 3 spec that creates a ticket goes through for the same reason, and
+ * `e2e/lab-04/support.ts`'s `lab4Summary`, which does the same for Lab 4.
  * This script is the only deleter. A writer that invents a third prefix
  * without adding it here will not fail — it will quietly accumulate, which is
  * how the second one was found: 108 rows and two red assertions in the server
@@ -27,14 +28,24 @@ import { prisma } from "../src/prisma.js";
  * database means rebuilding it from nothing — which is what D-11 already
  * claims.
  */
-const LEFTOVER_PREFIXES = ["E2E journey ", "Evidence row ", "Lab3 E2E "];
+const LEFTOVER_PREFIXES = [
+  "E2E journey ",
+  "Evidence row ",
+  "Lab3 E2E ",
+  "Lab4 E2E ",
+];
 
 try {
   const { count } = await prisma.ticket.deleteMany({
     where: {
-      OR: LEFTOVER_PREFIXES.map((prefix) => ({
-        summary: { startsWith: prefix },
-      })),
+      OR: [
+        ...LEFTOVER_PREFIXES.map((prefix) => ({
+          summary: { startsWith: prefix },
+        })),
+        // The dashboards' fixture (`seed-dashboard-e2e.ts`) names its tickets by
+        // number, not by summary.
+        { ticketNumber: { startsWith: "TKT-DEMO-L4-" } },
+      ],
     },
   });
 

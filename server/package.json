@@ -18,7 +18,8 @@
     "postinstall": "prisma generate",
     "db:test:setup": "dotenv -e .env.test -- tsx prisma/wipe-journey.ts && dotenv -e .env.test -- prisma migrate deploy && dotenv -e .env.test -- prisma db seed",
     "e2e:reset-tickets": "dotenv -e .env.test -- tsx prisma/reset-tickets-e2e.ts",
-    "e2e:reset-users": "dotenv -e .env.test -- tsx prisma/reset-e2e-users.ts"
+    "e2e:reset-users": "dotenv -e .env.test -- tsx prisma/reset-e2e-users.ts",
+    "e2e:seed-dashboard": "dotenv -e .env.test -- tsx prisma/seed-dashboard-e2e.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
