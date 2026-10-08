@@ -9,6 +9,7 @@ import {
   pause,
   shoot,
   test,
+  urlEnding,
 } from "./support";
 
 /**
@@ -126,6 +127,16 @@ test.describe("Actions Taken", () => {
       lab4Summary("Actions Journey", info),
       "HIGH"
     );
+
+    // The refusals this journey provokes on purpose, and nothing else: the
+    // inactive performer (400), Sarah saving first (409), and Somchai asking
+    // for a ticket that is not his (404, BR-17).
+    guard.expectRefusal(
+      "POST",
+      urlEnding(`/api/tickets/${ticketId}/actions`),
+      400
+    );
+    guard.expectRefusal("GET", urlEnding(`/api/tickets/${ticketId}`), 404);
 
     const michael = await openAs(guard, browser, info, "michael");
     const sarah = await openAs(guard, browser, info, "sarah");
@@ -374,6 +385,8 @@ test.describe("Actions Taken", () => {
       .click();
 
     const staleForm = formOf(michael, `Edit action #${fifthId}`);
+
+    guard.expectRefusal("PATCH", urlEnding(`/api/actions/${fifthId}`), 409);
     const typed = "Re-survey coverage on the first floor, after hours, twice.";
 
     await field(staleForm, /^Description/u).fill(typed);
@@ -451,6 +464,13 @@ test.describe("Actions Taken", () => {
       API,
       refs,
       lab4Summary("Not Actionable", info)
+    );
+
+    // The ticket is cancelled under the open form, so the add is refused 409.
+    guard.expectRefusal(
+      "POST",
+      urlEnding(`/api/tickets/${ticketId}/actions`),
+      409
     );
 
     const michael = await openAs(guard, browser, info, "michael");

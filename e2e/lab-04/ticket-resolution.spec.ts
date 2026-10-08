@@ -12,6 +12,7 @@ import {
   shoot,
   staffIdByName,
   test,
+  urlEnding,
 } from "./support";
 
 /**
@@ -58,6 +59,13 @@ test.describe("the resolution gate (E2E-05)", () => {
       refs,
       lab4Summary("Resolution Gate", info)
     );
+    // The gate's refusal, from the server, with no completed Action (BR-16).
+    guard.expectRefusal(
+      "PATCH",
+      urlEnding(`/api/staff/tickets/${ticketId}/status`),
+      400
+    );
+
     const michael = await openAs(guard, browser, info, "michael");
 
     await setStatusFor(michael.request, ticketId, "OPEN");
@@ -226,6 +234,13 @@ test.describe("two people, one ticket (E2E-06)", () => {
       refs,
       lab4Summary("Stale Update", info)
     );
+    // Michael acts on a version Sarah has already replaced: refused 409.
+    guard.expectRefusal(
+      "PATCH",
+      urlEnding(`/api/staff/tickets/${ticketId}/status`),
+      409
+    );
+
     const michael = await openAs(guard, browser, info, "michael");
     const sarah = await openAs(guard, browser, info, "sarah");
 

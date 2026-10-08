@@ -60,6 +60,10 @@ const valueOf = async (page: Page, key: string): Promise<number> =>
 const ticketLinks = (scope: Locator | Page) =>
   scope.getByRole("link", { name: TICKET_LINK });
 
+/** The two dashboard endpoints the failure and forbidden states stub. */
+const STAFF_DASHBOARD_URL = /\/api\/dashboard\/staff$/u;
+const REQUESTER_DASHBOARD_URL = /\/api\/dashboard\/requester$/u;
+
 /** Forbidden, as the API words it (api-spec.md section 2). */
 const FORBIDDEN_BODY = {
   error: {
@@ -341,6 +345,7 @@ test.describe("the dashboards over the demonstration data", () => {
     await staff.unroute("**/api/dashboard/staff");
 
     // --- failure: safe message, Try again, Refresh remains ------------------
+    guard.expectAbort(STAFF_DASHBOARD_URL);
     await staff.route("**/api/dashboard/staff", async (route) => {
       await route.abort("failed");
     });
@@ -361,6 +366,7 @@ test.describe("the dashboards over the demonstration data", () => {
     await expect(card(staff, "new")).toBeVisible();
 
     // --- forbidden: no numbers, a link to the user's own dashboard ----------
+    guard.expectRefusal("GET", STAFF_DASHBOARD_URL, 403);
     await staff.route("**/api/dashboard/staff", async (route) => {
       await route.fulfill({
         status: 403,
@@ -486,6 +492,7 @@ test.describe("the dashboards over the demonstration data", () => {
     await expect(card(page, "open")).toBeVisible();
     await page.unroute("**/api/dashboard/requester");
 
+    guard.expectAbort(REQUESTER_DASHBOARD_URL);
     await page.route("**/api/dashboard/requester", async (route) => {
       await route.abort("failed");
     });
@@ -503,6 +510,7 @@ test.describe("the dashboards over the demonstration data", () => {
     // forbidden state is forced: the Requester's own dashboard answering 403.
     // The staff-side half of this rule is the API refusing staff 403, which
     // the server suite proves (SEC-*); here the screen's wording is shown.
+    guard.expectRefusal("GET", REQUESTER_DASHBOARD_URL, 403);
     await page.route("**/api/dashboard/requester", async (route) => {
       await route.fulfill({
         status: 403,

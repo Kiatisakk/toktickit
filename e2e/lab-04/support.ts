@@ -60,76 +60,226 @@ export const shoot = async (
 /* ---------------------------------------------------------- console guard -- */
 
 /**
- * A refusal the application is designed to make (a 400, 403, 404 or 409 shown
- * to the person as words) is also logged by Chromium as
- * "Failed to load resource: the server responded with a status of 409". That is
- * the browser narrating a response the screen handled, not a defect, so it is
- * counted and not failed. A 5xx is never tolerated, and neither is anything the
- * application itself writes with `console.error`.
+ * Everything the browser tells us went wrong, kept raw so the verdict can be
+ * reached at the end, when every declared expectation is known and the console
+ * message and the network event of one request can be matched to each other
+ * whichever arrived first.
  */
-const DESIGNED_REFUSAL =
-  /^Failed to load resource: the server responded with a status of 4\d\d/u;
+interface SeenResponse {
+  method: string;
+  url: string;
+  status: number;
+}
+
+interface SeenFailure {
+  url: string;
+  reason: string;
+}
+
+interface SeenConsoleError {
+  text: string;
+  url: string;
+}
+
+interface Expectation {
+  kind: "refusal" | "abort";
+  method: string;
+  url: RegExp;
+  status: number;
+  seen: number;
+  /** A standing allowance, not a declaration: never seen is not a problem. */
+  optional?: boolean;
+}
+
+/** Chromium narrates a 4xx/5xx answer to a fetch like this. */
+const STATUS_LINE =
+  /^Failed to load resource: the server responded with a status of (?<status>\d+)/u;
+
+/** ... and a request that was cut off, such as one a spec aborts, like this. */
+const FAILED_LINE = /^Failed to load resource: net::ERR_FAILED/u;
+
+const CLIENT_ERROR_FLOOR = 400;
+const SERVER_ERROR_FLOOR = 500;
 
 /**
- * Requests the specs abort on purpose to show a failure state
- * (`route.abort("failed")`) are logged as `net::ERR_FAILED`.
+ * A pattern for a request URL that ends in `suffix`. The paths used are literal
+ * (`/api/tickets/12/actions`): slashes, letters and digits, nothing to escape.
  */
-const DELIBERATE_ABORT = /^Failed to load resource: net::ERR_FAILED/u;
+export const urlEnding = (suffix: string): RegExp =>
+  new RegExp(`${suffix}$`, "u");
 
 export interface ConsoleGuard {
   /** Start watching a page; every page a test opens must be attached. */
   attach: (page: Page) => void;
+  /**
+   * Declares that this test provokes `status` from `method` `url` on purpose (a
+   * designed refusal, or a route stub answering with one). Only a response
+   * that matches is tolerated, together with the browser's own console line
+   * about it. A declaration that is never observed is itself a problem.
+   */
+  expectRefusal: (method: string, url: RegExp, status: number) => void;
+  /** Declares a request this test aborts on purpose (`route.abort`). */
+  expectAbort: (url: RegExp) => void;
   /** What went wrong so far, one line each. */
   problems: () => string[];
-  /** How many designed refusals and deliberate aborts were tolerated. */
-  tolerated: () => number;
 }
 
-const createGuard = (): ConsoleGuard => {
-  const found: string[] = [];
-  let tolerated = 0;
+export const createGuard = (): ConsoleGuard => {
+  const responses: SeenResponse[] = [];
+  const failures: SeenFailure[] = [];
+  const consoleErrors: SeenConsoleError[] = [];
+  const pageErrors: string[] = [];
+  const expectations: Expectation[] = [
+    // The browser itself, not the application, asks for /favicon.ico on every
+    // page it opens, and the app ships no icon. It is the one refusal that
+    // belongs to no test, so it is allowed everywhere and exactly as written.
+    {
+      kind: "refusal",
+      method: "GET",
+      url: /^http:\/\/localhost:\d+\/favicon\.ico$/u,
+      status: 404,
+      seen: 0,
+      optional: true,
+    },
+  ];
 
   const attach = (page: Page): void => {
     page.on("console", (message) => {
-      if (message.type() !== "error") {
-        return;
+      if (message.type() === "error") {
+        consoleErrors.push({
+          text: message.text(),
+          url: message.location().url,
+        });
       }
-
-      const text = message.text();
-
-      if (DESIGNED_REFUSAL.test(text) || DELIBERATE_ABORT.test(text)) {
-        tolerated += 1;
-        return;
-      }
-
-      found.push(`console.error: ${text} (${message.location().url})`);
     });
 
     page.on("pageerror", (error) => {
-      found.push(`uncaught exception: ${error.message}`);
+      pageErrors.push(`uncaught exception: ${error.message}`);
     });
 
     page.on("response", (response) => {
-      if (response.status() >= 500) {
-        found.push(`HTTP ${response.status()} from ${response.url()}`);
-      }
+      responses.push({
+        method: response.request().method(),
+        url: response.url(),
+        status: response.status(),
+      });
     });
 
     page.on("requestfailed", (request) => {
-      const reason = request.failure()?.errorText ?? "";
-
-      // A navigation or a deliberately stubbed request ends this way; anything
-      // else is a request that should have worked and did not.
-      if (!/ERR_FAILED|ERR_ABORTED/u.test(reason)) {
-        found.push(`request failed: ${request.url()} (${reason})`);
-      }
+      failures.push({
+        url: request.url(),
+        reason: request.failure()?.errorText ?? "",
+      });
     });
+  };
+
+  const refusalFor = (status: number, url: string, method?: string) =>
+    expectations.find(
+      (item) =>
+        item.kind === "refusal" &&
+        item.status === status &&
+        item.url.test(url) &&
+        (method === undefined || item.method === method)
+    );
+
+  const abortFor = (url: string) =>
+    expectations.find((item) => item.kind === "abort" && item.url.test(url));
+
+  const consoleProblem = ({ text, url }: SeenConsoleError): string | null => {
+    const status = STATUS_LINE.exec(text)?.groups?.status;
+
+    if (status !== undefined && refusalFor(Number(status), url)) {
+      return null;
+    }
+
+    if (FAILED_LINE.test(text) && abortFor(url)) {
+      return null;
+    }
+
+    return `console.error: ${text} (${url})`;
+  };
+
+  const problems = (): string[] => {
+    const found: string[] = [...pageErrors];
+
+    // Observation is counted first, so a declaration is "seen" whichever
+    // order the events arrived in.
+    for (const item of expectations) {
+      item.seen = 0;
+    }
+
+    for (const { method, url, status } of responses) {
+      if (status >= SERVER_ERROR_FLOOR) {
+        found.push(`HTTP ${status} from ${url}`);
+      } else if (status >= CLIENT_ERROR_FLOOR) {
+        const declared = refusalFor(status, url, method);
+
+        if (declared) {
+          declared.seen += 1;
+        } else {
+          found.push(`undeclared HTTP ${status} from ${method} ${url}`);
+        }
+      }
+    }
+
+    for (const { url, reason } of failures) {
+      // A navigation that cancels what the page had in flight ends this way;
+      // it is the browser's doing, not a request that failed.
+      if (reason.includes("ERR_ABORTED")) {
+        continue;
+      }
+
+      const declared = reason.includes("ERR_FAILED") ? abortFor(url) : null;
+
+      if (declared) {
+        declared.seen += 1;
+      } else {
+        found.push(`request failed: ${url} (${reason})`);
+      }
+    }
+
+    for (const entry of consoleErrors) {
+      const problem = consoleProblem(entry);
+
+      if (problem) {
+        found.push(problem);
+      }
+    }
+
+    for (const item of expectations) {
+      if (item.seen === 0 && !item.optional) {
+        found.push(
+          item.kind === "abort"
+            ? `declared abort of ${item.url} never happened`
+            : `declared ${item.status} from ${item.method} ${item.url} never happened`
+        );
+      }
+    }
+
+    return found;
   };
 
   return {
     attach,
-    problems: () => [...found],
-    tolerated: () => tolerated,
+    expectRefusal: (method, url, status) => {
+      expectations.push({
+        kind: "refusal",
+        method: method.toUpperCase(),
+        url,
+        status,
+        seen: 0,
+      });
+    },
+    expectAbort: (url) => {
+      expectations.push({
+        kind: "abort",
+        method: "GET",
+        url,
+        status: 0,
+        seen: 0,
+      });
+    },
+    problems,
   };
 };
 
