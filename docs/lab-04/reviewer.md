@@ -101,6 +101,7 @@ The same ordering was checked elsewhere. The owner and IT-priority writes evalua
 
 **Second merge conflict, after #83.** #83 merged next and had inserted at the same places: `components.css` (both blocks placed before #74's), the next row of `ai-use-log.md`, this file, and two `tests.md` rows (UNIT-05 moved to Pass here, UNIT-06 there). `lab4-staging` was merged into the branch: both CSS blocks kept, each row taken from the side that made it pass, log rows kept in order 7, 8, 9.
 
+**Outcome.** He approved with `LGTM` at 2026-10-07 17:27:50Z and merged it himself ten seconds later (`13c5594`). Issue #75 was closed by hand. Recorded on the next feature branch, #77's.
 
 ---
 
@@ -190,7 +191,7 @@ Not verified by us: his two-browser e2e, his full suites, and focus in a real br
 | [#81](https://github.com/Kiatisakk/toktickit/pull/81) | received | 4 + merge conflict | Changes requested ×2 → Approved | Merged |
 | [#82](https://github.com/Kiatisakk/toktickit/pull/82) | received | 2 | Comment → Approved | Merged |
 | [#83](https://github.com/Kiatisakk/toktickit/pull/83) | received | 1 + merge conflict | Comment → Approved | Merged |
-| [#84](https://github.com/Kiatisakk/toktickit/pull/84) | received | 1 + merge conflict ×2 | Comment | Open — fix and conflict resolution pushed |
+| [#84](https://github.com/Kiatisakk/toktickit/pull/84) | received | 1 + merge conflict ×2 | Comment → Approved | Merged |
 | [beambeambeam#80](https://github.com/beambeambeam/toktickit/pull/80) | given | 8 | Changes requested → Approved | Merged |
 | [beambeambeam#82](https://github.com/beambeambeam/toktickit/pull/82) | given | 12 | Changes requested → Approved | Merged |
 | [beambeambeam#83](https://github.com/beambeambeam/toktickit/pull/83) | given | 4 + 2 process | Changes requested → Approved | Merged |
