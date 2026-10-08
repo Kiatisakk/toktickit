@@ -103,6 +103,17 @@ The same ordering was checked elsewhere. The owner and IT-priority writes evalua
 
 **Outcome.** He approved with `LGTM` at 2026-10-07 17:27:50Z and merged it himself ten seconds later (`13c5594`). Issue #75 was closed by hand. Recorded on the next feature branch, #77's.
 
+### PR #85 — End-to-end journeys and screenshots (Issue #77)
+
+[PR #85](https://github.com/Kiatisakk/toktickit/pull/85) · reviewed 2026-10-08 (review 5458186644) · **2 line comments**, verdict **Changes requested**.
+
+| File | Finding | What was done |
+| --- | --- | --- |
+| e2e/lab-04/support.ts L71 | 🟡 The matcher accepts every 4xx as a designed refusal, so an unexpected 401/422/429 bypasses AC-47 | Real. `console-guard.spec.ts` was written first and failed on the old guard for all seven cases (an undeclared 401, 403, 404, 409, 422, 429 and an aborted fetch were all tolerated). The guard now keeps raw events and decides at the end: a 4xx passes only if the test declared `guard.expectRefusal(method, url, status)`, and the browser's console line only if its URL and status match a declaration. Every journey that provokes a refusal now declares it (400 inactive performer, 409 stale Action, 404 other Requester's ticket, 409 not actionable, 400 resolution gate, 409 stale ticket, 403 stubbed dashboards); a declaration that never happens fails the test. Removing one declaration fails its test; changing one status fails it twice (undeclared and never happened). The run also showed the app ships no favicon: the browser's `/favicon.ico` 404, previously swallowed by the any-4xx rule, is now the one named standing allowance |
+| e2e/lab-04/support.ts L77 | 🟡 Every `ERR_FAILED` console error is counted as intentional, and the request handler also ignores it, so unrelated fetch failures bypass AC-47 | Real, same cause. `ERR_FAILED` is now tolerated only for a URL a test declared with `guard.expectAbort(url)` (the two failure-state stubs for the dashboards); any other failed request, and its console line, is reported. `ERR_ABORTED` (the browser cancelling what a navigation left in flight) is still not a failure |
+
+**Outcome.** Fixes pushed to the same branch; both threads answered. Record of the approval and merge to follow on the next feature branch.
+
 ---
 
 ## Reviews I gave
@@ -192,6 +203,7 @@ Not verified by us: his two-browser e2e, his full suites, and focus in a real br
 | [#82](https://github.com/Kiatisakk/toktickit/pull/82) | received | 2 | Comment → Approved | Merged |
 | [#83](https://github.com/Kiatisakk/toktickit/pull/83) | received | 1 + merge conflict | Comment → Approved | Merged |
 | [#84](https://github.com/Kiatisakk/toktickit/pull/84) | received | 1 + merge conflict ×2 | Comment → Approved | Merged |
+| [#85](https://github.com/Kiatisakk/toktickit/pull/85) | received | 2 | Changes requested | Fixes pushed, awaiting re-review |
 | [beambeambeam#80](https://github.com/beambeambeam/toktickit/pull/80) | given | 8 | Changes requested → Approved | Merged |
 | [beambeambeam#82](https://github.com/beambeambeam/toktickit/pull/82) | given | 12 | Changes requested → Approved | Merged |
 | [beambeambeam#83](https://github.com/beambeambeam/toktickit/pull/83) | given | 4 + 2 process | Changes requested → Approved | Merged |
