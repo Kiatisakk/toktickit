@@ -1120,6 +1120,17 @@ a.tkt-btn {
     min-width: var(--tkt-control-height);
   }
 
+  /* The dashboards' My Recent Tickets links (the ticket number and View all)
+     are inline text, ~24px tall; found by the Lab 4 browser suite
+     (e2e/lab-04/responsive.spec.ts), which measures every control. Made flex
+     items of their own so the height takes effect. */
+  .tkt-recent__number,
+  .tkt-recent__viewall {
+    align-items: center;
+    display: inline-flex;
+    min-height: var(--tkt-control-height);
+  }
+
   /* Below 768px the table is replaced by cards rather than being scrolled
      sideways, which §8.7 forbids at the page level. */
   .tkt-table {

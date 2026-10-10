@@ -27,6 +27,8 @@ export const SIGNED_IN = {
   pimchanok: accountByEmail("pimchanok.srisai@example.ac.th"),
   /** IT Staff, for the staff journey (Lab 3 §14). */
   michael: ACTIVE_STAFF,
+  /** A second IT Staff member, for Lab 4's two-person journeys. */
+  sarah: accountByEmail("sarah.johnson@example.ac.th"),
   /** The sole Administrator, for the administration journey (Lab 3 §14). */
   wanida: ADMINISTRATOR,
 } as const;
