@@ -183,6 +183,14 @@ const seedLargeSet = async () => {
     // oxlint-disable-next-line no-await-in-loop
     await prisma.ticketStatusChange.createMany({ data: part });
   }
+
+  // A table that was just bulk-loaded has no statistics until autovacuum gets
+  // to it, and the planner chooses its plans from them. A real database of this
+  // size has been analysed; measuring before that happens would time the
+  // planner's ignorance, not the queries.
+  await prisma.$executeRaw`ANALYZE "Ticket"`;
+  await prisma.$executeRaw`ANALYZE "ActionTaken"`;
+  await prisma.$executeRaw`ANALYZE "TicketStatusChange"`;
 };
 
 beforeAll(async () => {
@@ -208,6 +216,10 @@ const medianOf = async (
 ): Promise<{ median: number; status: number }> => {
   const times: number[] = [];
   let status = 0;
+
+  // One untimed call first: the first request on a connection pays for opening
+  // it and for the server's cold caches, which is not what the bound is about.
+  await request(app).get(path).set("Cookie", who.cookie);
 
   for (let call = 0; call < REQUESTS; call += 1) {
     const started = performance.now();
