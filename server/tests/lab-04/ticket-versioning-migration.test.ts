@@ -8,8 +8,9 @@ import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 /**
- * MIG-01 to MIG-04 for the Ticket version and status-history migration
- * (specification.md section 7; AC-35, AC-36).
+ * MIG-01 to MIG-04 for the Ticket version and status-history migration and the
+ * Actions Taken migration that follows it (specification.md section 7; AC-35,
+ * AC-36).
  *
  * Built on a throwaway database, never the development or test one: the earlier
  * migrations are applied to an empty database, rows are written in the shape
@@ -21,6 +22,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  */
 
 const MIGRATION = "20261003100000_ticket_version_and_status_history";
+const ACTIONS_MIGRATION = "20261003110000_actions_taken";
 // A name unique to this run, so a parallel run (or a database that happens to
 // carry the prefix) is never the one dropped: only this exact name is ever
 // created or dropped here.
@@ -41,8 +43,8 @@ const connectionUrl = (database: string): string => {
 let admin: Client;
 let db: Client;
 
-const sql = async (file: string): Promise<string> =>
-  await readFile(path.join(MIGRATIONS_DIR, MIGRATION, file), "utf-8");
+const sql = async (file: string, migration = MIGRATION): Promise<string> =>
+  await readFile(path.join(MIGRATIONS_DIR, migration, file), "utf-8");
 
 const rows = async <T extends QueryResultRow>(text: string): Promise<T[]> => {
   const result = await db.query<T>(text);
@@ -97,6 +99,28 @@ const tableNames = async (): Promise<string[]> => {
   );
 
   return found.map((row) => row.table_name);
+};
+
+const hasActionsTable = async (): Promise<boolean> => {
+  const names = await tableNames();
+
+  return names.includes("ActionTaken");
+};
+
+const hasActionStateEnum = async (): Promise<boolean> => {
+  const found = await rows(
+    `SELECT 1 FROM pg_type WHERE typname = 'ActionState'`
+  );
+
+  return found.length > 0;
+};
+
+const recordedMigrations = async (): Promise<string[]> => {
+  const found = await rows<{ migration_name: string }>(
+    `SELECT "migration_name" FROM "_prisma_migrations" ORDER BY "migration_name"`
+  );
+
+  return found.map((row) => row.migration_name);
 };
 
 const hasVersionColumn = async (): Promise<boolean> => {
@@ -304,6 +328,78 @@ describe("the migration, its rollback and its re-application", () => {
 
     expect(await snapshot()).toStrictEqual(before);
     expect(await hasVersionColumn()).toBe(true);
+    expect(await history()).toStrictEqual(firstBackfill);
+  });
+
+  it("MIG-04 the Actions Taken migration applies on top, and invents no Action", async () => {
+    // What `migrate deploy` would have recorded when it re-applied the first
+    // migration in the test above.
+    await db.query(`INSERT INTO "_prisma_migrations" VALUES ('${MIGRATION}')`);
+    await db.query(await sql("migration.sql", ACTIONS_MIGRATION));
+    await db.query(
+      `INSERT INTO "_prisma_migrations" VALUES ('${ACTIONS_MIGRATION}')`
+    );
+
+    expect(await hasActionsTable()).toBe(true);
+    expect(await hasActionStateEnum()).toBe(true);
+    expect(await rows(`SELECT 1 FROM "ActionTaken"`)).toHaveLength(0);
+    expect(await snapshot()).toStrictEqual(before);
+    expect(await history()).toStrictEqual(firstBackfill);
+
+    // One Action, so the rollback below has a row to lose.
+    await db.query(
+      `INSERT INTO "ActionTaken" ("ticketId", "recordedById", "performedById",
+         "actionAt", "description", "requestId", "updatedAt")
+       VALUES (2, (SELECT "id" FROM "User" WHERE "role" = 'IT_STAFF'),
+         (SELECT "id" FROM "User" WHERE "role" = 'IT_STAFF'),
+         now(), 'an action', 'req-1', now())`
+    );
+  });
+
+  it("MIG-03 the Actions Taken rollback drops the table and the enum and nothing else, leaving the version and the history", async () => {
+    await db.query(await sql("down.sql", ACTIONS_MIGRATION));
+
+    expect(await hasActionsTable()).toBe(false);
+    expect(await hasActionStateEnum()).toBe(false);
+    // Still exactly what the first migration left: its table, its column, its
+    // rows, and every Lab 3 row.
+    expect(await tableNames()).toStrictEqual(
+      [...tablesBefore, "TicketStatusChange"].toSorted()
+    );
+    expect(await hasVersionColumn()).toBe(true);
+    expect(await snapshot()).toStrictEqual(before);
+    expect(await history()).toStrictEqual(firstBackfill);
+    expect(await recordedMigrations()).toStrictEqual([MIGRATION]);
+  });
+
+  it("MIG-04 the Actions Taken migration applies again after its rollback", async () => {
+    await db.query(await sql("migration.sql", ACTIONS_MIGRATION));
+    await db.query(
+      `INSERT INTO "_prisma_migrations" VALUES ('${ACTIONS_MIGRATION}')`
+    );
+
+    expect(await hasActionsTable()).toBe(true);
+    expect(await hasActionStateEnum()).toBe(true);
+    expect(await rows(`SELECT 1 FROM "ActionTaken"`)).toHaveLength(0);
+    expect(await snapshot()).toStrictEqual(before);
+  });
+
+  it("MIG-03 rolling both back, Actions first, restores the database to what Lab 3 left, and MIG-04 applying both again gives the same data", async () => {
+    await db.query(await sql("down.sql", ACTIONS_MIGRATION));
+    await db.query(await sql("down.sql"));
+
+    expect(await tableNames()).toStrictEqual(tablesBefore);
+    expect(await hasVersionColumn()).toBe(false);
+    expect(await hasActionStateEnum()).toBe(false);
+    expect(await snapshot()).toStrictEqual(before);
+    expect(await recordedMigrations()).toStrictEqual([]);
+
+    await db.query(await sql("migration.sql"));
+    await db.query(await sql("migration.sql", ACTIONS_MIGRATION));
+
+    expect(await hasVersionColumn()).toBe(true);
+    expect(await hasActionsTable()).toBe(true);
+    expect(await snapshot()).toStrictEqual(before);
     expect(await history()).toStrictEqual(firstBackfill);
   });
 });
