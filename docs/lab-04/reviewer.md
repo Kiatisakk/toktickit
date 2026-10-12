@@ -233,7 +233,7 @@ His server diff matched his contract: counts, the inclusive seven-day window, or
 | tests.md L80, L109 🟡 | RULE-03 and API-29 claimed boundary and isolation proofs the tests did not give |
 | 3 × 🔵 | Third copy of the Bangkok formatter; dead helpers; an `aria-label` hiding "Refreshing…" |
 
-**Outcome.** He fixed or answered all fourteen (the cache finding by refetching on every visit instead of invalidating per writer, which covers every writer). Re-reviewed at `9da4a61` in code, each fix reverted to see its test fail, including the four boundary mutations and the ownership filter; restoring the `/tickets` redirect was repeated here and failed the sign-in test. **Approved** 2026-10-12 (review 5487498566) with two 🔵 notes (the zone printed twice in the "Updated" note; stale counts in REG-03). Not merged yet: merging #84 put it in conflict with his `lab4-staging`, which is his to resolve.
+**Outcome.** He fixed or answered all fourteen (the cache finding by refetching on every visit instead of invalidating per writer, which covers every writer). Re-reviewed at `9da4a61` in code, each fix reverted to see its test fail, including the four boundary mutations and the ownership filter; restoring the `/tickets` redirect was repeated here and failed the sign-in test. **Approved** 2026-10-12 (review 5487498566) with two 🔵 notes (the zone printed twice in the "Updated" note; stale counts in REG-03). Merging #84 then put it in conflict with his `lab4-staging`; he merged staging into the branch (`6d1c7ea`, conflicts in docs and the generated API client). That merge was checked here: no conflict markers, client and server `tsc` clean, client suite 186/186 (server suite not re-run). Approved again (review 5488864893) and merged by us at 2026-10-12 09:32:28Z (`6ad32a5`) after confirming no `DO NOT MERGE` label.
 
 ---
 
@@ -252,4 +252,4 @@ His server diff matched his contract: counts, the inclusive seven-day window, or
 | [beambeambeam#82](https://github.com/beambeambeam/toktickit/pull/82) | given | 12 | Changes requested → Approved | Merged |
 | [beambeambeam#83](https://github.com/beambeambeam/toktickit/pull/83) | given | 4 + 2 process | Changes requested → Approved | Merged |
 | [beambeambeam#84](https://github.com/beambeambeam/toktickit/pull/84) | given | 8 | Changes requested → Approved | Merged |
-| [beambeambeam#85](https://github.com/beambeambeam/toktickit/pull/85) | given | 14 | Changes requested → Approved | Open — conflict with his staging |
+| [beambeambeam#85](https://github.com/beambeambeam/toktickit/pull/85) | given | 14 | Changes requested → Approved | Merged |
