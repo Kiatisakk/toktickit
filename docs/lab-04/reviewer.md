@@ -191,6 +191,50 @@ Not verified by us: his two-browser e2e, his full suites, and focus in a real br
 
 **Outcome.** He replied on all four threads and on the two process items: Issue #75 linked, `ai-use.md` entry added. A Sonnet 5.5 agent re-reviewed `9cbb6b6` against the code, reverting each fix to see its test fail: focus after refresh, focus on a server field error, assignee names in history (shown from current lookups, falling back to "Former assignee (User #id)"), and a new test that sees the edit block on the Ticket `FOR UPDATE` lock; deleting the lock again now fails it. One mutation was repeated in this session and also failed its test. The agent's doubt that the review heading could steal focus later was checked against the code and does not hold: every failed save sets `failure`, and a successful one closes the form. **Approved** 2026-10-07 (review 5443306339); then merged by us at 13:50:35Z (`a19fd46`) after confirming no `DO NOT MERGE` label. Not run: his e2e, full suites and lint.
 
+
+---
+
+### beambeambeam#84 — Progress, complete and cancel Actions Taken (his Issue beambeambeam/toktickit#76)
+
+[beambeambeam#84](https://github.com/beambeambeam/toktickit/pull/84) · reviewed 2026-10-12 (review 5484501760) · **8 line comments**, verdict **Changes requested**. Caveman format. Drafted by a Sonnet 5.5 agent on a private PostgreSQL that was removed afterwards; the draft proposed approval, and the verdict was raised after the first finding was checked here against his ui-spec.
+
+The server rules held: lock order, version checks, state edges, terminal-Ticket refusal and the event history; 14 of 18 mutants of `transitionAction` were killed by his tests, and 4 of 4 in his request validator.
+
+| File | Finding |
+| --- | --- |
+| actions-taken-controls.tsx L316 🟡 | `if (!canProgress) return null` unmounts the success status the moment an Action turns Completed or Cancelled, so the message vanishes and focus falls to `body`, against his ui-spec L94 (announce async success) and L95 (focus returns sensibly after a dialog closes) |
+| actions-edit-ui.test.tsx L796 🟡 | The two lifecycle UI tests pass on a single render of that message |
+| repositories/actions.ts L475 🟡 | The snapshot-assignee check is untested: deleting it left all 19 API tests green |
+| actions.api.test.ts L1090 🟡 | `ACCOUNT_INACTIVE` for the acting user is untested (same mutation result) |
+| actions.api.test.ts L791 🟡 | The assignee recheck on completion is untested (same mutation result) |
+| actions-taken-controls.tsx L281 🔵 | Query key copied by hand instead of `ticketActionsQueryOptions(...).queryKey` |
+| actions-taken-controls.tsx L385 🔵 | A disabled Complete button's reason is not linked to it |
+| actions-taken-controls.tsx L531 ❓ | Whether Complete or Cancel should wait while an edit draft is open |
+
+**Outcome.** He fixed all eight, answering the question by locking the lifecycle buttons while a draft is open. Re-reviewed at `8b13c6a` in code: each fix was reverted and its test failed (three server rules, three client behaviours); restoring the early `return null` was repeated here and failed two UI tests. **Approved** 2026-10-12 (review 5487381598), then merged by us at 06:59:48Z (`7f566c4`) after confirming no `DO NOT MERGE` label. Not run: his e2e, full server suite and lint.
+
+---
+
+### beambeambeam#85 — Requester dashboard and exact drill-down (his Issue beambeambeam/toktickit#78)
+
+[beambeambeam#85](https://github.com/beambeambeam/toktickit/pull/85) · reviewed 2026-10-12 (review 5484645894) · **14 line comments**, verdict **Changes requested**. Caveman format. Drafted by a Sonnet 5.5 agent on a private PostgreSQL that was removed afterwards. (A first attempt was stopped when it looked as if no review had been requested; he had asked in person, so it was restarted from scratch.)
+
+His server diff matched his contract: counts, the inclusive seven-day window, ordering, the role guard and validation. The findings were in the client and in what the tests prove.
+
+| File | Finding |
+| --- | --- |
+| landing-page.tsx L26 🔴 | A Requester's sign-in still navigates to `/tickets` (`login-page.tsx` L70 and L144), though his Issue makes the Dashboard the Requester landing; the e2e opened `/dashboard` directly |
+| my-tickets-page.tsx L274 🟡 | A malformed `from`/`through` in the URL throws `RangeError` and breaks My Tickets |
+| my-tickets-page.tsx L271 🟡 | The scope note is in Bangkok time, the rows in the viewer's |
+| requester-dashboard-page.tsx L162, L189 🟡 | Refresh and Retry disable themselves while focused, so focus is lost |
+| dashboard-query-options.ts L15 🟡 | No write invalidates the Requester dashboard query (read from code) |
+| requester-dashboard.api.test.ts L215, L243 🟡 | No row on a window boundary (`gte`/`lte` → `gt`/`lt` survived) and no foreign Waiting row (dropping the ownership filter survived) |
+| dashboard-rules.test.ts L31 🟡 | Tests helpers production does not use |
+| tests.md L80, L109 🟡 | RULE-03 and API-29 claimed boundary and isolation proofs the tests did not give |
+| 3 × 🔵 | Third copy of the Bangkok formatter; dead helpers; an `aria-label` hiding "Refreshing…" |
+
+**Outcome.** He fixed or answered all fourteen (the cache finding by refetching on every visit instead of invalidating per writer, which covers every writer). Re-reviewed at `9da4a61` in code, each fix reverted to see its test fail, including the four boundary mutations and the ownership filter; restoring the `/tickets` redirect was repeated here and failed the sign-in test. **Approved** 2026-10-12 (review 5487498566) with two 🔵 notes (the zone printed twice in the "Updated" note; stale counts in REG-03). Not merged yet: merging #84 put it in conflict with his `lab4-staging`, which is his to resolve.
+
 ---
 
 ## Coverage
@@ -207,3 +251,5 @@ Not verified by us: his two-browser e2e, his full suites, and focus in a real br
 | [beambeambeam#80](https://github.com/beambeambeam/toktickit/pull/80) | given | 8 | Changes requested → Approved | Merged |
 | [beambeambeam#82](https://github.com/beambeambeam/toktickit/pull/82) | given | 12 | Changes requested → Approved | Merged |
 | [beambeambeam#83](https://github.com/beambeambeam/toktickit/pull/83) | given | 4 + 2 process | Changes requested → Approved | Merged |
+| [beambeambeam#84](https://github.com/beambeambeam/toktickit/pull/84) | given | 8 | Changes requested → Approved | Merged |
+| [beambeambeam#85](https://github.com/beambeambeam/toktickit/pull/85) | given | 14 | Changes requested → Approved | Open — conflict with his staging |
