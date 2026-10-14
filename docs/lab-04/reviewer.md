@@ -283,7 +283,7 @@ No finding breaks the transition matrix, the gate or its error shape on the serv
 
 Not verified by us: Playwright, responsive and zoom checks, axe, screenshots and the production build. His server suite (203 passed, 5 skipped) and client suite (194 of 194 with a raised timeout) matched his numbers; `lab-03/auth.api.test.ts` could not start in the review environment.
 
-**Outcome (as of this record).** Open, no reply from him and no new commit since the review (head still `dd9f7df`); awaiting his fixes, then a re-review.
+**Outcome (as of this record).** Open. By 20:48 UTC on 2026-10-14 he had answered 3 of the 16 threads, each naming a commit: the four-argument call (`0aee185`), a test for In Progress Actions counting as pending (`878fa3e`) and a foreign-Requester history read refused 404 (`4e2e840`, head). The other 13 threads have no reply or fix yet. None of this has been re-checked by me; awaiting his remaining fixes, then a re-review.
 
 ---
 
@@ -331,5 +331,5 @@ Not verified by us: any browser or E2E run, axe, zoom, screenshots, lint, and `l
 | [beambeambeam#83](https://github.com/beambeambeam/toktickit/pull/83) | given | 4 + 2 process | Changes requested → Approved | Merged |
 | [beambeambeam#84](https://github.com/beambeambeam/toktickit/pull/84) | given | 8 | Changes requested → Approved | Merged |
 | [beambeambeam#85](https://github.com/beambeambeam/toktickit/pull/85) | given | 14 | Changes requested → Approved | Merged |
-| [beambeambeam#86](https://github.com/beambeambeam/toktickit/pull/86) | given | 16 | Changes requested | Open, awaiting his fixes |
+| [beambeambeam#86](https://github.com/beambeambeam/toktickit/pull/86) | given | 16 | Changes requested | Open, 3 of 16 answered, awaiting re-review |
 | [beambeambeam#87](https://github.com/beambeambeam/toktickit/pull/87) | given | 11 | Changes requested | Open, fixes pushed, awaiting re-review |
