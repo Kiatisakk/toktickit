@@ -366,7 +366,7 @@ describe("stale writes", () => {
     }
   });
 
-  it("BR-19 the Requester's resolved indication increments the version and writes no history row", async () => {
+  it("WF-14 the Requester's resolved indication increments the version and writes no history row", async () => {
     const id = await createTicket("OPEN");
     const response = await as(requester)(
       request(app).post(`/api/tickets/${id}/resolved-indication`)
@@ -911,6 +911,52 @@ describe("the resolution gate", () => {
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe("INVALID_STATUS_TRANSITION");
     await expectUntouched(id, "CANCELLED");
+  });
+
+  it("WF-13 the summary lifecycle: refused on any other target, stored on Resolved, kept after Reopened, overwritten by the next resolution", async () => {
+    const id = await readyTicket();
+
+    // 1. A summary sent with a target that is not Resolved is refused, and
+    //    nothing is stored.
+    const wrongTarget = await patch(staff, id, "status", {
+      status: "WAITING_FOR_REQUESTER",
+      version: 1,
+      resolutionSummary: SUMMARY,
+    });
+
+    expect(wrongTarget.status).toBe(400);
+    expect(wrongTarget.body.error.code).toBe("VALIDATION_FAILED");
+    await expectUntouched(id, "IN_PROGRESS");
+
+    // 2. Stored on Resolved.
+    const resolved = await resolve(id, 1, "First summary.");
+
+    expect(resolved.status).toBe(200);
+    expect(resolved.body.resolutionSummary).toBe("First summary.");
+
+    // 3. Kept when the Ticket is reopened.
+    const reopened = await patch(staff, id, "status", {
+      status: "REOPENED",
+      version: resolved.body.version,
+    });
+
+    expect(reopened.status).toBe(200);
+    expect(reopened.body.currentStatus).toBe("REOPENED");
+    expect(reopened.body.resolutionSummary).toBe("First summary.");
+    const keptRow = await prisma.ticket.findUniqueOrThrow({ where: { id } });
+
+    expect(keptRow.resolutionSummary).toBe("First summary.");
+
+    // 4. Overwritten by the next resolution.
+    const again = await resolve(id, reopened.body.version, "Second summary.");
+
+    expect(again.status).toBe(200);
+    expect(again.body.resolutionSummary).toBe("Second summary.");
+    const overwrittenRow = await prisma.ticket.findUniqueOrThrow({
+      where: { id },
+    });
+
+    expect(overwrittenRow.resolutionSummary).toBe("Second summary.");
   });
 
   it("WF-16 a Planned Action blocks, even with a Done Action, no follow-up and a summary; completing or cancelling it clears the block", async () => {

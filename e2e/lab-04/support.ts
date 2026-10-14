@@ -115,9 +115,16 @@ export interface ConsoleGuard {
    * Declares that this test provokes `status` from `method` `url` on purpose (a
    * designed refusal, or a route stub answering with one). Only a response
    * that matches is tolerated, together with the browser's own console line
-   * about it. A declaration that is never observed is itself a problem.
+   * about it. A declaration that is never observed is itself a problem,
+   * unless it is declared `optional` (a refusal that depends on timing, such as
+   * the anonymous `GET /api/auth/me` of a page that may or may not ask).
    */
-  expectRefusal: (method: string, url: RegExp, status: number) => void;
+  expectRefusal: (
+    method: string,
+    url: RegExp,
+    status: number,
+    optional?: boolean
+  ) => void;
   /** Declares a request this test aborts on purpose (`route.abort`). */
   expectAbort: (url: RegExp) => void;
   /** What went wrong so far, one line each. */
@@ -261,13 +268,14 @@ export const createGuard = (): ConsoleGuard => {
 
   return {
     attach,
-    expectRefusal: (method, url, status) => {
+    expectRefusal: (method, url, status, optional = false) => {
       expectations.push({
         kind: "refusal",
         method: method.toUpperCase(),
         url,
         status,
         seen: 0,
+        optional,
       });
     },
     expectAbort: (url) => {
@@ -285,8 +293,8 @@ export const createGuard = (): ConsoleGuard => {
 
 /**
  * `test` with a console guard attached to the default page and checked after
- * every test (AC-47). A spec opens other people's pages through `openAs`, which
- * attaches the same guard.
+ * every test (AC-47, E2E-13). A spec opens other people's pages through
+ * `openAs`, which attaches the same guard.
  */
 export const test = base.extend<{ guard: ConsoleGuard }>({
   guard: [

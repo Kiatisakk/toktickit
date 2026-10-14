@@ -2,6 +2,7 @@ import { configure, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { permittedTargets, STATUS_LABELS } from "../../src/lib/ticketStatus";
 import {
   jsonResponse,
   NO_COMMENTS,
@@ -11,9 +12,10 @@ import {
 import { authContext, STAFF_USER } from "../support/auth";
 
 /**
- * UI-35 and UI-36 for the Ticket forms — the version a staff write sends, and
- * what the screen does with `409 STALE_UPDATE` (ui-spec.md section 8, AC-42) —
- * and, from Issue #75, the resolve dialog: UI-32, UI-33, UI-34, UI-37 and the
+ * UI-31 (the status control's targets), UI-39 (the version a staff write
+ * sends) and UI-36 for the Ticket forms — what the screen does with
+ * `409 STALE_UPDATE` (ui-spec.md section 8, AC-42) —
+ * and, from Issue #75, the resolve dialog: UI-32 to UI-35, UI-37 and the
  * "keeps what the user typed" half of UI-36 (ui-spec.md section 7, AC-41).
  * Every control in the first half is a select or a button, which holds no typed
  * text to keep; the dialog's summary box does.
@@ -132,7 +134,61 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("UI-35 a staff write sends the version it read", () => {
+describe("UI-31 the status control offers exactly the permitted targets", () => {
+  /**
+   * specification.md section 5, written out here rather than read from
+   * `permittedTargets`: a test that took its expectation from the module under
+   * test could not notice the module changing.
+   */
+  const PERMITTED: Record<string, string[]> = {
+    NEW: ["Open", "Cancelled"],
+    OPEN: ["In Progress", "Waiting for Requester", "Resolved", "Cancelled"],
+    IN_PROGRESS: ["Waiting for Requester", "Resolved", "Cancelled"],
+    WAITING_FOR_REQUESTER: ["In Progress", "Resolved", "Cancelled"],
+    RESOLVED: ["Closed", "Reopened"],
+    CLOSED: ["Reopened"],
+    REOPENED: ["In Progress", "Waiting for Requester", "Resolved", "Cancelled"],
+  };
+
+  it.each(Object.keys(PERMITTED))(
+    "from %s, the control lists those targets and no other, in lifecycle order",
+    async (from) => {
+      const ticket = { ...TICKET, currentStatus: from, version: 1 };
+
+      staleServer(ticket, ticket);
+      asStaff();
+
+      const control = await screen.findByRole("combobox", {
+        name: /current status/iu,
+      });
+      const offered = within(control)
+        .getAllByRole("option")
+        .map((option) => option.textContent)
+        .filter((label) => label !== "Move to…");
+
+      expect(offered).toStrictEqual(PERMITTED[from]);
+      expect(offered).toStrictEqual(
+        permittedTargets(from).map((target) => STATUS_LABELS[target])
+      );
+    }
+  );
+
+  it("offers a Cancelled Ticket no control at all, only its status as text", async () => {
+    const ticket = { ...TICKET, currentStatus: "CANCELLED", version: 1 };
+
+    staleServer(ticket, ticket);
+    asStaff();
+
+    expect(
+      await screen.findByText(/cannot be moved again/iu)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("combobox", { name: /current status/iu })
+    ).toBeNull();
+  });
+});
+
+describe("UI-39 a staff write sends the version it read", () => {
   it("sends the Ticket's version on a status change, and the newer one on the next", async () => {
     const calls: Call[] = [];
     let current: Record<string, unknown> = {
