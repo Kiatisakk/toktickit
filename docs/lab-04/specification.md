@@ -137,7 +137,7 @@ Excluded by this specification, though not forbidden by the handout:
 
 ### Versioning and history
 
-- **BR-19** Ticket and Action Taken each carry an integer `version`, starting at 1. A write names the version it read and is applied only if that is still the stored version, atomically (`WHERE id AND version`); success increments it by one. A mismatch is `409 STALE_UPDATE` and changes nothing. A missing or non-integer version is `400 VALIDATION_FAILED`. The Requester's resolved indication increments the Ticket version but, being set-once and bodiless, sends none.
+- **BR-19** Ticket and Action Taken each carry an integer `version`, starting at 1. A write names the version it read and is applied only if that is still the stored version, atomically (`WHERE id AND version`); success increments it by one. A mismatch is `409 STALE_UPDATE` and changes nothing. A missing version, or one that is not a whole number from 1 (zero, negative, fractional, text), is `400 VALIDATION_FAILED`. The Requester's resolved indication increments the Ticket version but, being set-once and bodiless, sends none.
 - **BR-20** A write is checked in this order: body shape (`400`), existence and scope (`404`), version (`409 STALE_UPDATE`), Ticket or Action state (`409 TICKET_NOT_ACTIONABLE`, `409 ACTION_NOT_EDITABLE`, `400 INVALID_STATUS_TRANSITION`), then the gate (`400 RESOLUTION_GATE_FAILED`). Checking the version first means a caller holding an outdated picture is told so before being told something derived from it.
 - **BR-21** The status history is append-only. A new Ticket gets a `null → New` row; every successful transition gets one `from → to` row with the actor and the server time, written in the same transaction as the change. A refused transition writes nothing. No row is updated or deleted.
 
@@ -321,7 +321,7 @@ Full detail is in [api-spec.md](api-spec.md). In summary:
 
 - **AC-24** Given two staff who loaded the same Ticket, when the second sends an owner, IT Priority or status change with the old `version`, then it is refused `409 STALE_UPDATE`, nothing changes, and a change with the current version succeeds and increments it.
 - **AC-25** Given two staff who loaded the same Action, when both complete or cancel it at once, then exactly one succeeds and the other is `409 STALE_UPDATE`.
-- **AC-26** Given a write with a missing or non-integer `version`, when it is submitted, then it is refused `400 VALIDATION_FAILED` naming `version`.
+- **AC-26** Given a write with a missing `version`, or one that is not a whole number from 1, when it is submitted, then it is refused `400 VALIDATION_FAILED` naming `version`.
 - **AC-27** Given a resolution and an Action write that creates an open follow-up — a new Action, or an edit turning Follow-Up Required on — submitted at the same moment, when both are processed, then a Ticket is never left Resolved with an open follow-up.
 
 ### Dashboards

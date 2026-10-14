@@ -133,7 +133,7 @@ Edit a **Planned** Action. IT Staff and Administrator; any of them, not only the
 
 | Condition | Status | Code |
 | --- | --- | --- |
-| Missing or non-integer `version` | 400 | `VALIDATION_FAILED`, `details.version` |
+| Missing `version`, or not a whole number from 1 | 400 | `VALIDATION_FAILED`, `details.version` |
 | Other validation failure | 400 | `VALIDATION_FAILED` |
 | `performedById` ineligible | 400 | `ACTION_ASSIGNEE_INELIGIBLE` |
 | Action absent | 404 | `ACTION_NOT_FOUND` |
@@ -173,7 +173,7 @@ There is **no** endpoint that deletes an Action or moves it out of Done or Cance
 
 | Condition | Status | Code |
 | --- | --- | --- |
-| `version` missing or not an integer | 400 | `VALIDATION_FAILED`, `details.version` |
+| `version` missing, or not a whole number from 1 | 400 | `VALIDATION_FAILED`, `details.version` |
 | `version` no longer the stored one | 409 | `STALE_UPDATE` |
 
 **Changed from Lab 3:** the "the ticket moved while this change was being made" refusal was `400 INVALID_STATUS_TRANSITION`; it is now `409 STALE_UPDATE` (D-07, D-16).
