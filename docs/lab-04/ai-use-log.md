@@ -15,7 +15,7 @@ Every prompt of the sprint so far. Kept complete because a prompt cannot be reco
 accurately once the session is over.
 
 Rows 1 to 12 were written as the work happened, one for each prompt that started an Issue.
-Rows 13 to 56 are every other prompt of the sprint, added at the end from the session
+Rows 13 to 59 are every other prompt of the sprint, added at the end from the session
 transcript in date order (times UTC), so the table now holds all of them.
 
 | # | Prompt | What it produced |
@@ -76,6 +76,9 @@ transcript in date order (times UTC), so the table now holds all of them.
 | 54 | 18 Oct 21:35 · *"in the full prompt log need to include subagent prompt"* | Extracted every sub-agent prompt from the session transcript, with the user prompt behind each one. |
 | 55 | 18 Oct 21:38 · *"add to ai-use-log.md"* | The *Sub-agent prompts* section below. |
 | 56 | 18 Oct 21:46 · *"เพิ่ม ๆ แล้วก็ในส่วนของ reflection "ในพาร์ทของแลปนี้ผมพยายามสร้าง Workflow เพื่อให้ตัวของ ai สามารถ automation ในการแบ่งงาน implementation ในแต่ละ pr ได้ไวมากขึ้นโดยการใช้ไอเดียของ stacked branch หรือ stacked pr มาปรับเพื่อไม่ให้ผิดกฏของการทำ workflow ใน lab toktokit นี้ โดยหลัก ๆ ในงานนี้คือจะให้ Sub-Agent ตัวที่เล็กกว่าและประหยัดกว่าเป็นตัว Implement และให้ตัวที่ใหญ่กว่าเป็น Orchestra และตรวจงาน ซึ่งกระบวนการเหล่านี้สามารถลดเวลาในการ Implement และรีวิวได้ไวมากขึ้น" คิดว่าไงควรปรับอะไรมะขอให้นายปรับเป็นอิ้งและเสริมหน่อยก็ได้"*<br>"Add them. And for the reflection, '…', what do you think, should anything change? Put it into English and add to it a little." | Added rows 13 to 56 to this table. Translated the author's reflection into English, checked its two claims against GitHub, and handed both back to the author to decide what to add. |
+| 57 | 18 Oct · the English reflection quoted back, then *"งั้นเพิ่มเป็นการแบ่ง Issue ที่ทำให้สามารถทำ Parallel ได้ดีมะ"*<br>"Then shall we add that splitting the Issues is what made parallel work possible?" | One sentence saying so was added to the author's reflection, and its last claim (faster reviews) was put to the author with the numbers: median 57.5 hours from opening to merge in Lab 4, against 10.7 in Lab 3. |
+| 58 | 18 Oct · *"B."* | The author chose to drop "made reviewing faster". The reflection went into `ai-use.md` section 3 as the author approved it. |
+| 59 | 18 Oct · *"เลือก key prompt มาใหม่เอาพวก sub-agent มาก็ได้เอาแค่ 6 - 7 อันพอ"*<br>"Pick the key prompts again; sub-agent ones are fine, just 6 or 7." | `ai-use.md` section 2 was re-selected to seven: rows 2, 3 and 4, and the sub-agent prompts S-10 to S-12, S-22, S-25 and S-29, each checked against the transcript. |
 
 ---
 
