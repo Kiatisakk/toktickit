@@ -283,7 +283,7 @@ No finding breaks the transition matrix, the gate or its error shape on the serv
 
 Not verified by us: Playwright, responsive and zoom checks, axe, screenshots and the production build. His server suite (203 passed, 5 skipped) and client suite (194 of 194 with a raised timeout) matched his numbers; `lab-03/auth.api.test.ts` could not start in the review environment.
 
-**Outcome (as of this record).** Open. By 20:48 UTC on 2026-10-14 he had answered 3 of the 16 threads, each naming a commit: the four-argument call (`0aee185`), a test for In Progress Actions counting as pending (`878fa3e`) and a foreign-Requester history read refused 404 (`4e2e840`, head). The other 13 threads have no reply or fix yet. None of this has been re-checked by me; awaiting his remaining fixes, then a re-review.
+**Outcome.** He answered every thread with a commit. Re-reviewed at `1e4c0ea` in code (a Sonnet 5.5 agent drafted, I checked): 15 of 16 fixed or soundly answered, and each fix was reverted to see its test fail (17 mutants, all as stated, among them the different-actor race, which now fails without `lockTicket`). Ran: ticket-workflow API 22/22, 14 related server files 133 tests, the touched client files, `tsc` clean for client and server source. **Approved** 2026-10-15 10:33:53Z (review 5531762186) with two 🔵 left open: the four-argument `updateTicketStatus` call (TS2554) is still there, and his `reviewer.md` row says it was fixed. Merged by us at 10:34:02Z (`78be599`) after confirming no `DO NOT MERGE` label. Not run: full suites, Playwright, lint, `openapi:check`.
 
 ---
 
@@ -309,7 +309,15 @@ His behaviour matched the contract: every staff card, preview and drill-down agr
 
 Not verified by us: any browser or E2E run, axe, zoom, screenshots, lint, and `lab-03/auth.api.test.ts`.
 
-**Outcome (as of this record).** He replied on all eleven threads between 18:17 and 18:42 UTC on 2026-10-14, each naming a commit (`b45796e` through `42409d3`, head `17fecae`): the static import now follows the fixture, both preview caps have tests, the empty state keys on `totalItems`, the pagination keeps `keepPreviousData`, Clear Filters clears the URL, the invalid-range notice exists, a 128-Ticket parity test was committed, and the performance, Administrator, axe and zoom items were run and recorded. These replies have not been re-checked against his code by me; no verdict beyond the first review exists. Open, awaiting re-review.
+**Outcome.** Three more rounds before the merge.
+
+| Round | Head | Verdict | What was checked |
+| --- | --- | --- | --- |
+| Re-review, 2026-10-15 10:35Z (review 5531778638) | `17fecae` | **Approved**, two 🔵 | All 11 fixed or answered. The 🔴 reproduced both ways: with the dynamic import a sentinel User in a separate ambient database survived; with the static import put back it was deleted. Server mutants 4/4 killed, client 7/8 (the survivor is hidden by the page clamp and harmless). The two 🔵: nothing stops a static import coming back; the Ticket Detail calls to `invalidateStaffWorkQueries` were untested. Merging #86 then put this PR in conflict. |
+| Third pass, 2026-10-16 13:12Z (review 5548238842) | `54fa40e` | **Changes requested**, one 🟡 | He rebased onto `78be599` and answered both 🔵: a fixture guard that fails setup when Prisma is not on the test database (`ae697c0`; the full server suite ran with it and no fixture tripped it), and a Ticket Detail test that fails when either call is replaced (checked here). The rebase was checked with a trial merge of the old head: the same 11 files conflict, every other file matches. New: his performance test read Tickets without `orderBy`, so its expected `myActions` of 400 depended on row order; it failed 2 runs in 3 with `402 !== 400`, and passed 3/3 with the line added. The 13 earlier threads were resolved here after checking. Also noted, not blocking: at the default worker count 5 of 7 full client runs had one or two `findBy*` timeouts, a different test each time; 255/255 with four workers. |
+| Final, 2026-10-18 21:28Z (review 5565048968) | `74a7adf` | **Approved** | The one-line `orderBy` fix: the file passed 8/8 three times; full server suite 237 passed, 5 skipped, 0 failed; server `tsc` clean. |
+
+Merged by us at 2026-10-18 21:28:24Z (`225ad8c`) after confirming no `DO NOT MERGE` label and the head commit. Not run by us in any round: Playwright, axe, screenshots, lint, and `lab-03/auth.api.test.ts` (it cannot start in the review environment).
 
 ---
 
@@ -331,5 +339,5 @@ Not verified by us: any browser or E2E run, axe, zoom, screenshots, lint, and `l
 | [beambeambeam#83](https://github.com/beambeambeam/toktickit/pull/83) | given | 4 + 2 process | Changes requested → Approved | Merged |
 | [beambeambeam#84](https://github.com/beambeambeam/toktickit/pull/84) | given | 8 | Changes requested → Approved | Merged |
 | [beambeambeam#85](https://github.com/beambeambeam/toktickit/pull/85) | given | 14 | Changes requested → Approved | Merged |
-| [beambeambeam#86](https://github.com/beambeambeam/toktickit/pull/86) | given | 16 | Changes requested | Open, 3 of 16 answered, awaiting re-review |
-| [beambeambeam#87](https://github.com/beambeambeam/toktickit/pull/87) | given | 11 | Changes requested | Open, fixes pushed, awaiting re-review |
+| [beambeambeam#86](https://github.com/beambeambeam/toktickit/pull/86) | given | 16 + 2 nits | Changes requested → Approved | Merged |
+| [beambeambeam#87](https://github.com/beambeambeam/toktickit/pull/87) | given | 11 + 2 nits + 1 | Changes requested → Approved → Changes requested → Approved | Merged |
