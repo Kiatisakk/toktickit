@@ -114,6 +114,15 @@ The same ordering was checked elsewhere. The owner and IT-priority writes evalua
 
 **Outcome.** Fixes pushed to the same branch; both threads answered, then resolved after the fix was checked again here (restoring the any-4xx rule failed 8 of the guard tests). He approved with `LGTM` at 2026-10-10 07:05:12Z and merged it himself nine seconds later (`33eca2e`). Issue #77 was closed by hand. Recorded on the next feature branch, #78's.
 
+
+### PR #86 — Final regression and hardening (Issue #78)
+
+[PR #86](https://github.com/Kiatisakk/toktickit/pull/86) · reviewed 2026-10-14 · **0 line comments**, verdict **Approved** (`LGTM`, no findings).
+
+Nothing was raised, so there was nothing to answer and no thread to resolve. The Pull Request carried the `lab-04` label and was linked to its Issue by hand (`closingIssuesReferences` = [78]; a closing keyword does not link against a staging base).
+
+**Outcome.** He approved at 15:52:25Z on 2026-10-14 and merged it himself nine seconds later (`a5b90c9`). Issue #78 was closed by hand at 16:43Z, since a merge into a staging branch closes nothing. Recorded on the end-of-sprint report branch (`docs/lab4-report`), because no feature branch follows it.
+
 ---
 
 ## Reviews I gave
@@ -144,6 +153,16 @@ A detailed contract — lock ordering, an idempotent create, and drill-down filt
 Our own contract (this PR) was checked against the same list before it was opened for review: eleven handout headings, ACs in Given/When/Then form, one gate error code listing every unmet condition, and a screenshot inventory.
 
 **Outcome.** He replied on all eight threads within the hour, each naming the commit that fixed it, and fixed the three process problems too: created `lab4-staging`, retargeted the Pull Request, added the `lab-04` label and the two missing registers, and linked his Issue. Re-reviewed at `7717a45` against the files rather than the replies, plus a mechanical check (AC-01 to AC-25 without gaps, every AC in his crosswalk, no duplicate or undefined test ID). **Approved** 2026-10-02 16:46:21Z. Merged 2026-10-02 16:48:36Z by the author's account, Kiatisakk, after the approval.
+
+---
+
+### beambeambeam#81 — Domain guidance and clearer PR summaries (no Issue)
+
+[beambeambeam#81](https://github.com/beambeambeam/toktickit/pull/81) · approved 2026-10-02 · **0 line comments**, verdict **Approved** (`LGTM`).
+
+A documentation-only Pull Request on his side: a domain-modelling guidance file (`docs/agents/domain.md`), an `AGENTS.md` edit and a wording change to the pull request template (42 lines added, 5 removed). It belongs to no Lab 4 Issue ("Related Issues: None") and changes no behaviour, so there were no acceptance criteria to read it against. The automated reviewer (Greptile) left one non-blocking remark about work done before the glossary exists. I raised no line findings.
+
+**Outcome.** **Approved** 2026-10-02 18:05:31Z (`LGTM`), then merged by us eleven seconds later at 18:05:42Z (`ab279fa`) after confirming no `DO NOT MERGE` label. It carries no `lab-04` label and no Issue; it is listed because it landed on his `lab4-staging`.
 
 ---
 
@@ -237,6 +256,71 @@ His server diff matched his contract: counts, the inclusive seven-day window, or
 
 ---
 
+### beambeambeam#86 — Enforce the final Ticket lifecycle and resolution gate (his Issue beambeambeam/toktickit#77)
+
+[beambeambeam#86](https://github.com/beambeambeam/toktickit/pull/86) · reviewed 2026-10-14 18:41 UTC, i.e. 2026-10-15 local (review 5522907404) · **16 line comments** (12 🟡, 4 🔵, no 🔴), verdict **Changes requested**. Checked on a clean checkout of `dd9f7df` with a private PostgreSQL.
+
+No finding breaks the transition matrix, the gate or its error shape on the server. The body names three process items: no `lab-04` label, no `ai-use.md` entry for his Issue, and his Issue is linked correctly. Greptile's two comments (a reset owner keeps active Tickets; history beyond 20 events unreachable) were folded into the inline items below.
+
+| File | Finding |
+| --- | --- |
+| staff-ticket-detail-page.tsx L639 🟡 | After Confirm the dialog closes and focus goes to a button already disabled by `setSelectedStatus("")`, so focus falls to `body` on success and on `RESOLUTION_GATE_FAILED`; the reasons list is also outside the `aria-live` region (reproduced in a throwaway jsdom test) |
+| staff-ticket-detail-page.tsx L863 🟡 | Status history is mounted only on the staff page; his specification and ui-spec say a Requester reads their own status history, and the API already allows it |
+| ticket-status-history-section.tsx L37 🟡 | Always requests page 1 of 20, oldest first, so event 21 onward is unreachable while the header counts every change (same as Greptile P2) |
+| ticket-status-history-section.tsx L10 🔵 | Times use the browser zone with no label, where ui-spec requires Asia/Bangkok, labelled |
+| openapi.yaml L399 🟡 | OpenAPI still says the status route is for IT Staff only, lists none of the new error shapes, and two role descriptions are false after the guard changes |
+| ticket-workflow.ts L69 🟡 | Owner eligibility now also requires `!mustChangePassword`, which `docs/lab-04` never says; an Administrator reset leaves the Ticket assigned to an owner who then cannot move it (same as Greptile P1) |
+| ticket-workflow.api.test.ts L326 🟡 | Mutation survivor: counting only Planned and dropping In Progress leaves all 58 tests green |
+| ticket-workflow.api.test.ts L508 🔵 | `updateTicketStatus` is called with 4 of 5 arguments (TS2554), unnoticed because the server `tsconfig` does not include tests |
+| ticket-workflow.api.test.ts L562 🟡 | Mutation survivor: any Requester can read any Ticket's history and every test passes; no foreign-Requester history read exists |
+| ticket-workflow.api.test.ts L599 🔵 | Mutation survivor: forcing `skip = 0` passes; no test sends `page` or `pageSize` |
+| ticket-workflow.api.test.ts L695 🟡 | Mutation survivor: deleting `lockTicket` leaves every test green because the race uses one actor; a different-actor race left an invalid Resolved Ticket in 24 of 25 runs, 0 at baseline |
+| tests.md L100 🟡 | API-20 cites one invalid edge and the unit matrix, not the test that exercises the 16 valid edges; clearing `resolvedAt` on Closed passes |
+| tests.md L123 🟡 | The Issue's 320 px and 200% zoom criteria are recorded as not run, so the card cannot reach Done |
+| tests.md L127 🔵 | AUTH-01 cites a 404 that is the indication `PUT`, not the history `GET` |
+| tests.md L133 🟡 | The Issue asks for lifecycle and concurrency E2E coverage; the row records none |
+| ticket-workflow.test.tsx L281 🟡 | Five mutation survivors in the two status-detail client files (Administrator controls, refetch on 409, cache update on success, history invalidation, clearing reasons) |
+
+Not verified by us: Playwright, responsive and zoom checks, axe, screenshots and the production build. His server suite (203 passed, 5 skipped) and client suite (194 of 194 with a raised timeout) matched his numbers; `lab-03/auth.api.test.ts` could not start in the review environment.
+
+**Outcome.** He answered every thread with a commit. Re-reviewed at `1e4c0ea` in code (a Sonnet 5.5 agent drafted, I checked): 15 of 16 fixed or soundly answered, and each fix was reverted to see its test fail (17 mutants, all as stated, among them the different-actor race, which now fails without `lockTicket`). Ran: ticket-workflow API 22/22, 14 related server files 133 tests, the touched client files, `tsc` clean for client and server source. **Approved** 2026-10-15 10:33:53Z (review 5531762186) with two 🔵 left open: the four-argument `updateTicketStatus` call (TS2554) is still there, and his `reviewer.md` row says it was fixed. Merged by us at 10:34:02Z (`78be599`) after confirming no `DO NOT MERGE` label. Not run: full suites, Playwright, lint, `openapi:check`.
+
+---
+
+### beambeambeam#87 — Deliver the Staff dashboard and My Actions drill-down (his Issue beambeambeam/toktickit#79)
+
+[beambeambeam#87](https://github.com/beambeambeam/toktickit/pull/87) · reviewed 2026-10-14 18:12 UTC, i.e. 2026-10-15 local (review 5522498888) · **11 line comments** (1 🔴, 7 🟡, 3 🔵), verdict **Changes requested**. Checked on a private PostgreSQL; his four staff server files (24 tests) passed there, and 24 mutants of his real predicates were run, 21 killed.
+
+His behaviour matched the contract: every staff card, preview and drill-down agreed with independent SQL for IT Staff A, B and the Administrator. The body names two process items: no `lab-04` label and no `ai-use.md` entry for his Issue.
+
+| File | Finding |
+| --- | --- |
+| staff-dashboard.api.test.ts L7 🔴 | A static `import` of the repository binds `prisma` to the ambient `DATABASE_URL` before the fixture swaps it, so the fixture's `deleteMany` runs against the developer's database: a sentinel `User` was deleted and four fixture users left behind. His already merged `requester-dashboard.api.test.ts` has the same pattern |
+| staff-dashboard.api.test.ts L465 🟡 | Two mutants survive: the Urgent preview without the active filter, and with `take: 6` |
+| staff-dashboard.api.test.ts L468 🟡 | `take: 6` on the My Actions preview survives; only 3 pending Actions are seeded, so the cap of five is untested |
+| staff-dashboard.spec.ts L33 🟡 | The drill-down journey asserts the URL only, not that the card's number equals the list's total |
+| staff-my-actions-page.tsx L105 🟡 | An out-of-range page answers `items: []` with `totalItems: 25` and the UI says "No assigned actions" (same as Greptile P2) |
+| staff-my-actions-page.tsx L143 🟡 | Focus is lost on every page change: no `placeholderData`, so the pagination control unmounts |
+| dashboard-query-options.ts L34 🔵 | Two invalidations match no query key now in use; staff status, owner and priority writes invalidate neither dashboard |
+| ticket-search.ts L94 🔵 | A drill-down link with a bad date window silently becomes an unfiltered queue, with no notice |
+| tests.md L111 🟡 | API-31 (card against list parity) has no staff test; I ran one over 128 Tickets and all counts agreed, and asked for a committed version |
+| tests.md L122 🔵 | UI-05 says Queue filter UI is not run, but his PR adds four Queue tests |
+| tests.md L435 🟡 | The Issue's axe, 320 px, 200% zoom, performance and Administrator criteria are recorded as not run |
+
+Not verified by us: any browser or E2E run, axe, zoom, screenshots, lint, and `lab-03/auth.api.test.ts`.
+
+**Outcome.** Three more rounds before the merge.
+
+| Round | Head | Verdict | What was checked |
+| --- | --- | --- | --- |
+| Re-review, 2026-10-15 10:35Z (review 5531778638) | `17fecae` | **Approved**, two 🔵 | All 11 fixed or answered. The 🔴 reproduced both ways: with the dynamic import a sentinel User in a separate ambient database survived; with the static import put back it was deleted. Server mutants 4/4 killed, client 7/8 (the survivor is hidden by the page clamp and harmless). The two 🔵: nothing stops a static import coming back; the Ticket Detail calls to `invalidateStaffWorkQueries` were untested. Merging #86 then put this PR in conflict. |
+| Third pass, 2026-10-16 13:12Z (review 5548238842) | `54fa40e` | **Changes requested**, one 🟡 | He rebased onto `78be599` and answered both 🔵: a fixture guard that fails setup when Prisma is not on the test database (`ae697c0`; the full server suite ran with it and no fixture tripped it), and a Ticket Detail test that fails when either call is replaced (checked here). The rebase was checked with a trial merge of the old head: the same 11 files conflict, every other file matches. New: his performance test read Tickets without `orderBy`, so its expected `myActions` of 400 depended on row order; it failed 2 runs in 3 with `402 !== 400`, and passed 3/3 with the line added. The 13 earlier threads were resolved here after checking. Also noted, not blocking: at the default worker count 5 of 7 full client runs had one or two `findBy*` timeouts, a different test each time; 255/255 with four workers. |
+| Final, 2026-10-18 21:28Z (review 5565048968) | `74a7adf` | **Approved** | The one-line `orderBy` fix: the file passed 8/8 three times; full server suite 237 passed, 5 skipped, 0 failed; server `tsc` clean. |
+
+Merged by us at 2026-10-18 21:28:24Z (`225ad8c`) after confirming no `DO NOT MERGE` label and the head commit. Not run by us in any round: Playwright, axe, screenshots, lint, and `lab-03/auth.api.test.ts` (it cannot start in the review environment).
+
+---
+
 ## Coverage
 
 | Pull Request | Direction | Findings | Verdict | State |
@@ -248,8 +332,12 @@ His server diff matched his contract: counts, the inclusive seven-day window, or
 | [#83](https://github.com/Kiatisakk/toktickit/pull/83) | received | 1 + merge conflict | Comment → Approved | Merged |
 | [#84](https://github.com/Kiatisakk/toktickit/pull/84) | received | 1 + merge conflict ×2 | Comment → Approved | Merged |
 | [#85](https://github.com/Kiatisakk/toktickit/pull/85) | received | 2 | Changes requested → Approved | Merged |
+| [#86](https://github.com/Kiatisakk/toktickit/pull/86) | received | 0 | Approved | Merged |
 | [beambeambeam#80](https://github.com/beambeambeam/toktickit/pull/80) | given | 8 | Changes requested → Approved | Merged |
+| [beambeambeam#81](https://github.com/beambeambeam/toktickit/pull/81) | given | 0 | Approved | Merged |
 | [beambeambeam#82](https://github.com/beambeambeam/toktickit/pull/82) | given | 12 | Changes requested → Approved | Merged |
 | [beambeambeam#83](https://github.com/beambeambeam/toktickit/pull/83) | given | 4 + 2 process | Changes requested → Approved | Merged |
 | [beambeambeam#84](https://github.com/beambeambeam/toktickit/pull/84) | given | 8 | Changes requested → Approved | Merged |
 | [beambeambeam#85](https://github.com/beambeambeam/toktickit/pull/85) | given | 14 | Changes requested → Approved | Merged |
+| [beambeambeam#86](https://github.com/beambeambeam/toktickit/pull/86) | given | 16 + 2 nits | Changes requested → Approved | Merged |
+| [beambeambeam#87](https://github.com/beambeambeam/toktickit/pull/87) | given | 11 + 2 nits + 1 | Changes requested → Approved → Changes requested → Approved | Merged |
