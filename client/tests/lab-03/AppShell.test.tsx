@@ -119,10 +119,13 @@ describe("UI-13 navigation by role", () => {
 
   // The order and membership ui-spec.md §2 gives, role by role. A destination
   // a role may not use is absent rather than disabled (AC-34).
-  it("offers an Administrator all four, in ui-spec.md's order", () => {
+  // D-16: Dashboard is now the first item for every role (D-12), so each list
+  // below gains it at the front and nothing else changes.
+  it("offers an Administrator every destination, in ui-spec.md's order", () => {
     renderShell({ auth: authContext({ user: ADMIN_USER }) });
 
     expect(destinations()).toEqual([
+      "Dashboard",
       "Ticket Queue",
       "User Management",
       "My Tickets",
@@ -134,6 +137,7 @@ describe("UI-13 navigation by role", () => {
     renderShell({ auth: authContext({ user: STAFF_USER }) });
 
     expect(destinations()).toEqual([
+      "Dashboard",
       "Ticket Queue",
       "My Tickets",
       "Create Ticket",
@@ -146,6 +150,10 @@ describe("UI-13 navigation by role", () => {
     expect(
       screen.queryByRole("link", { name: /ticket queue|user management/iu })
     ).not.toBeInTheDocument();
-    expect(destinations()).toEqual(["My Tickets", "Create Ticket"]);
+    expect(destinations()).toEqual([
+      "Dashboard",
+      "My Tickets",
+      "Create Ticket",
+    ]);
   });
 });

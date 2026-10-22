@@ -31,11 +31,20 @@ export const ErrorCode = {
   ticketNotFound: "TICKET_NOT_FOUND",
   ticketOwnerIneligible: "TICKET_OWNER_INELIGIBLE",
   invalidStatusTransition: "INVALID_STATUS_TRANSITION",
+  staleUpdate: "STALE_UPDATE",
   attachmentNotFound: "ATTACHMENT_NOT_FOUND",
   attachmentRemoved: "ATTACHMENT_REMOVED",
   attachmentLimitReached: "ATTACHMENT_LIMIT_REACHED",
   fileTooLarge: "FILE_TOO_LARGE",
   unsupportedFileType: "UNSUPPORTED_FILE_TYPE",
+  // Lab 4 Actions Taken (docs/lab-04/api-spec.md section 3).
+  actionAssigneeIneligible: "ACTION_ASSIGNEE_INELIGIBLE",
+  actionNotEditable: "ACTION_NOT_EDITABLE",
+  actionNotFound: "ACTION_NOT_FOUND",
+  ticketNotActionable: "TICKET_NOT_ACTIONABLE",
+  requestIdConflict: "REQUEST_ID_CONFLICT",
+  // Lab 4 resolution gate (Issue 75; api-spec.md section 7).
+  resolutionGateFailed: "RESOLUTION_GATE_FAILED",
   internalError: "INTERNAL_ERROR",
 } as const;
 

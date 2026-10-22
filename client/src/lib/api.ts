@@ -484,6 +484,11 @@ export interface TicketDetail extends TicketListRow {
   resolutionSummary: string | null;
   /** When the Requester said the problem appears resolved, or null (FR-18). */
   resolvedIndicatedAt: string | null;
+  /**
+   * The concurrency token (BR-19). A staff write sends the one it read and is
+   * refused `409 STALE_UPDATE` if the Ticket has moved on since.
+   */
+  version: number;
   requester: ReferenceItem;
   attachments: AttachmentMetadata[];
 }
@@ -510,6 +515,7 @@ const isTicketDetail = (value: unknown): value is TicketDetail =>
     typeof value["resolutionSummary"] === "string") &&
   (value["resolvedIndicatedAt"] === null ||
     typeof value["resolvedIndicatedAt"] === "string") &&
+  Number.isSafeInteger(value["version"]) &&
   isReferenceItem(value["requester"]) &&
   Array.isArray(value["attachments"]) &&
   value["attachments"].every(isAttachment);
@@ -563,17 +569,38 @@ const patchTicket = async (
  * All three of these answer with the whole ticket, so the screen refreshes from
  * the response rather than fetching again (api-spec.md §7).
  */
-export const setTicketOwner = (ticketId: number, ownerId: number | null) =>
-  patchTicket(ticketId, "owner", { ownerId });
+export const setTicketOwner = (
+  ticketId: number,
+  ownerId: number | null,
+  version: number
+) => patchTicket(ticketId, "owner", { ownerId, version });
 
 /** The three values IT Priority may take, or null to leave it unset. */
 export type Priority = "LOW" | "MEDIUM" | "HIGH";
 
-export const setItPriority = (ticketId: number, itPriority: Priority | null) =>
-  patchTicket(ticketId, "it-priority", { itPriority });
+export const setItPriority = (
+  ticketId: number,
+  itPriority: Priority | null,
+  version: number
+) => patchTicket(ticketId, "it-priority", { itPriority, version });
 
-export const setTicketStatus = (ticketId: number, status: TicketStatus) =>
-  patchTicket(ticketId, "status", { status });
+/**
+ * `resolutionSummary` goes with a move to Resolved and with nothing else
+ * (BR-17); the server refuses it on any other target.
+ */
+export const setTicketStatus = (
+  ticketId: number,
+  status: TicketStatus,
+  version: number,
+  resolutionSummary?: string
+) =>
+  patchTicket(
+    ticketId,
+    "status",
+    resolutionSummary === undefined
+      ? { status, version }
+      : { status, version, resolutionSummary }
+  );
 
 /* ------------------------------------------------------- public comments -- */
 
@@ -746,4 +773,307 @@ export const downloadAttachment = async (
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+};
+
+/* ---------------------------------------------- dashboards (Issue #76) -- */
+
+/**
+ * Where a card leads, as the backend defines it (BR-34). The screen follows it
+ * and never builds one itself, so the rule that defines a count and the list the
+ * card opens cannot drift apart.
+ */
+export interface DrillDown {
+  path: string;
+  query: Record<string, string>;
+}
+
+export interface DashboardCard {
+  key: string;
+  label: string;
+  count: number;
+  /** `null` on cards with no delta: ownership cards and every Requester card. */
+  delta: number | null;
+  drillDown: DrillDown;
+}
+
+export interface RecentTicket {
+  id: number;
+  ticketNumber: string;
+  summary: string;
+  currentStatus: string;
+  updatedAt: string;
+}
+
+export interface QuickAction {
+  key: string;
+  label: string;
+  path: string;
+  query?: Record<string, string>;
+}
+
+export interface Dashboard {
+  generatedAt: string;
+  timeZone: string;
+  cards: DashboardCard[];
+  recentTickets: RecentTicket[];
+  quickActions: QuickAction[];
+}
+
+const isStringMap = (value: unknown): value is Record<string, string> =>
+  isRecord(value) && Object.values(value).every((v) => typeof v === "string");
+
+const isDashboardCard = (value: unknown): value is DashboardCard =>
+  isRecord(value) &&
+  typeof value["key"] === "string" &&
+  typeof value["label"] === "string" &&
+  typeof value["count"] === "number" &&
+  (value["delta"] === null || typeof value["delta"] === "number") &&
+  isRecord(value["drillDown"]) &&
+  typeof value["drillDown"]["path"] === "string" &&
+  isStringMap(value["drillDown"]["query"]);
+
+const isRecentTicket = (value: unknown): value is RecentTicket =>
+  isRecord(value) &&
+  typeof value["id"] === "number" &&
+  typeof value["ticketNumber"] === "string" &&
+  typeof value["summary"] === "string" &&
+  typeof value["currentStatus"] === "string" &&
+  typeof value["updatedAt"] === "string";
+
+const isQuickAction = (value: unknown): value is QuickAction =>
+  isRecord(value) &&
+  typeof value["key"] === "string" &&
+  typeof value["label"] === "string" &&
+  typeof value["path"] === "string" &&
+  (value["query"] === undefined || isStringMap(value["query"]));
+
+const toDashboard = (body: unknown): Dashboard => {
+  if (
+    !isRecord(body) ||
+    typeof body["generatedAt"] !== "string" ||
+    typeof body["timeZone"] !== "string" ||
+    !Array.isArray(body["cards"]) ||
+    !body["cards"].every(isDashboardCard) ||
+    !Array.isArray(body["recentTickets"]) ||
+    !body["recentTickets"].every(isRecentTicket) ||
+    !Array.isArray(body["quickActions"]) ||
+    !body["quickActions"].every(isQuickAction)
+  ) {
+    throw new ApiError(
+      "UNEXPECTED_RESPONSE",
+      "The TokTickIT API returned the dashboard in an unexpected format.",
+      0
+    );
+  }
+
+  return {
+    generatedAt: body["generatedAt"],
+    timeZone: body["timeZone"],
+    cards: body["cards"],
+    recentTickets: body["recentTickets"],
+    quickActions: body["quickActions"],
+  };
+};
+
+/** IT Staff and Administrators only; anyone else is refused 403. */
+export const fetchStaffDashboard = async (
+  signal?: AbortSignal
+): Promise<Dashboard> =>
+  toDashboard(await apiGet("/api/dashboard/staff", signal ? { signal } : {}));
+
+/** Requesters only; staff and Administrators are refused 403. */
+export const fetchRequesterDashboard = async (
+  signal?: AbortSignal
+): Promise<Dashboard> =>
+  toDashboard(
+    await apiGet("/api/dashboard/requester", signal ? { signal } : {})
+  );
+
+/* ------------------------------------------------- Issue #74: actions taken -- */
+
+export type ActionState = "PLANNED" | "DONE" | "CANCELLED";
+export type FollowUpState = "NOT_REQUIRED" | "OPEN" | "CLOSED" | "VOID";
+
+/** An Action Taken on a Ticket (api-spec.md section 4). Never carries `requestId`. */
+export interface TicketAction {
+  id: number;
+  ticketId: number;
+  state: ActionState;
+  actionAt: string;
+  description: string;
+  result: string | null;
+  followUpRequired: boolean;
+  followUpNote: string | null;
+  followUpState: FollowUpState;
+  followsUpId: number | null;
+  attachmentNotes: string | null;
+  cancelReason: string | null;
+  recordedBy: ReferenceItem;
+  performedBy: ReferenceItem;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const ACTION_STATES: readonly unknown[] = ["PLANNED", "DONE", "CANCELLED"];
+const FOLLOW_UP_STATES: readonly unknown[] = [
+  "NOT_REQUIRED",
+  "OPEN",
+  "CLOSED",
+  "VOID",
+];
+
+const isNullableString = (value: unknown): value is string | null =>
+  value === null || typeof value === "string";
+
+const isTicketAction = (value: unknown): value is TicketAction =>
+  isRecord(value) &&
+  typeof value["id"] === "number" &&
+  typeof value["ticketId"] === "number" &&
+  ACTION_STATES.includes(value["state"]) &&
+  typeof value["actionAt"] === "string" &&
+  typeof value["description"] === "string" &&
+  isNullableString(value["result"]) &&
+  typeof value["followUpRequired"] === "boolean" &&
+  isNullableString(value["followUpNote"]) &&
+  FOLLOW_UP_STATES.includes(value["followUpState"]) &&
+  (value["followsUpId"] === null || typeof value["followsUpId"] === "number") &&
+  isNullableString(value["attachmentNotes"]) &&
+  isNullableString(value["cancelReason"]) &&
+  isReferenceItem(value["recordedBy"]) &&
+  isReferenceItem(value["performedBy"]) &&
+  typeof value["version"] === "number" &&
+  typeof value["createdAt"] === "string" &&
+  typeof value["updatedAt"] === "string";
+
+const expectAction = (body: unknown): TicketAction => {
+  if (!isTicketAction(body)) {
+    throw unexpected("the action");
+  }
+
+  return body;
+};
+
+/** A Ticket's Actions in the server's stable order (api-spec.md section 4). */
+export const fetchActions = async (
+  ticketId: number,
+  signal?: AbortSignal
+): Promise<TicketAction[]> => {
+  const body = await apiGet(
+    `/api/tickets/${ticketId}/actions`,
+    signal ? { signal } : {}
+  );
+
+  if (
+    !isRecord(body) ||
+    !Array.isArray(body["data"]) ||
+    !body["data"].every(isTicketAction)
+  ) {
+    throw unexpected("the actions");
+  }
+
+  return body["data"];
+};
+
+/** The fields a create or an edit may carry. `followsUpId` is create-only (BR-10). */
+export interface ActionFields {
+  /** Left out of an edit unless the person changed it, so seconds survive. */
+  actionAt?: string;
+  description: string;
+  result: string | null;
+  performedById: number;
+  followUpRequired: boolean;
+  followUpNote: string | null;
+  attachmentNotes: string | null;
+}
+
+/**
+ * Creates an Action. `requestId` is the caller's: one per intentional create,
+ * resent unchanged on every retry (BR-35, AC-48). A `200` replay resolves like
+ * a `201`, which is what a retry after a lost response needs.
+ */
+export const createAction = async (
+  ticketId: number,
+  requestId: string,
+  fields: ActionFields,
+  followsUpId: number | null
+): Promise<TicketAction> =>
+  expectAction(
+    await apiPost(`/api/tickets/${ticketId}/actions`, {
+      requestId,
+      ...fields,
+      ...(followsUpId === null ? {} : { followsUpId }),
+    })
+  );
+
+/** Edits a Planned Action. The body never carries `followsUpId`. */
+export const updateAction = async (
+  actionId: number,
+  version: number,
+  fields: ActionFields
+): Promise<TicketAction> =>
+  expectAction(
+    await apiPatch(`/api/actions/${actionId}`, { version, ...fields })
+  );
+
+export const completeAction = async (
+  actionId: number,
+  version: number,
+  result: string
+): Promise<TicketAction> =>
+  expectAction(
+    await apiPost(`/api/actions/${actionId}/complete`, { version, result })
+  );
+
+export const cancelAction = async (
+  actionId: number,
+  version: number,
+  cancelReason: string
+): Promise<TicketAction> =>
+  expectAction(
+    await apiPost(`/api/actions/${actionId}/cancel`, { version, cancelReason })
+  );
+
+/* ------------------------------------------------ resolution gate (Issue 75) -- */
+
+/** What the resolve dialog reads of an Action (ui-spec.md section 7). */
+export interface GateActionRow {
+  id: number;
+  state: "PLANNED" | "DONE" | "CANCELLED";
+  followUpState: "NOT_REQUIRED" | "VOID" | "OPEN" | "CLOSED";
+}
+
+const isGateActionRow = (value: unknown): value is GateActionRow =>
+  isRecord(value) &&
+  typeof value["id"] === "number" &&
+  ACTION_STATES.includes(value["state"]) &&
+  FOLLOW_UP_STATES.includes(value["followUpState"]);
+
+/**
+ * A Ticket's Actions, reduced to what the resolve dialog's checklist needs.
+ * Read again each time the dialog opens, so an Action completed or cancelled
+ * since is reflected (AC-49).
+ */
+export const fetchGateActions = async (
+  ticketId: number,
+  signal?: AbortSignal
+): Promise<GateActionRow[]> => {
+  const body = await apiGet(
+    `/api/tickets/${ticketId}/actions`,
+    signal ? { signal } : {}
+  );
+
+  if (
+    !isRecord(body) ||
+    !Array.isArray(body["data"]) ||
+    !body["data"].every(isGateActionRow)
+  ) {
+    throw unexpected("the actions");
+  }
+
+  return body["data"].map((one) => ({
+    id: one.id,
+    state: one.state,
+    followUpState: one.followUpState,
+  }));
 };

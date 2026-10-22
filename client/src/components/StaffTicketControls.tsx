@@ -12,12 +12,17 @@ import {
   type TicketDetail,
 } from "../lib/api";
 import {
+  STALE_MESSAGE,
+  STALE_RELOAD_FAILED_MESSAGE,
+} from "../lib/staleMessages";
+import {
   permittedTargets,
   STATUS_LABELS,
   type TicketStatus,
 } from "../lib/ticketStatus";
 import { Badge } from "./Badge";
 import { Button } from "./Button";
+import { ResolveDialog } from "./ResolveDialog";
 import { Select } from "./Select";
 
 /**
@@ -41,10 +46,18 @@ import { Select } from "./Select";
 interface ControlProps {
   ticket: TicketDetail;
   onUpdated: (ticket: TicketDetail) => void;
+  /**
+   * Reload the Ticket: the write was refused because it had moved on. Resolves
+   * to whether the latest version was actually loaded.
+   */
+  onStale: () => Promise<boolean>;
 }
 
 /** What a failed change says, and how a busy one looks. */
-const useChange = (onUpdated: (ticket: TicketDetail) => void) => {
+const useChange = (
+  onUpdated: (ticket: TicketDetail) => void,
+  onStale: () => Promise<boolean>
+) => {
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -55,6 +68,17 @@ const useChange = (onUpdated: (ticket: TicketDetail) => void) => {
     try {
       onUpdated(await change());
     } catch (error) {
+      if (error instanceof ApiError && error.code === "STALE_UPDATE") {
+        // Someone else changed the Ticket since this screen loaded it (AC-42).
+        // Say so, and load what is there now, so the next attempt names the
+        // version that is actually stored.
+        // The message waits for the reload, so it never claims data it lacks.
+        const reloaded = await onStale();
+
+        setFailure(reloaded ? STALE_MESSAGE : STALE_RELOAD_FAILED_MESSAGE);
+        return;
+      }
+
       // The server's own message: it is the one that knows why. A refused
       // transition and an ineligible owner read differently, and both are
       // written for a person (api-spec.md §2).
@@ -85,9 +109,9 @@ const Failure = ({ message }: { message: string | null }) =>
  * and naming yourself in a dropdown to do it is a worse way to say it. An owned
  * ticket presents the eligible owners and a Release beside them.
  */
-export const OwnerControl = ({ ticket, onUpdated }: ControlProps) => {
+export const OwnerControl = ({ ticket, onUpdated, onStale }: ControlProps) => {
   const { user } = useAuth();
-  const { busy, failure, run } = useChange(onUpdated);
+  const { busy, failure, run } = useChange(onUpdated, onStale);
   const [owners, setOwners] = useState<ReferenceItem[]>([]);
   const [ownersFailed, setOwnersFailed] = useState(false);
 
@@ -128,7 +152,11 @@ export const OwnerControl = ({ ticket, onUpdated }: ControlProps) => {
             label="Ticket Owner"
             onChange={(event) =>
               void run(() =>
-                setTicketOwner(ticket.id, Number(event.target.value))
+                setTicketOwner(
+                  ticket.id,
+                  Number(event.target.value),
+                  ticket.version
+                )
               )
             }
             options={owners.map((one) => ({
@@ -141,7 +169,9 @@ export const OwnerControl = ({ ticket, onUpdated }: ControlProps) => {
             <Button
               busy={busy}
               busyLabel="Saving…"
-              onClick={() => void run(() => setTicketOwner(ticket.id, null))}
+              onClick={() =>
+                void run(() => setTicketOwner(ticket.id, null, ticket.version))
+              }
             >
               Release
             </Button>
@@ -157,7 +187,9 @@ export const OwnerControl = ({ ticket, onUpdated }: ControlProps) => {
               busyLabel="Claiming…"
               disabled={!user}
               onClick={() =>
-                void run(() => setTicketOwner(ticket.id, user?.id ?? 0))
+                void run(() =>
+                  setTicketOwner(ticket.id, user?.id ?? 0, ticket.version)
+                )
               }
               variant="primary"
             >
@@ -172,8 +204,12 @@ export const OwnerControl = ({ ticket, onUpdated }: ControlProps) => {
 };
 
 /** IT's own view of urgency. The Requester's is read-only beside it (AC-19). */
-export const ItPriorityControl = ({ ticket, onUpdated }: ControlProps) => {
-  const { busy, failure, run } = useChange(onUpdated);
+export const ItPriorityControl = ({
+  ticket,
+  onUpdated,
+  onStale,
+}: ControlProps) => {
+  const { busy, failure, run } = useChange(onUpdated, onStale);
 
   return (
     <div className="tkt-field-group">
@@ -185,7 +221,11 @@ export const ItPriorityControl = ({ ticket, onUpdated }: ControlProps) => {
           const value = event.target.value;
 
           void run(() =>
-            setItPriority(ticket.id, value === "" ? null : (value as Priority))
+            setItPriority(
+              ticket.id,
+              value === "" ? null : (value as Priority),
+              ticket.version
+            )
           );
         }}
         options={[
@@ -209,8 +249,9 @@ export const ItPriorityControl = ({ ticket, onUpdated }: ControlProps) => {
  * read-only with a note — not an empty dropdown, which reads as a failed load
  * (ui-spec.md §6).
  */
-export const StatusControl = ({ ticket, onUpdated }: ControlProps) => {
-  const { busy, failure, run } = useChange(onUpdated);
+export const StatusControl = ({ ticket, onUpdated, onStale }: ControlProps) => {
+  const { busy, failure, run } = useChange(onUpdated, onStale);
+  const [resolving, setResolving] = useState(false);
   const status = ticket.currentStatus as TicketStatus;
   const targets = permittedTargets(status);
 
@@ -239,8 +280,15 @@ export const StatusControl = ({ ticket, onUpdated }: ControlProps) => {
         onChange={(event) => {
           const next = event.target.value;
 
-          if (next !== "") {
-            void run(() => setTicketStatus(ticket.id, next as TicketStatus));
+          // Resolving goes through the dialog, which asks for the Resolution
+          // Summary and shows the gate (BR-16, AC-41). Every other target is
+          // one request, as it was.
+          if (next === "RESOLVED") {
+            setResolving(true);
+          } else if (next !== "") {
+            void run(() =>
+              setTicketStatus(ticket.id, next as TicketStatus, ticket.version)
+            );
           }
         }}
         options={[
@@ -252,6 +300,19 @@ export const StatusControl = ({ ticket, onUpdated }: ControlProps) => {
         ]}
         value=""
       />
+      {resolving ? (
+        <ResolveDialog
+          onClose={() => {
+            setResolving(false);
+          }}
+          onResolved={(updated) => {
+            setResolving(false);
+            onUpdated(updated);
+          }}
+          onStale={onStale}
+          ticket={ticket}
+        />
+      ) : null}
     </div>
   );
 };

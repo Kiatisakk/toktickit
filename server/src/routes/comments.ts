@@ -166,7 +166,9 @@ commentsRouter.post(
       // overwrite the first. BR-27 says set once, so the first time stands.
       const recorded = await prisma.ticket.updateMany({
         where: { id, ...ownTicketsOf(user), resolvedIndicatedAt: null },
-        data: { resolvedIndicatedAt: new Date() },
+        // Bodiless and set-once, so it sends no version, but it is a write to
+        // the Ticket and a staff member who read it earlier is now stale (BR-19).
+        data: { resolvedIndicatedAt: new Date(), version: { increment: 1 } },
       });
 
       if (recorded.count === 0) {

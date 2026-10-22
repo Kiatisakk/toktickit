@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router";
 
 import { AppShell } from "../components/AppShell";
 import { Button } from "../components/Button";
@@ -21,6 +21,7 @@ import {
   type ReferenceItem,
   type TicketListMeta,
 } from "../lib/api";
+import { positiveSafeIntegerParam } from "../lib/positiveSafeIntegerParam";
 import { STATUS_OPTIONS } from "../lib/ticketStatus";
 
 const PRIORITIES = [
@@ -35,14 +36,35 @@ interface Filters {
   requestedPriority: string;
   itPriority: string;
   status: string;
+  /** `open` or nothing. Has no control; shown as a removable chip (FR-22). */
+  statusGroup: string;
 }
 
-const NO_FILTERS: Filters = {
-  search: "",
-  categoryId: "",
-  requestedPriority: "",
-  itPriority: "",
-  status: "",
+/**
+ * The filters are read from the address, so a dashboard card can open this list
+ * already filtered, Back returns to the previous filter, and a link can be
+ * shared (FR-22, ui-spec.md section 5). A value the screen would not offer is
+ * ignored rather than sent: a hand-edited `?status=NOPE` shows the unfiltered
+ * list instead of an error from the API.
+ */
+const filtersFromParams = (params: URLSearchParams): Filters => {
+  const status = params.get("status") ?? "";
+  const statusGroup = params.get("statusGroup") ?? "";
+
+  return {
+    search: params.get("search") ?? "",
+    categoryId: positiveSafeIntegerParam(params.get("categoryId")),
+    requestedPriority: PRIORITIES.some(
+      (p) => p.value === params.get("requestedPriority")
+    )
+      ? (params.get("requestedPriority") ?? "")
+      : "",
+    itPriority: PRIORITIES.some((p) => p.value === params.get("itPriority"))
+      ? (params.get("itPriority") ?? "")
+      : "",
+    status: STATUS_OPTIONS.some((s) => s.value === status) ? status : "",
+    statusGroup: statusGroup === "open" && status === "" ? statusGroup : "",
+  };
 };
 
 type Listing =
@@ -66,7 +88,8 @@ export const MyTickets = () => {
   const signedInAs = user?.id ?? null;
   const navigate = useNavigate();
 
-  const [filters, setFilters] = useState<Filters>(NO_FILTERS);
+  const [params, setParams] = useSearchParams();
+  const filters = useMemo(() => filtersFromParams(params), [params]);
   const [sort, setSort] = useState<SortField>("createdAt");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
@@ -125,6 +148,7 @@ export const MyTickets = () => {
         "requestedPriority",
         "itPriority",
         "status",
+        "statusGroup",
       ] as const) {
         if (filters[key] !== "") {
           query.set(key, filters[key]);
@@ -183,11 +207,11 @@ export const MyTickets = () => {
     }
 
     seenUser.current = signedInAs;
-    setFilters(NO_FILTERS);
+    setParams(new URLSearchParams(), { replace: true });
     setSort("createdAt");
     setOrder("desc");
     setPage(1);
-  }, [signedInAs]);
+  }, [signedInAs, setParams]);
 
   // `signedInAs` is in the dependency list so that a change of user discards
   // what is on screen and refetches, rather than leaving one person's tickets
@@ -210,7 +234,23 @@ export const MyTickets = () => {
   }, [load, signedInAs, reloadToken]);
 
   const setFilter = (key: keyof Filters) => (value: string) => {
-    setFilters((current) => ({ ...current, [key]: value }));
+    const next = new URLSearchParams(params);
+
+    if (value === "") {
+      next.delete(key);
+    } else {
+      next.set(key, value);
+    }
+
+    // The API refuses a status group alongside an exact status, so choosing a
+    // status replaces the group rather than producing a request that fails.
+    if (key === "status" && value !== "") {
+      next.delete("statusGroup");
+    }
+
+    // Typing in the search box replaces the entry instead of adding one per
+    // keystroke, so Back does not step through every letter.
+    setParams(next, { replace: key === "search" });
     // Any change to what is being asked for starts again at the first page:
     // staying on page 3 of a result set that now has one page shows nothing.
     setPage(1);
@@ -228,7 +268,7 @@ export const MyTickets = () => {
   };
 
   const clearFilters = () => {
-    setFilters(NO_FILTERS);
+    setParams(new URLSearchParams());
     setPage(1);
   };
 
@@ -314,6 +354,22 @@ export const MyTickets = () => {
           value={filters.status}
         />
       </div>
+
+      {filters.statusGroup === "open" ? (
+        <div className="tkt-chips">
+          <span className="tkt-chip">
+            Open tickets
+            <button
+              aria-label="Remove the Open tickets filter"
+              className="tkt-chip__remove"
+              onClick={() => setFilter("statusGroup")("")}
+              type="button"
+            >
+              ×
+            </button>
+          </span>
+        </div>
+      ) : null}
 
       {/*
         ui-spec.md §7 says "Skeleton rows, filter bar interactive" for this
