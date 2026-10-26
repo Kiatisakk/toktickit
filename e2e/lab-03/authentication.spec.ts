@@ -108,7 +108,7 @@ test.describe("signing in (E2E-01, E2E-04)", () => {
     });
 
     await page.getByRole("button", { name: "Sign In" }).click();
-    await expect(page).toHaveURL(/\/my-tickets$/u);
+    await expect(page).toHaveURL(/\/dashboard$/u);
 
     // --- inactive-account -----------------------------------------------------
     // A fresh context: the one above is now signed in as Requester A, and
@@ -153,8 +153,15 @@ test.describe("signing in (E2E-01, E2E-04)", () => {
 
     // --- signed-in-shell ------------------------------------------------------
     // Back on the page that actually completed a sign-in above.
-    await expect(page.getByText(EMPTY_REQUESTER.name)).toBeVisible();
-    await expect(page.getByText("No tickets yet")).toBeVisible();
+    // Lab 4 moved the landing page to the dashboard (D-12): the name is also
+    // in the welcome heading, so the header's copy is matched exactly, and the
+    // zero-ticket state is the dashboard's own wording.
+    await expect(
+      page.getByText(EMPTY_REQUESTER.name, { exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByText("You haven't raised any tickets yet.")
+    ).toBeVisible();
     await shoot(page, info, "authentication", "signed-in-shell");
 
     // --- after-logout, and E2E-03: sign-out blocks direct access -------------
@@ -251,8 +258,10 @@ test.describe("the mandatory password change (E2E-02)", () => {
       .fill(CHOSEN_PASSWORD);
     await page.getByRole("button", { name: "Continue" }).click();
 
-    await expect(page).toHaveURL(/\/my-tickets$/u);
-    await expect(page.getByText(MUST_CHANGE_REQUESTER.name)).toBeVisible();
+    await expect(page).toHaveURL(/\/dashboard$/u);
+    await expect(
+      page.getByText(MUST_CHANGE_REQUESTER.name, { exact: true })
+    ).toBeVisible();
     await shoot(page, info, "authentication", "change-password-success");
 
     await page.context().close();

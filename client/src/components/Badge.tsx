@@ -1,4 +1,10 @@
-export type BadgeKind = "priority" | "status" | "attachment" | "role";
+export type BadgeKind =
+  | "priority"
+  | "status"
+  | "attachment"
+  | "role"
+  | "action"
+  | "followUp";
 
 interface BadgeProps {
   kind: BadgeKind;
@@ -17,6 +23,8 @@ const LABELS: Record<string, string> = {
   ADMIN: "Administrator",
   // Title-casing would capitalise the "for" (ui-spec.md §5).
   WAITING_FOR_REQUESTER: "Waiting for Requester",
+  // Follow-up state, written as the ui-spec writes it (section 6).
+  NOT_REQUIRED: "Not required",
 };
 
 /** `IN_PROGRESS` reads as "In Progress" on screen. */

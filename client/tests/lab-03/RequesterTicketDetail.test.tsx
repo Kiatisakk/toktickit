@@ -82,6 +82,11 @@ const api = ({
       );
     }
 
+    // Lab 4 (#74): the Actions Taken section reads its own list.
+    if (url.endsWith("/actions")) {
+      return Promise.resolve(jsonResponse({ data: [] }));
+    }
+
     return Promise.resolve(jsonResponse(current));
   });
 
@@ -341,6 +346,11 @@ describe("Public Comments", () => {
                 )
               : jsonResponse({ data: [FIRST] })
           );
+        }
+
+        // Lab 4 (#74): the Actions Taken section reads its own list.
+        if (url.endsWith("/actions")) {
+          return Promise.resolve(jsonResponse({ data: [] }));
         }
 
         return Promise.resolve(jsonResponse(TICKET));

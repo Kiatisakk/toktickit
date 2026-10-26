@@ -49,6 +49,9 @@ export const TICKET = {
   currentStatus: "NEW",
   resolutionSummary: null,
   resolvedIndicatedAt: null as string | null,
+  // Lab 4 (D-16, MIG-08): every Ticket response now carries its version, and
+  // the client refuses a response without one.
+  version: 1,
   createdAt: "2026-08-01T09:14:00.000Z",
   updatedAt: "2026-08-03T11:02:00.000Z",
   category: { id: 2, name: "Hardware" },
@@ -70,7 +73,8 @@ export const NO_COMMENTS = { data: [] };
 export const respond = (body: unknown, status = 200) =>
   vi.fn((url: string) =>
     Promise.resolve(
-      String(url).endsWith("/comments")
+      // Lab 4 (#74): the Actions Taken section reads its own list as well.
+      String(url).endsWith("/comments") || String(url).endsWith("/actions")
         ? jsonResponse(NO_COMMENTS)
         : jsonResponse(body, status)
     )

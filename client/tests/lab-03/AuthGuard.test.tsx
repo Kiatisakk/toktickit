@@ -24,6 +24,8 @@ const renderAt = (
       <AuthContext.Provider value={context}>
         <Routes>
           <Route element={<h1>Sign in</h1>} path="/login" />
+          {/* D-16: the landing page is /dashboard, not My Tickets. */}
+          <Route element={<h1>Dashboard</h1>} path="/dashboard" />
           <Route
             element={
               <AuthGuard area="password-change">
@@ -71,7 +73,8 @@ describe("UI-26 signed in", () => {
   it("sends a user who has no change outstanding away from change password", () => {
     renderAt(authContext(), { path: "/change-password" });
 
-    expect(heading()).toHaveTextContent("Protected screen");
+    // D-16: Lab 3 sent them to My Tickets; the landing page is now /dashboard.
+    expect(heading()).toHaveTextContent("Dashboard");
   });
 });
 
@@ -108,7 +111,8 @@ describe("UI-26 a screen limited to some roles", () => {
       <MemoryRouter initialEntries={["/admin/users"]}>
         <AuthContext.Provider value={context}>
           <Routes>
-            <Route element={<h1>My Tickets</h1>} path="/my-tickets" />
+            {/* D-16: a refused route lands on /dashboard, not My Tickets. */}
+            <Route element={<h1>Dashboard</h1>} path="/dashboard" />
             <Route
               element={
                 <AuthGuard roles={["ADMIN"]}>
@@ -132,13 +136,14 @@ describe("UI-26 a screen limited to some roles", () => {
     { who: "a Requester", context: authContext() },
     { who: "IT Staff", context: authContext({ user: STAFF_USER }) },
   ])(
-    "redirects $who to My Tickets rather than showing an error",
+    "redirects $who to the Dashboard rather than showing an error",
     ({ context }) => {
       // ui-spec.md §8: the destination is absent and the route redirects. The
       // server still refuses the same user with 403 — this is navigation.
+      // D-16: the destination was My Tickets in Lab 3 and is /dashboard now.
       renderAdminScreen(context);
 
-      expect(heading()).toHaveTextContent("My Tickets");
+      expect(heading()).toHaveTextContent("Dashboard");
     }
   );
 

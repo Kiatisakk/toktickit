@@ -44,8 +44,10 @@ test.describe("forbidden for a non-Administrator (part of E2E-07)", () => {
     ).toHaveCount(0);
 
     await requester.goto("/admin/users");
-    await expect(requester).toHaveURL(/\/my-tickets$/u);
-    await expect(requester.getByText("No tickets yet")).toBeVisible();
+    await expect(requester).toHaveURL(/\/dashboard$/u);
+    await expect(
+      requester.getByText("You haven't raised any tickets yet.")
+    ).toBeVisible();
     await shoot(requester, info, "user-management", "forbidden-for-non-admin");
 
     await requester.context().close();
@@ -221,8 +223,8 @@ test.describe("the Administrator screen", () => {
       .fill("ChosenByNewHire1!");
     await hire.getByRole("button", { name: "Continue" }).click();
 
-    await expect(hire).toHaveURL(/\/my-tickets$/u);
-    await expect(hire.getByText("E2E New Hire")).toBeVisible();
+    await expect(hire).toHaveURL(/\/dashboard$/u);
+    await expect(hire.getByText("E2E New Hire", { exact: true })).toBeVisible();
 
     await hire.context().close();
   });
